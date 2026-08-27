@@ -35,6 +35,7 @@ def _write_config(path: Path) -> None:
                 "feature_columns": ["metric_a"],
                 "min_cross_section": 2,
                 "quantiles": 2,
+                "hac_lags": 0,
                 "split": {
                     "final_test_date_count": 1,
                     "outer_n_splits": 1,

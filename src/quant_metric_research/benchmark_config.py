@@ -66,7 +66,7 @@ class BenchmarkConfig:
     minimum_coverage: float = 0.8
     redundancy_threshold: float = 0.9
     quantiles: int = 5
-    hac_lags: int = 0
+    hac_lags: int | None = None
     ridge_alphas: tuple[float, ...] = (0.1, 1.0, 10.0, 100.0)
     hist_learning_rates: tuple[float, ...] = (0.05,)
     hist_max_leaf_nodes: tuple[int, ...] = (7,)
@@ -80,6 +80,11 @@ class BenchmarkConfig:
     minimum_rank_ic_improvement: float = 0.0
     minimum_development_win_rate: float = 0.5
     minimum_coverage_ratio: float = 0.95
+    minimum_locked_test_date_count: int = 20
+    minimum_locked_score_coverage: float = 0.8
+    minimum_locked_spread_date_count: int = 20
+    minimum_locked_spread_coverage: float = 0.8
+    maximum_locked_rank_ic_improvement_p_value: float = 0.05
     primary_baseline: str = "equal_weight_rank"
     model_families: tuple[str, ...] = field(
         default_factory=lambda: ("ridge", "hist_gradient_boosting")
@@ -111,6 +116,14 @@ class BenchmarkConfig:
             raise ValueError("hac_lags must be a non-negative integer.")
         _positive_integer(self.hist_max_iter, "hist_max_iter")
         _positive_integer(self.hist_min_samples_leaf, "hist_min_samples_leaf")
+        _positive_integer(
+            self.minimum_locked_test_date_count,
+            "minimum_locked_test_date_count",
+        )
+        _positive_integer(
+            self.minimum_locked_spread_date_count,
+            "minimum_locked_spread_date_count",
+        )
         if (
             isinstance(self.random_seed, bool)
             or not isinstance(self.random_seed, int)
@@ -126,12 +139,30 @@ class BenchmarkConfig:
             "redundancy_threshold": self.redundancy_threshold,
             "minimum_development_win_rate": self.minimum_development_win_rate,
             "minimum_coverage_ratio": self.minimum_coverage_ratio,
+            "minimum_locked_score_coverage": self.minimum_locked_score_coverage,
         }
         for name, value in unit_values.items():
             if not isfinite(float(value)) or not 0.0 <= float(value) <= 1.0:
                 raise ValueError(f"{name} must be between zero and one.")
-        if not isfinite(float(self.minimum_rank_ic_improvement)):
-            raise ValueError("minimum_rank_ic_improvement must be finite.")
+        if (
+            not isfinite(float(self.minimum_locked_spread_coverage))
+            or not 0.0 < float(self.minimum_locked_spread_coverage) <= 1.0
+        ):
+            raise ValueError("minimum_locked_spread_coverage must be in (0, 1].")
+        if (
+            not isfinite(float(self.maximum_locked_rank_ic_improvement_p_value))
+            or not 0.0 < float(self.maximum_locked_rank_ic_improvement_p_value) <= 1.0
+        ):
+            raise ValueError(
+                "maximum_locked_rank_ic_improvement_p_value must be in (0, 1]."
+            )
+        if (
+            not isfinite(float(self.minimum_rank_ic_improvement))
+            or float(self.minimum_rank_ic_improvement) < 0.0
+        ):
+            raise ValueError(
+                "minimum_rank_ic_improvement must be finite and non-negative."
+            )
 
         alphas = _finite_grid(
             self.ridge_alphas,

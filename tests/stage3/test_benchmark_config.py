@@ -79,3 +79,38 @@ def test_benchmark_config_rejects_duplicate_features_and_bad_grids() -> None:
             hac_lags=1,
             ridge_alphas=(0.0,),
         )
+
+
+def test_benchmark_config_requires_explicit_hac_lags() -> None:
+    with pytest.raises(ValueError, match="hac_lags"):
+        BenchmarkConfig(
+            feature_columns=("momentum",),
+            split=_split(),
+            min_cross_section=10,
+        )
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    [
+        ("minimum_locked_test_date_count", 0),
+        ("minimum_locked_score_coverage", 1.1),
+        ("minimum_locked_spread_date_count", 0),
+        ("minimum_locked_spread_coverage", 0.0),
+        ("maximum_locked_rank_ic_improvement_p_value", 0.0),
+        ("minimum_rank_ic_improvement", -0.001),
+    ],
+)
+def test_benchmark_config_rejects_invalid_minimum_evidence_thresholds(
+    field_name: str,
+    bad_value: object,
+) -> None:
+    values = {
+        "feature_columns": ("momentum",),
+        "split": _split(),
+        "min_cross_section": 10,
+        "hac_lags": 1,
+        field_name: bad_value,
+    }
+    with pytest.raises(ValueError, match=field_name):
+        BenchmarkConfig(**values)  # type: ignore[arg-type]

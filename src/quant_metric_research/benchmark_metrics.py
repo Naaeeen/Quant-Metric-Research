@@ -58,27 +58,40 @@ def _daily_row(
     min_cross_section: int,
     quantiles: int,
     eligible_target_count: int,
+    eligible_realized_return_count: int,
 ) -> dict[str, object]:
-    paired = frame.loc[:, ["score", "target", "realized_return"]].dropna()
-    count = int(paired.shape[0])
+    rank_pairs = frame.loc[:, ["score", "target"]].dropna()
+    spread_pairs = frame.loc[:, ["score", "realized_return"]].dropna()
+    rank_count = int(rank_pairs.shape[0])
+    spread_count = int(spread_pairs.shape[0])
     rank_ic = float("nan")
     spread = float("nan")
     if (
-        count >= min_cross_section
-        and paired["score"].nunique() > 1
-        and paired["target"].nunique() > 1
+        rank_count >= min_cross_section
+        and rank_pairs["score"].nunique() > 1
+        and rank_pairs["target"].nunique() > 1
     ):
-        rank_ic = float(paired["score"].corr(paired["target"], method="spearman"))
-        ordered = paired.sort_values("score", kind="stable")
-        bucket_size = max(1, count // quantiles)
+        rank_ic = float(
+            rank_pairs["score"].corr(rank_pairs["target"], method="spearman")
+        )
+    if spread_count >= min_cross_section and spread_pairs["score"].nunique() > 1:
+        ordered = spread_pairs.sort_values("score", kind="stable")
+        bucket_size = max(1, spread_count // quantiles)
         spread = float(
             ordered.iloc[-bucket_size:]["realized_return"].mean()
             - ordered.iloc[:bucket_size]["realized_return"].mean()
         )
     tied_fraction = (
-        float(1.0 - paired["score"].nunique() / count) if count else float("nan")
+        float(1.0 - rank_pairs["score"].nunique() / rank_count)
+        if rank_count
+        else float("nan")
     )
-    coverage = count / eligible_target_count if eligible_target_count else 0.0
+    rank_coverage = rank_count / eligible_target_count if eligible_target_count else 0.0
+    spread_coverage = (
+        spread_count / eligible_realized_return_count
+        if eligible_realized_return_count
+        else 0.0
+    )
     return {
         "phase": phase,
         "fold": fold,
@@ -87,9 +100,14 @@ def _daily_row(
         "evaluation_scope": scope,
         "rank_ic": rank_ic,
         "spread": spread,
-        "evaluation_count": count,
+        "evaluation_count": rank_count,
+        "rank_ic_count": rank_count,
+        "spread_count": spread_count,
         "eligible_target_count": eligible_target_count,
-        "score_coverage": float(coverage),
+        "eligible_realized_return_count": eligible_realized_return_count,
+        "score_coverage": float(rank_coverage),
+        "rank_ic_coverage": float(rank_coverage),
+        "spread_coverage": float(spread_coverage),
         "tied_score_fraction": tied_fraction,
     }
 
@@ -105,7 +123,8 @@ def _native_daily_rows(
     for (phase, fold, as_of_date, model), group in predictions.groupby(
         keys, sort=True, observed=True
     ):
-        eligible = int(group[["target", "realized_return"]].dropna().shape[0])
+        eligible_target = int(group["target"].notna().sum())
+        eligible_realized = int(group["realized_return"].notna().sum())
         rows.append(
             _daily_row(
                 group,
@@ -116,7 +135,8 @@ def _native_daily_rows(
                 scope="native",
                 min_cross_section=min_cross_section,
                 quantiles=quantiles,
-                eligible_target_count=eligible,
+                eligible_target_count=eligible_target,
+                eligible_realized_return_count=eligible_realized,
             )
         )
     return rows
@@ -157,8 +177,9 @@ def _common_daily_rows(
         )
         scores = primary.pivot(index="symbol", columns="model", values="score")
         combined = base.join(scores, how="inner")
-        eligible = int(combined[["target", "realized_return"]].dropna().shape[0])
-        common = combined.dropna(subset=[*primary_models, "target", "realized_return"])
+        eligible_target = int(combined["target"].notna().sum())
+        eligible_realized = int(combined["realized_return"].notna().sum())
+        common = combined.dropna(subset=[*primary_models])
         for model in primary_models:
             model_frame = common.loc[:, [model, "target", "realized_return"]].rename(
                 columns={model: "score"}
@@ -173,7 +194,8 @@ def _common_daily_rows(
                     scope="common",
                     min_cross_section=min_cross_section,
                     quantiles=quantiles,
-                    eligible_target_count=eligible,
+                    eligible_target_count=eligible_target,
+                    eligible_realized_return_count=eligible_realized,
                 )
             )
     return rows
@@ -193,6 +215,7 @@ def _summaries(
             {
                 **dict(zip(fold_keys, keys, strict=True)),
                 "date_count": int(valid.shape[0]),
+                "spread_date_count": int(spreads.shape[0]),
                 "mean_rank_ic": float(valid.mean())
                 if not valid.empty
                 else float("nan"),
@@ -206,6 +229,8 @@ def _summaries(
                     float(spreads.mean()) if not spreads.empty else float("nan")
                 ),
                 "mean_score_coverage": float(group["score_coverage"].mean()),
+                "mean_rank_ic_coverage": float(group["rank_ic_coverage"].mean()),
+                "mean_spread_coverage": float(group["spread_coverage"].mean()),
             }
         )
 
@@ -220,6 +245,7 @@ def _summaries(
             {
                 **dict(zip(summary_keys, keys, strict=True)),
                 "date_count": int(valid.shape[0]),
+                "spread_date_count": int(spreads.shape[0]),
                 "mean_rank_ic": float(valid.mean())
                 if not valid.empty
                 else float("nan"),
@@ -239,6 +265,8 @@ def _summaries(
                     float(spreads.mean()) if not spreads.empty else float("nan")
                 ),
                 "mean_score_coverage": float(group["score_coverage"].mean()),
+                "mean_rank_ic_coverage": float(group["rank_ic_coverage"].mean()),
+                "mean_spread_coverage": float(group["spread_coverage"].mean()),
                 "newey_west_t_stat": t_stat,
                 "p_value": p_value,
             }

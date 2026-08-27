@@ -94,12 +94,16 @@ quantile spread for every feature and fold. It also applies the training
 direction to test Rank IC, so a stable negative predictor is not mistaken for
 an unstable or useless one.
 
-Stage 3 reserves the final configured count of complete, labelled dates before
-any model selection. Development then uses expanding outer walk-forward folds;
+Stage 3 reserves the final contiguous configured block before the immature
+tail. Every locked date must contain at least `min_cross_section` labelled
+targets; other rows may still be missing and are visible in the data gate.
+Development then uses expanding outer walk-forward folds;
 each model candidate is selected with inner purged walk-forward validation.
 The final model family is frozen from development common-sample Rank IC and the
-lockbox is evaluated once. Screening, imputation, scaling, rank transforms,
-PCA, and fitting are repeated from training data inside the relevant fold.
+lockbox is evaluated once within that engine run; preventing reuse across runs
+requires the external registry described below. Screening, imputation, scaling,
+rank transforms, PCA, and fitting are repeated from training data inside the
+relevant fold.
 
 Supervised model-loss weights give each decision date equal total weight and
 are normalized to mean one across rows. This prevents larger cross-sections
@@ -115,7 +119,10 @@ composite of training-oriented cross-sectional ranks. Model families are
 Ridge, histogram gradient boosting, and optional Ridge+PCA.
 
 Evaluation reports per-date Rank IC, raw top-minus-bottom realized-return
-spread, score coverage, and tied-score fraction. `native` results use each
+spread, score coverage, and tied-score fraction. Rank IC uses score/target
+pairs; spread independently uses score/realized-return pairs, with separate
+counts and coverage so one field's missingness cannot silently remove valid
+observations for the other. `native` results use each
 model's available rows. `common` uses one security-date intersection across all
 configured model families plus the primary baseline during development, then
 across the frozen model and primary baseline in the lockbox. Model selection
@@ -131,8 +138,14 @@ cannot create an unfair sample advantage.
 - `daily_metrics.csv`, `fold_summary.csv`, and `benchmark_summary.csv`;
 - `acceptance.json`.
 
+Predictions with no observed selected feature are retained for audit but their
+score is null and `zero_observed_features` is true. `feature_count` is the
+observed count among that prediction model's selected inputs for the row;
+`selected_feature_count` records the model's fold-level input width. Features
+present in the source row but excluded by fold-local screening are not counted.
+
 The manifest fingerprints the validated panel contract, model inputs,
-configuration, and actual package source files, and records the artifact schema
+configuration, and actual package source files, and records artifact schema 2
 and major library versions. The writer refuses an existing destination and
 publishes a completed bundle by renaming a temporary sibling directory, so a
 failed run cannot leave a partial result that looks final. The data gate reports

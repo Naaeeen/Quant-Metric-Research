@@ -30,7 +30,13 @@ after these research stages.
   more listed securities do not dominate the supervised objective. Fold-local
   imputation, scaling, and PCA remain row-weighted preprocessing steps.
 - Stage 3 selects a model family using development results, then evaluates that
-  frozen family on the final lockbox once.
+  frozen family on the final lockbox once within a run. A real experiment also
+  needs an external experiment ID/reuse registry so reruns cannot be presented
+  as a fresh lockbox.
+- Lockbox dates must meet the configured minimum target cross-section. The
+  model gate also requires native score and spread coverage, enough valid
+  Rank-IC and spread dates, strict improvement over the baseline, and the
+  predeclared paired-improvement inference bound.
 - PCA is an optional compression comparator, not the definition of a useful
   metric or a required production step.
 

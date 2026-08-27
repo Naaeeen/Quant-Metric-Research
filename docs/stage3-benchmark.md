@@ -35,8 +35,10 @@ bottom score buckets.
 
 ## Validation design
 
-The final configured count of complete labelled dates is locked before model
-selection. Development uses expanding outer walk-forward folds. Each outer
+The final contiguous configured block before the immature tail is locked before
+model selection. Every locked date must have at least `min_cross_section`
+labelled targets, while row-level missingness remains visible. Development uses
+expanding outer walk-forward folds. Each outer
 training window runs inner purged walk-forward validation to choose a small,
 explicit hyperparameter grid. Any row whose `label_end_date` reaches an
 evaluation start is removed from training.
@@ -45,7 +47,8 @@ Screening, imputation, scaling, rank transforms, PCA, and fitting are local to
 the relevant training fold. Model-loss weights give each date equal total
 weight; imputation, scaling, and PCA remain row-weighted preprocessing. The
 model family is frozen from development `common` Rank IC, then evaluated on the
-final lockbox once.
+final lockbox once within that run. Preventing reuse across runs requires an
+external experiment ID/reuse registry and remains a Stage 4 entry control.
 
 Reports contain two scopes:
 
@@ -64,8 +67,9 @@ and the model-selection/evaluation distinction in
 ## Configuration
 
 The config is a JSON object accepted by `BenchmarkConfig.from_mapping`.
-`feature_columns` and every field in `split` are required; other values below
-illustrate explicit research choices rather than universal defaults.
+`feature_columns`, `hac_lags`, and every field in `split` are required; other
+values below illustrate explicit research choices rather than universal
+defaults.
 
 ~~~json
 {
@@ -107,14 +111,19 @@ illustrate explicit research choices rather than universal defaults.
   "primary_baseline": "equal_weight_rank",
   "minimum_rank_ic_improvement": 0.0,
   "minimum_development_win_rate": 0.5,
-  "minimum_coverage_ratio": 0.95
+  "minimum_coverage_ratio": 0.95,
+  "minimum_locked_test_date_count": 20,
+  "minimum_locked_score_coverage": 0.8,
+  "minimum_locked_spread_date_count": 20,
+  "minimum_locked_spread_coverage": 0.8,
+  "maximum_locked_rank_ic_improvement_p_value": 0.05
 }
 ~~~
 
-`hac_lags: 19` is only an example for overlapping 20-session labels sampled
-each session. Choose it from the actual horizon and sampling schedule before
-looking at results. The split also needs enough complete dates to satisfy all
-outer and inner windows after label purging.
+`hac_lags` is required. `19` is only an example for overlapping 20-session
+labels sampled each session. Choose it from the actual horizon and sampling
+schedule before looking at results. The split also needs enough complete dates
+to satisfy all outer and inner windows after label purging.
 
 ## Run and outputs
 
@@ -129,7 +138,7 @@ qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-
 
 The output directory contains:
 
-- `benchmark_manifest.json`: artifact schema, full validated-panel and
+- `benchmark_manifest.json`: artifact schema version 2, full validated-panel and
   model-input fingerprints, actual package-source fingerprint, configuration,
   date boundaries, dataset versions, and library versions;
 - `data_gate.json`: structural result, locked target/realized-return coverage
@@ -158,9 +167,11 @@ Column order is stable:
   `evaluation_start`, `evaluation_end`;
 - `oos_predictions`: `phase`, `fold`, `as_of_date`, `symbol`, `row_id`,
   `model`, `score`, `target`, `realized_return`, `candidate_id`, fit dates,
-  canonical-JSON `selected_features`, baseline metadata, and `feature_count`;
+  canonical-JSON `selected_features`, baseline metadata, observed selected-input
+  `feature_count`, `selected_feature_count`, and `zero_observed_features`;
 - `daily_metrics`: phase/fold/date/model/scope plus Rank IC, spread, evaluation
-  count, eligible count, coverage, and tied-score fraction;
+  count, separate Rank-IC/spread counts and eligible counts, their two coverage
+  rates, and tied-score fraction;
 - `fold_summary` and `benchmark_summary`: phase/model/scope aggregation,
   stability, coverage, and inference fields;
 - `hyperparameter_trials`: outer fold, family/candidate, canonical-JSON
@@ -176,7 +187,10 @@ rather than delimiter-dependent text.
 
 First verify the manifest and data gate, then audit fold exclusions and coverage.
 Interpret the development and locked rows separately. A model gate passes only
-when all configured Rank-IC, spread, fold-win-rate, and coverage checks pass.
+when all configured Rank-IC, spread, fold-win-rate, native relative/absolute
+score coverage, native spread coverage, valid Rank-IC/spread lockbox-date
+counts, and paired daily Rank-IC-improvement inference checks pass. Equality
+with the baseline does not count as improvement.
 
 Passing that gate means the model earned a data/research review; it does not
 mean the signal is tradable. Stage 4 requires verified provenance plus a real,

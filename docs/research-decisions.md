@@ -80,7 +80,7 @@ Last reviewed: 2026-08-27
 13. The final dates are locked before tuning. Outer purged folds estimate
     development performance; inner purged folds select parameters. The frozen
     model family is chosen from development common-sample Rank IC, then the
-    lockbox is evaluated once.
+    lockbox is evaluated once within that engine run.
 14. Both native and common-sample metrics are retained. Native results expose
     practical coverage; common results make the primary model-versus-baseline
     comparison on identical security-date rows.
@@ -88,6 +88,18 @@ Last reviewed: 2026-08-27
     not already exist, publication is atomic, feature lists and hyperparameters
     use canonical JSON, and the manifest fingerprints the actual package source
     plus the full validated panel contract—not only a manually bumped version.
+16. Rank IC and economic spread use separate complete-case samples. Their
+    counts and coverage are reported separately because a distinct realized
+    return column may be missing when the learning target is still valid.
+17. Acceptance coverage uses each model's native sample, not the deliberately
+    identical common intersection. The gate requires both relative and absolute
+    score coverage, native spread coverage, minimum valid Rank-IC and spread
+    lockbox date counts, a strict improvement over the baseline, and a
+    predeclared HAC p-value bound on the paired daily Rank-IC improvement.
+18. `lockbox_evaluated_once_in_this_run` is deliberately narrow. Preventing a
+    team from rerunning the same lockbox requires an external experiment ID and
+    reuse registry; the engine does not claim to enforce that organizational
+    control.
 
 ## Exit-gate conclusion
 
@@ -118,4 +130,5 @@ Repeat the research gate before changing any of these items:
 - feature-selection threshold or statistical test;
 - dimensionality-reduction method;
 - model family, tuning grid, acceptance threshold, or lockbox boundary;
+- experiment identifier or lockbox-reuse policy;
 - transition to portfolio backtesting or live use.

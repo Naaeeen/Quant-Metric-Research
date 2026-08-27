@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import json
+from types import MappingProxyType
 
 import pandas as pd
 
 from quant_metric_research.benchmark import (
     BenchmarkConfig,
     NestedSplitConfig,
+    _model_predictions,
     run_stage3_benchmark,
 )
+from quant_metric_research.benchmark_models import ModelCandidate
+from quant_metric_research.screening import MetricScreenResult
 
 
 def _panel() -> pd.DataFrame:
@@ -41,7 +45,15 @@ def _panel() -> pd.DataFrame:
                     ),
                 }
             )
-    return pd.DataFrame(rows)
+    frame = pd.DataFrame(rows)
+    no_observed_features = (frame["as_of_date"] == dates[-1]) & (
+        frame["symbol"] == "S08"
+    )
+    frame.loc[
+        no_observed_features,
+        ["momentum", "value", "quality", "noise"],
+    ] = float("nan")
+    return frame
 
 
 def _config() -> BenchmarkConfig:
@@ -86,7 +98,8 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
     assert set(development["fold"]) == {1, 2}
     assert locked["fold"].nunique() == 1
     assert locked["as_of_date"].nunique() == 3
-    assert result.acceptance["locked_test_used_once"] is True
+    assert result.acceptance["lockbox_evaluated_once_in_this_run"] is True
+    assert result.acceptance["lockbox_reuse_registry_enforced"] is False
     assert result.acceptance["frozen_model_family"] in {
         "ridge",
         "hist_gradient_boosting",
@@ -100,7 +113,7 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
     assert (
         min(result.data_gate["locked_realized_return_coverage_by_date"].values()) == 0.9
     )
-    assert result.manifest["artifact_schema_version"] == "1"
+    assert result.manifest["artifact_schema_version"] == "2"
     assert result.manifest["package_version"] == "0.2.0"
     assert len(result.manifest["source_fingerprint"]) == 64
     assert result.manifest["fingerprint_scope"] == (
@@ -110,6 +123,75 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
         isinstance(json.loads(value), list)
         for value in result.predictions["selected_features"].dropna().unique()
     )
+    zero_input_models = locked.loc[
+        (locked["symbol"] == "S08")
+        & (locked["as_of_date"] == locked["as_of_date"].max())
+        & locked["model"].isin({"ridge", "hist_gradient_boosting", "ridge_pca"})
+    ]
+    assert zero_input_models["score"].isna().all()
+    assert (zero_input_models["feature_count"] == 0).all()
+    assert zero_input_models["zero_observed_features"].all()
+    assert (zero_input_models["selected_feature_count"] > 0).all()
+
+
+def test_model_feature_count_only_counts_selected_observed_inputs() -> None:
+    training_dates = pd.to_datetime(
+        ["2024-01-02", "2024-01-02", "2024-01-03", "2024-01-03"]
+    )
+    training = pd.DataFrame(
+        {
+            "as_of_date": training_dates,
+            "symbol": ["A", "B", "A", "B"],
+            "label_end_date": training_dates + pd.offsets.BDay(1),
+            "momentum": [0.0, 1.0, 0.5, 1.5],
+            "value": [10.0, 11.0, 12.0, 13.0],
+            "forward_excess_return": [0.0, 0.1, 0.05, 0.15],
+        }
+    )
+    evaluation = pd.DataFrame(
+        {
+            "row_id": [99],
+            "as_of_date": [pd.Timestamp("2024-01-08")],
+            "symbol": ["A"],
+            "momentum": [float("nan")],
+            "value": [999.0],
+            "forward_excess_return": [0.2],
+            "realized_return": [0.2],
+        }
+    )
+    screen = MetricScreenResult(
+        quality=pd.DataFrame(),
+        daily_rank_ic=pd.DataFrame(),
+        ic_summary=pd.DataFrame(),
+        quantile_spreads=pd.DataFrame(),
+        redundancy=pd.DataFrame(),
+        selected_features=("momentum",),
+        dropped_features=MappingProxyType({"value": "test-only"}),
+        fitted_through=pd.Timestamp("2024-01-03"),
+        training_row_count=len(training),
+    )
+    candidate = ModelCandidate(
+        family="ridge",
+        candidate_id="ridge:test",
+        parameters=MappingProxyType({"alpha": 1.0}),
+    )
+
+    prediction = _model_predictions(
+        training,
+        evaluation,
+        screen=screen,
+        candidate=candidate,
+        config=_config(),
+        phase="locked_test",
+        fold=3,
+        evaluation_start=pd.Timestamp("2024-01-08"),
+    ).iloc[0]
+
+    assert evaluation.loc[0, "value"] == 999.0
+    assert prediction["feature_count"] == 0
+    assert prediction["selected_feature_count"] == 1
+    assert bool(prediction["zero_observed_features"]) is True
+    assert pd.isna(prediction["score"])
 
 
 def test_locked_targets_cannot_change_development_or_frozen_model_scores() -> None:

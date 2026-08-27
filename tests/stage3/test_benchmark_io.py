@@ -81,7 +81,8 @@ def _benchmark_run() -> BenchmarkRun:
         ),
         acceptance=MappingProxyType(
             {
-                "locked_test_used_once": np.bool_(True),
+                "lockbox_evaluated_once_in_this_run": np.bool_(True),
+                "lockbox_reuse_registry_enforced": np.bool_(False),
                 "frozen_model_family": "ridge",
             }
         ),

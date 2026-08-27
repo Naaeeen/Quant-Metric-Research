@@ -305,6 +305,27 @@ def test_stage3_plan_locks_final_dates_and_never_uses_them_in_development() -> N
         } == {"unavailable_future_label"}
 
 
+def test_stage3_plan_requires_minimum_lockbox_cross_section() -> None:
+    frame = _panel()
+    final_mature_date = frame.loc[frame["target"].notna(), "as_of_date"].max()
+    thin_rows = (frame["as_of_date"] == final_mature_date) & (
+        frame["symbol"].isin(["BBB", "CCC"])
+    )
+    frame.loc[thin_rows, "target"] = np.nan
+
+    with pytest.raises(ValueError, match="minimum.*cross-section"):
+        build_stage3_data_plan(
+            frame,
+            feature_columns=FEATURES,
+            target_column="target",
+            locked_test_date_count=2,
+            locked_min_cross_section=3,
+            n_splits=2,
+            evaluation_date_count=2,
+            min_train_date_count=3,
+        )
+
+
 def test_development_folds_strictly_purge_labels_and_explain_every_row() -> None:
     plan = build_stage3_data_plan(
         _panel(),

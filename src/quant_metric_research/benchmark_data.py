@@ -359,18 +359,20 @@ def reserve_locked_final_test(
     panel: BenchmarkPanel,
     *,
     locked_test_date_count: int,
+    minimum_evaluable_count: int = 1,
 ) -> LockedFinalTest:
     """Reserve the chronologically final date block before model selection."""
 
     _positive_integer(locked_test_date_count, "locked_test_date_count")
+    _positive_integer(minimum_evaluable_count, "minimum_evaluable_count")
     frame = panel.frame
     date_column = panel.as_of_date_column
     unique_dates = pd.DatetimeIndex(frame[date_column].drop_duplicates())
     evaluable = (
         frame[panel.label_end_date_column].notna() & frame[panel.target_column].notna()
     )
-    evaluable_by_date = evaluable.groupby(frame[date_column], sort=False).any()
-    evaluable_dates = evaluable_by_date.index[evaluable_by_date]
+    evaluable_by_date = evaluable.groupby(frame[date_column], sort=False).sum()
+    evaluable_dates = evaluable_by_date.index[evaluable_by_date > 0]
     if len(evaluable_dates) == 0:
         raise ValueError("No labeled dates are available for the locked final test.")
     last_evaluable_date = pd.Timestamp(evaluable_dates[-1])
@@ -378,8 +380,12 @@ def reserve_locked_final_test(
     if len(mature_dates) <= locked_test_date_count:
         raise ValueError("Not enough dates remain before the locked final test block.")
     test_dates = mature_dates[-locked_test_date_count:]
-    if not evaluable_by_date.reindex(test_dates, fill_value=False).all():
-        raise ValueError("Every locked final-test date must contain a labeled row.")
+    if (
+        evaluable_by_date.reindex(test_dates, fill_value=0) < minimum_evaluable_count
+    ).any():
+        raise ValueError(
+            "Every locked final-test date must meet the minimum labeled cross-section."
+        )
     test_start = pd.Timestamp(test_dates[0])
     test_end = pd.Timestamp(test_dates[-1])
     split_id = "locked_final_test"
@@ -590,6 +596,7 @@ def build_stage3_data_plan(
     feature_columns: Sequence[str],
     target_column: str,
     locked_test_date_count: int,
+    locked_min_cross_section: int = 1,
     n_splits: int,
     evaluation_date_count: int,
     min_train_date_count: int,
@@ -612,7 +619,9 @@ def build_stage3_data_plan(
         feature_availability_columns=feature_availability_columns,
     )
     locked_test = reserve_locked_final_test(
-        panel, locked_test_date_count=locked_test_date_count
+        panel,
+        locked_test_date_count=locked_test_date_count,
+        minimum_evaluable_count=locked_min_cross_section,
     )
     folds = build_development_outer_folds(
         panel,

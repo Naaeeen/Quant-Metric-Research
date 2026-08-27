@@ -28,9 +28,10 @@ from .benchmark_tuning import (
     tune_model_family,
 )
 from .screening import MetricScreenResult
+from .statistics import newey_west_mean_tstat
 
 IMPLEMENTATION_VERSION = __version__
-ARTIFACT_SCHEMA_VERSION = "1"
+ARTIFACT_SCHEMA_VERSION = "2"
 
 
 @dataclass(frozen=True)
@@ -115,6 +116,10 @@ def _baseline_predictions(
     enriched["selected_features"] = json.dumps(
         list(features), ensure_ascii=False, separators=(",", ":")
     )
+    enriched["selected_feature_count"] = enriched["model"].map(
+        lambda model: len(features) if model == "equal_weight_rank" else 1
+    )
+    enriched["zero_observed_features"] = enriched["feature_count"].eq(0)
     enriched["best_metric_feature"] = fitted.best_feature
     return enriched
 
@@ -142,9 +147,18 @@ def _model_predictions(
     )
     targets = _prediction_targets(evaluation, config=config)
     targets["model"] = candidate.family
-    targets["score"] = fitted.predict(evaluation).to_numpy(dtype=float)
+    observed_feature_count = (
+        evaluation.loc[:, list(screen.selected_features)].notna().sum(axis=1)
+    )
+    scores = fitted.predict(evaluation)
+    scores.loc[observed_feature_count == 0] = float("nan")
+    targets["score"] = scores.to_numpy(dtype=float)
     targets["baseline_feature"] = pd.NA
-    targets["feature_count"] = len(screen.selected_features)
+    targets["feature_count"] = observed_feature_count.to_numpy(dtype=int)
+    targets["selected_feature_count"] = len(screen.selected_features)
+    targets["zero_observed_features"] = observed_feature_count.eq(0).to_numpy(
+        dtype=bool
+    )
     targets["phase"] = phase
     targets["fold"] = fold
     targets["candidate_id"] = candidate.candidate_id
@@ -336,15 +350,55 @@ def _summary_row(
     *,
     phase: str,
     model: str,
+    evaluation_scope: str = "common",
 ) -> pd.Series:
     rows = summary.loc[
         (summary["phase"] == phase)
         & (summary["model"] == model)
-        & (summary["evaluation_scope"] == "common")
+        & (summary["evaluation_scope"] == evaluation_scope)
     ]
     if rows.shape[0] != 1:
-        raise ValueError(f"Missing unique common summary for {phase}/{model}.")
+        raise ValueError(
+            f"Missing unique {evaluation_scope} summary for {phase}/{model}."
+        )
     return rows.iloc[0]
+
+
+def _paired_locked_rank_ic_improvement(
+    daily_metrics: pd.DataFrame,
+    *,
+    model: str,
+    baseline: str,
+    hac_lags: int,
+) -> tuple[float, float, float, int]:
+    locked_common = daily_metrics.loc[
+        (daily_metrics["phase"] == "locked_test")
+        & (daily_metrics["evaluation_scope"] == "common")
+        & daily_metrics["model"].isin([model, baseline]),
+        ["fold", "as_of_date", "model", "rank_ic"],
+    ]
+    if locked_common.empty:
+        return float("nan"), float("nan"), float("nan"), 0
+    pivot = locked_common.pivot(
+        index=["fold", "as_of_date"],
+        columns="model",
+        values="rank_ic",
+    )
+    if model not in pivot.columns or baseline not in pivot.columns:
+        return float("nan"), float("nan"), float("nan"), 0
+    improvements = (
+        pd.to_numeric(pivot[model], errors="coerce")
+        - pd.to_numeric(pivot[baseline], errors="coerce")
+    ).replace([np.inf, -np.inf], np.nan)
+    valid = improvements.dropna()
+    mean_improvement = float(valid.mean()) if not valid.empty else float("nan")
+    t_stat, p_value = newey_west_mean_tstat(valid, hac_lags)
+    return (
+        mean_improvement,
+        float(t_stat) if t_stat is not None else float("nan"),
+        float(p_value) if p_value is not None else float("nan"),
+        int(valid.shape[0]),
+    )
 
 
 def _acceptance(
@@ -359,10 +413,17 @@ def _acceptance(
     model_locked = _summary_row(
         evaluation.summary, phase="locked_test", model=frozen_family
     )
-    baseline_locked = _summary_row(
+    model_locked_native = _summary_row(
+        evaluation.summary,
+        phase="locked_test",
+        model=frozen_family,
+        evaluation_scope="native",
+    )
+    baseline_locked_native = _summary_row(
         evaluation.summary,
         phase="locked_test",
         model=config.primary_baseline,
+        evaluation_scope="native",
     )
     development = evaluation.fold_metrics.loc[
         (evaluation.fold_metrics["phase"] == "development")
@@ -378,17 +439,31 @@ def _acceptance(
         float(
             (
                 fold_pivot[frozen_family] - fold_pivot[config.primary_baseline]
-                >= config.minimum_rank_ic_improvement
+                > config.minimum_rank_ic_improvement
             ).mean()
         )
         if not fold_pivot.empty
         else 0.0
     )
+    locked_native_coverage = float(model_locked_native["mean_score_coverage"])
+    baseline_native_coverage = float(baseline_locked_native["mean_score_coverage"])
     coverage_ratio = (
-        float(model_locked["mean_score_coverage"])
-        / float(baseline_locked["mean_score_coverage"])
-        if float(baseline_locked["mean_score_coverage"]) > 0
+        locked_native_coverage / baseline_native_coverage
+        if baseline_native_coverage > 0
         else 0.0
+    )
+    locked_native_spread_coverage = float(model_locked_native["mean_spread_coverage"])
+    locked_spread_date_count = int(model_locked["spread_date_count"])
+    (
+        locked_rank_ic_improvement,
+        locked_rank_ic_improvement_t_stat,
+        locked_rank_ic_improvement_p_value,
+        locked_valid_date_count,
+    ) = _paired_locked_rank_ic_improvement(
+        evaluation.daily_metrics,
+        model=frozen_family,
+        baseline=config.primary_baseline,
+        hac_lags=config.hac_lags,
     )
     checks = {
         "development_mean_rank_ic_positive": float(model_dev["mean_rank_ic"]) > 0,
@@ -396,23 +471,50 @@ def _acceptance(
         "locked_mean_rank_ic_positive": float(model_locked["mean_rank_ic"]) > 0,
         "locked_median_rank_ic_positive": float(model_locked["median_rank_ic"]) > 0,
         "locked_spread_positive": float(model_locked["mean_spread"]) > 0,
-        "locked_rank_ic_beats_baseline": (
-            float(model_locked["mean_rank_ic"]) - float(baseline_locked["mean_rank_ic"])
-            >= config.minimum_rank_ic_improvement
+        "locked_rank_ic_beats_baseline": bool(
+            np.isfinite(locked_rank_ic_improvement)
+            and locked_rank_ic_improvement > config.minimum_rank_ic_improvement
         ),
         "development_win_rate_passed": (
             development_win_rate >= config.minimum_development_win_rate
         ),
-        "coverage_ratio_passed": coverage_ratio >= config.minimum_coverage_ratio,
+        "locked_native_coverage_ratio_passed": (
+            coverage_ratio >= config.minimum_coverage_ratio
+        ),
+        "locked_native_score_coverage_passed": (
+            locked_native_coverage >= config.minimum_locked_score_coverage
+        ),
+        "locked_valid_date_count_passed": (
+            locked_valid_date_count >= config.minimum_locked_test_date_count
+        ),
+        "locked_spread_date_count_passed": (
+            locked_spread_date_count >= config.minimum_locked_spread_date_count
+        ),
+        "locked_native_spread_coverage_passed": (
+            locked_native_spread_coverage >= config.minimum_locked_spread_coverage
+        ),
+        "locked_rank_ic_improvement_p_value_passed": bool(
+            np.isfinite(locked_rank_ic_improvement_p_value)
+            and locked_rank_ic_improvement_p_value
+            <= config.maximum_locked_rank_ic_improvement_p_value
+        ),
     }
     model_gate_passed = all(bool(value) for value in checks.values())
     return MappingProxyType(
         {
-            "locked_test_used_once": True,
+            "lockbox_evaluated_once_in_this_run": True,
+            "lockbox_reuse_registry_enforced": False,
             "frozen_model_family": frozen_family,
             "primary_baseline": config.primary_baseline,
             "development_win_rate": development_win_rate,
-            "locked_coverage_ratio": coverage_ratio,
+            "locked_native_coverage_ratio": coverage_ratio,
+            "locked_native_score_coverage": locked_native_coverage,
+            "locked_native_spread_coverage": locked_native_spread_coverage,
+            "locked_valid_date_count": locked_valid_date_count,
+            "locked_spread_date_count": locked_spread_date_count,
+            "locked_rank_ic_improvement": locked_rank_ic_improvement,
+            "locked_rank_ic_improvement_t_stat": (locked_rank_ic_improvement_t_stat),
+            "locked_rank_ic_improvement_p_value": (locked_rank_ic_improvement_p_value),
             "checks": checks,
             "model_gate_passed": model_gate_passed,
             "eligible_for_stage4_data_review": model_gate_passed,
@@ -579,6 +681,8 @@ def _sort_predictions(predictions: pd.DataFrame) -> pd.DataFrame:
         "best_metric_feature",
         "baseline_feature",
         "feature_count",
+        "selected_feature_count",
+        "zero_observed_features",
     ]
     return (
         predictions.loc[:, columns]
@@ -600,6 +704,7 @@ def run_stage3_benchmark(
         feature_columns=config.feature_columns,
         target_column=config.target_column,
         locked_test_date_count=config.split.final_test_date_count,
+        locked_min_cross_section=config.min_cross_section,
         n_splits=config.split.outer_n_splits,
         evaluation_date_count=config.split.outer_test_date_count,
         min_train_date_count=config.split.outer_min_train_date_count,

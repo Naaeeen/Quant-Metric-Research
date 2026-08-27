@@ -26,7 +26,7 @@ Implemented in the engine:
 - fold-local screening, imputation, scaling, rank transforms, PCA, and fitting;
 - inner purged validation inside outer purged development folds;
 - model-family freezing from development common-sample Rank IC, followed by one
-  locked final-test evaluation;
+  locked final-test evaluation within each run;
 - native-coverage and common-sample Rank IC/spread reports, reproducibility
   fingerprints, outer/lockbox assignments, tuning records, and explicit
   acceptance/data gates. Inner tuning windows are reproducible from the input
@@ -39,8 +39,9 @@ Remaining before Stage 3 can make an empirical conclusion:
    point-in-time membership, stable identifiers, corporate actions, and
    delisting returns.
 2. Freeze the universe, decision time, rebalance schedule, target horizon,
-   transaction-price assumption, feature list, evaluation period, and
-   acceptance thresholds before inspecting benchmark results.
+   transaction-price assumption, feature list, evaluation period, acceptance
+   thresholds, experiment ID, and lockbox-reuse policy before inspecting
+   benchmark results.
 3. Build and quality-check the real panel, including missingness by date,
    security lifecycle coverage, identifier changes, and target maturity.
 4. Run the declared experiment once, inspect the manifest and fold assignment
@@ -49,6 +50,11 @@ Remaining before Stage 3 can make an empirical conclusion:
 5. Require the model acceptance gate and independent data-provenance review to
    pass. If either fails, document the result and revise only through a new
    declared experiment with a new lockbox.
+
+The model gate requires strict baseline improvement, minimum native score and
+spread coverage, enough valid Rank-IC and spread lockbox dates, and the
+predeclared HAC threshold on paired daily Rank-IC improvement. It is not allowed
+to pass from a tied one-date result.
 
 Training is useful here because the experiment tests a combined ranking. The
 model remains a hypothesis to benchmark, not evidence that the ranking is

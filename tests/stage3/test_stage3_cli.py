@@ -93,9 +93,7 @@ def test_benchmark_command_writes_stage3_artifacts(tmp_path) -> None:
 
     assert exit_code == 0
     assert output_dir.is_dir()
-    assert {
-        path.name for path in output_dir.iterdir()
-    } == {
+    assert {path.name for path in output_dir.iterdir()} == {
         "acceptance.json",
         "benchmark_manifest.json",
         "benchmark_summary.csv",
