@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quant-metric-research"
+version = "0.1.0"
+description = "Leakage-aware point-in-time metric research for cross-sectional equity signals."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=2.2,<3",
+  "pandas>=2.3,<4",
+  "pyarrow>=19,<23",
+  "scikit-learn>=1.9,<2",
+  "scipy>=1.15,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4,<10",
+  "pytest-cov>=6,<8",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+qmr = "quant_metric_research.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+  "--strict-config",
+  "--strict-markers",
+  "--cov=quant_metric_research",
+  "--cov-report=term-missing",
+  "--cov-fail-under=80",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["quant_metric_research"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
