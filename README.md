@@ -3,13 +3,15 @@
 A standalone, leakage-aware research pipeline for testing whether historical
 equity metrics contain stable cross-sectional signal.
 
-The first release deliberately covers only two stages:
+The repository now covers three research stages:
 
 1. Build a point-in-time `(as_of_date, symbol)` panel from adjusted-close data,
    dated universe membership, trailing metrics, and explicit forward targets.
 2. Audit metric quality, measure per-date Rank IC and quantile spreads, identify
    redundant metrics, optionally validate them on purged walk-forward folds,
    and optionally compare a train-only PCA baseline.
+3. Benchmark non-ML rank composites against supervised cross-sectional models
+   with nested purged development folds and one locked final test.
 
 It does not claim to be a complete trading system. Portfolio construction,
 cost-aware backtesting, risk controls, execution, and live monitoring come
@@ -22,10 +24,14 @@ after these research stages.
 - Targets start after a configurable entry lag and use benchmark trading
   sessions, not spreadsheet row counts or calendar-day offsets.
 - Missing or immature labels remain visible instead of being silently filled.
-- Screening and PCA are fitted only through an explicit training end date.
-- Walk-forward training rows are purged when their labels overlap a test fold.
-- PCA is an optional compression benchmark, not the definition of a useful
-  metric.
+- Screening, imputation, scaling, PCA, and model fitting are fold-local.
+- Training rows are purged whenever their labels overlap an evaluation fold.
+- Every training date receives equal total weight, so dates with more listed
+  securities do not dominate fitting.
+- Stage 3 selects a model family using development results, then evaluates that
+  frozen family on the final lockbox once.
+- PCA is an optional compression comparator, not the definition of a useful
+  metric or a required production step.
 
 See `docs/data-contract.md` and `docs/research-decisions.md` before adding a
 data provider or model.
@@ -39,7 +45,7 @@ Rank IC or top-minus-bottom spread on unseen walk-forward dates and should not
 be only a duplicate of a better metric.
 
 That is still not proof of tradable alpha. Costs, turnover, liquidity, risk
-exposures, and model-selection bias are later gates.
+exposures, data provenance, and model-selection bias are separate gates.
 
 ## Install
 
@@ -50,7 +56,7 @@ python -m pip install -e ".[dev]"
 
 ## Inputs
 
-The CLI accepts CSV, compressed CSV, or Parquet tables:
+The Stage 1 CLI accepts CSV, compressed CSV, or Parquet tables:
 
 - prices: date, symbol, adjusted_close;
 - memberships: universe_id, symbol, effective_from, effective_to, source;
@@ -76,6 +82,10 @@ Example config:
 The existing application's current constituent file is not historical
 membership data. It can support a demo, but not an unbiased historical claim.
 
+Stage 3 accepts a versioned panel containing `as_of_date`, `symbol`,
+`label_end_date`, the configured feature columns, and the target/realized-return
+columns. See `docs/data-contract.md` before treating any panel as research-grade.
+
 ## Run
 
 ~~~text
@@ -85,16 +95,32 @@ qmr run --prices data/prices.parquet --memberships data/memberships.parquet --as
 hac-lags must match the overlap implied by the target horizon and sampling
 frequency; 19 is only an example for a heavily overlapping 20-session target.
 
-The run writes the metric panel, coverage report, daily and summary Rank IC,
+This run writes the metric panel, coverage report, daily and summary Rank IC,
 quantile spreads, redundancy pairs, selected/dropped metrics, optional
 walk-forward reports, and optional PCA scores/loadings.
 
-## ML and the next stages
+To run the implemented Stage 3 benchmark:
 
-Stages 1 and 2 do not require model training. Training becomes useful in Stage
-3 only after the panel and out-of-sample metric baselines are trustworthy. The
-first model should be a simple cross-sectional baseline and must be compared
-against individual metrics and an equal-weight rank before a more complex
-model is justified.
+~~~text
+qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/benchmark-001 --prediction-format parquet
+~~~
+
+The benchmark writes a reproducibility manifest and data gate, complete fold
+assignments, tuning and screening records, out-of-sample predictions, daily and
+fold metrics, summary comparisons, and the acceptance decision. See
+`docs/stage3-benchmark.md` for the config and artifact contract.
+
+## Stage 3 status and the next gate
+
+The Stage 3 engine is implemented. It compares every usable metric, a best
+train-only metric, and an equal-weight oriented-rank baseline with Ridge,
+histogram gradient boosting, and optional Ridge+PCA. Scores are evaluated as
+rankings; they are not calibrated expected-return forecasts.
+
+The repository still makes no empirical alpha claim. Promotion to Stage 4 is
+blocked until a research-grade point-in-time provider and its identifier,
+corporate-action, universe-membership, and delisting policies are independently
+verified, followed by a pre-declared real-data lockbox run. A passing model
+gate alone is not enough.
 
 See docs/roadmap.md for the proposed model, portfolio, and production gates.

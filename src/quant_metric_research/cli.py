@@ -3,6 +3,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from .benchmark import run_stage3_benchmark
+from .benchmark_config import BenchmarkConfig
+from .benchmark_io import write_benchmark_run
 from .config import PanelConfig
 from .io import read_as_of_dates, read_json_object, read_table, write_research_run
 from .pipeline import run_research
@@ -103,6 +106,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--walk-forward-min-train-date-count",
         type=_positive_integer,
     )
+
+    benchmark_parser = subparsers.add_parser("benchmark")
+    benchmark_parser.add_argument("--panel", required=True)
+    benchmark_parser.add_argument("--config", required=True)
+    benchmark_parser.add_argument("--output-dir", required=True)
+    benchmark_parser.add_argument(
+        "--prediction-format",
+        choices=("csv", "parquet"),
+        default="parquet",
+    )
     return parser
 
 
@@ -156,11 +169,27 @@ def _run_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _benchmark_command(args: argparse.Namespace) -> int:
+    panel = read_table(Path(args.panel))
+    config = BenchmarkConfig.from_mapping(read_json_object(Path(args.config)))
+    result = run_stage3_benchmark(panel, config=config)
+
+    write_benchmark_run(
+        result,
+        Path(args.output_dir),
+        prediction_format=args.prediction_format,
+    )
+
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     if args.command == "run":
         return _run_command(args)
+    if args.command == "benchmark":
+        return _benchmark_command(args)
     raise ValueError(f"Unsupported command: {args.command}")
 
 

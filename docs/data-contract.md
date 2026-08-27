@@ -60,7 +60,29 @@ Rows are retained when prices, history, or labels are unavailable. Numeric
 fields remain null and a reason column records why. This prevents silent
 survivor filtering and makes coverage part of Stage 2 analysis.
 
-## Split boundary
+## Stage 3 benchmark input
+
+Stage 3 consumes a panel, not raw price files. Required columns are:
+
+- `as_of_date` and `symbol`, unique after normalization;
+- `label_end_date`, which must be strictly later than `as_of_date` when present;
+- every name in `feature_columns`;
+- `target_column` and `realized_return_column` (both default to
+  `forward_excess_return`).
+
+Dates must be valid, normalized, timezone-naive calendar dates. Features and
+targets may be null, because missingness is handled inside each fold, but any
+non-null value must be finite and numeric. If `decision_time` or per-feature
+availability columns are supplied, the validator rejects features that became
+available after the decision time. The loader creates a deterministic `row_id`
+from the normalized security-date key; callers should not use a DataFrame index
+as identity.
+
+The default target is the raw forward excess return. Models may learn from that
+continuous target, but their output is treated as a ranking score rather than a
+calibrated expected-return estimate.
+
+## Split and fitting boundaries
 
 All training folds must end before the first test decision date, and every
 training row must also have `label_end_date < first_test_as_of_date`. This
@@ -71,3 +93,44 @@ label end, test start/end, train selection status, test Rank IC, and test
 quantile spread for every feature and fold. It also applies the training
 direction to test Rank IC, so a stable negative predictor is not mistaken for
 an unstable or useless one.
+
+Stage 3 reserves the final configured count of complete, labelled dates before
+any model selection. Development then uses expanding outer walk-forward folds;
+each model candidate is selected with inner purged walk-forward validation.
+The final model family is frozen from development common-sample Rank IC and the
+lockbox is evaluated once. Screening, imputation, scaling, rank transforms,
+PCA, and fitting are repeated from training data inside the relevant fold.
+
+Training weights give each decision date equal total weight and are normalized
+to mean one across rows. This prevents larger cross-sections from quietly
+controlling the objective.
+
+## Stage 3 evaluation and artifacts
+
+The engine fits three types of non-ML comparison: every usable individual
+metric, the best metric selected on training data, and an equal-weight
+composite of training-oriented cross-sectional ranks. Model families are
+Ridge, histogram gradient boosting, and optional Ridge+PCA.
+
+Evaluation reports per-date Rank IC, raw top-minus-bottom realized-return
+spread, score coverage, and tied-score fraction. `native` results use each
+model's available rows. `common` uses one security-date intersection across all
+configured model families plus the primary baseline during development, then
+across the frozen model and primary baseline in the lockbox. Model selection
+and the main acceptance comparison use the common scope so missing predictions
+cannot create an unfair sample advantage.
+
+`qmr benchmark` writes:
+
+- `benchmark_manifest.json` and `data_gate.json`;
+- `fold_assignments.parquet`;
+- `hyperparameter_trials.csv` and `screening_by_fold.csv`;
+- `oos_predictions.parquet` (or `.csv`);
+- `daily_metrics.csv`, `fold_summary.csv`, and `benchmark_summary.csv`;
+- `acceptance.json`.
+
+The manifest fingerprints the panel, configuration, implementation, and major
+library versions. The data gate deliberately keeps provider, stable-identifier,
+corporate-action, and delisting-policy verification false until those policies
+are independently audited. Therefore an engine run cannot by itself support an
+empirical alpha claim or Stage 4 promotion.

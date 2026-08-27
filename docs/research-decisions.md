@@ -11,6 +11,10 @@ Last reviewed: 2026-08-27
 - Qlib's published XGBoost workflow uses non-overlapping dated train,
   validation, and test segments rather than a random row split.
   <https://github.com/microsoft/qlib/blob/main/examples/benchmarks/XGBoost/workflow_config_xgboost_Alpha158.yaml>
+- Qlib defines learnable labels from future returns and evaluates signals with
+  IC/Rank IC; that supports using raw future excess return as the training
+  target while treating output as a ranking score.
+  <https://github.com/microsoft/qlib/blob/main/docs/advanced/alpha.rst>
 - Numerai models each row as a stock at an era, keeps features point-in-time,
   defines explicit 20/60-day future-relative-return targets, and warns that
   overlapping targets need special cross-validation treatment.
@@ -22,6 +26,10 @@ Last reviewed: 2026-08-27
   training data only; the warning explicitly includes scaling, selection, and
   PCA.
   <https://scikit-learn.org/stable/common_pitfalls.html>
+- Scikit-learn's nested-cross-validation example separates hyperparameter
+  selection from generalization evaluation; without that separation, the
+  reported score can inherit selection bias.
+  <https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html>
 - Scikit-learn's time-series splitter exposes a gap between training and test
   samples; this repo instead purges by each row's actual label end date because
   the panel may not use a fixed sampling interval.
@@ -29,6 +37,11 @@ Last reviewed: 2026-08-27
 - Harvey, Liu, and Zhu show why testing many candidate factors makes a
   conventional unadjusted significance threshold unreliable.
   <https://www.nber.org/papers/w20592>
+- Gu, Kelly, and Xiu compare regularized linear and nonlinear ML methods for
+  empirical asset pricing using large panels of stock characteristics. This
+  supports a simple-linear-versus-small-tree benchmark, not skipping directly
+  to a complex model.
+  <https://dachxiu.chicagobooth.edu/download/ML_BKP.pdf>
 
 ## Decisions changed by research
 
@@ -52,23 +65,43 @@ Last reviewed: 2026-08-27
 8. The reusable Alpha, Sharpe, Sortino, and information-ratio features preserve
    the existing application's annualized conventions. Efficient frontier stays
    excluded because it is a portfolio output rather than a stock-date feature.
+9. Stage 3 predicts raw forward excess return but evaluates cross-sectional
+   ranking quality. Scores are not presented as calibrated return forecasts.
+10. The non-ML bar is explicit: each usable metric, the best metric chosen only
+    from training data, and an equal-weight composite of rank-oriented metrics.
+11. Training rows receive equal total weight per date. Otherwise a date with a
+    larger investable cross-section would receive more influence simply because
+    it has more rows.
+12. Model complexity is bounded. Ridge is the regularized linear baseline and
+    histogram gradient boosting is the small nonlinear comparison. Ridge+PCA
+    is optional; PCA is only a compression comparator because variance
+    preservation is not the same as predictive usefulness.
+13. The final dates are locked before tuning. Outer purged folds estimate
+    development performance; inner purged folds select parameters. The frozen
+    model family is chosen from development common-sample Rank IC, then the
+    lockbox is evaluated once.
+14. Both native and common-sample metrics are retained. Native results expose
+    practical coverage; common results make the primary model-versus-baseline
+    comparison on identical security-date rows.
 
 ## Exit-gate conclusion
 
-The implemented first two stages are logically aligned with the cited quant
-research workflows: point-in-time inputs, explicit future labels,
-cross-sectional evaluation, purged temporal validation, train-only transforms,
-and separate signal versus portfolio analysis.
+The first two stages and the Stage 3 benchmark engine are logically aligned
+with the cited research workflows: point-in-time contracts, explicit future
+labels, cross-sectional evaluation, nested purged temporal validation,
+train-only transforms, a locked final test, and separate signal versus
+portfolio analysis.
 
-The current outputs identify candidates; they do not establish economic value.
-Before any claim of usefulness, use a real historical universe, choose the
-rebalance/horizon before inspecting results, examine walk-forward stability,
-and then test turnover, costs, liquidity, and risk exposures.
+This is an implementation conclusion, not an empirical alpha conclusion. The
+engine is implemented and tested, but no research-grade real-data lockbox run
+has passed. Before any Stage 4 promotion, independently verify the historical
+provider, stable identifiers, universe membership, corporate actions, and
+delisting-return policy; pre-declare the experiment; then review one lockbox
+run against the non-ML baselines.
 
-PCA remains an optional global-standardization baseline. Before using it in a
-model, compare it with interpretable selected features and consider
-cross-sectional normalization and industry/size neutralization when those
-point-in-time fields become available.
+Even a passing Stage 3 model gate only makes the result eligible for data and
+research review. Portfolio construction must still test turnover, costs,
+liquidity, exposure drift, capacity, and negative controls.
 
 ## Recheck triggers
 
@@ -79,4 +112,5 @@ Repeat the research gate before changing any of these items:
 - decision time, entry lag, target horizon, or rebalance frequency;
 - feature-selection threshold or statistical test;
 - dimensionality-reduction method;
-- transition to model training, portfolio backtesting, or live use.
+- model family, tuning grid, acceptance threshold, or lockbox boundary;
+- transition to portfolio backtesting or live use.

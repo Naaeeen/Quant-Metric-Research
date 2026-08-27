@@ -1,5 +1,12 @@
 """Leakage-aware cross-sectional metric research."""
 
+from .benchmark import (
+    BenchmarkConfig,
+    BenchmarkRun,
+    NestedSplitConfig,
+    run_stage3_benchmark,
+)
+from .benchmark_io import BenchmarkArtifacts, write_benchmark_run
 from .config import PanelConfig
 from .contracts import DataContractError, validate_memberships, validate_prices
 from .panel import build_point_in_time_panel
@@ -14,8 +21,12 @@ from .validation import (
 )
 
 __all__ = [
+    "BenchmarkArtifacts",
+    "BenchmarkConfig",
+    "BenchmarkRun",
     "DataContractError",
     "MetricScreenResult",
+    "NestedSplitConfig",
     "PCABaseline",
     "PanelConfig",
     "PurgedWalkForwardSplit",
@@ -27,7 +38,9 @@ __all__ = [
     "fit_metric_screen",
     "fit_pca_baseline",
     "evaluate_metrics_walk_forward",
+    "run_stage3_benchmark",
     "run_research",
     "validate_memberships",
     "validate_prices",
+    "write_benchmark_run",
 ]
