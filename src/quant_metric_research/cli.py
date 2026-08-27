@@ -138,6 +138,23 @@ def _walk_forward_config(
     )
 
 
+def _validate_cli_args(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> None:
+    if args.command != "run":
+        return
+    values = (
+        args.walk_forward_splits,
+        args.walk_forward_test_date_count,
+        args.walk_forward_min_train_date_count,
+    )
+    if all(value is None for value in values):
+        return
+    if any(value is None for value in values):
+        parser.error("All three walk-forward arguments must be provided together.")
+
+
 def _run_command(args: argparse.Namespace) -> int:
     prices = read_table(Path(args.prices))
     memberships = read_table(Path(args.memberships))
@@ -186,6 +203,7 @@ def _benchmark_command(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+    _validate_cli_args(args, parser)
     if args.command == "run":
         return _run_command(args)
     if args.command == "benchmark":

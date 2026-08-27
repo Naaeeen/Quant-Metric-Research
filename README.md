@@ -26,8 +26,9 @@ after these research stages.
 - Missing or immature labels remain visible instead of being silently filled.
 - Screening, imputation, scaling, PCA, and model fitting are fold-local.
 - Training rows are purged whenever their labels overlap an evaluation fold.
-- Every training date receives equal total weight, so dates with more listed
-  securities do not dominate fitting.
+- Model-loss weights give every training date equal total weight, so dates with
+  more listed securities do not dominate the supervised objective. Fold-local
+  imputation, scaling, and PCA remain row-weighted preprocessing steps.
 - Stage 3 selects a model family using development results, then evaluates that
   frozen family on the final lockbox once.
 - PCA is an optional compression comparator, not the definition of a useful
@@ -105,9 +106,10 @@ To run the implemented Stage 3 benchmark:
 qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/benchmark-001 --prediction-format parquet
 ~~~
 
-The benchmark writes a reproducibility manifest and data gate, complete fold
-assignments, tuning and screening records, out-of-sample predictions, daily and
-fold metrics, summary comparisons, and the acceptance decision. See
+The benchmark atomically publishes a new, non-overwriting output directory with
+a reproducibility manifest and data gate, outer/lockbox fold assignments,
+tuning and screening records, out-of-sample predictions, daily and fold
+metrics, summary comparisons, and the acceptance decision. See
 `docs/stage3-benchmark.md` for the config and artifact contract.
 
 ## Stage 3 status and the next gate

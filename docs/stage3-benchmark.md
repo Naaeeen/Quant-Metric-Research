@@ -42,9 +42,10 @@ explicit hyperparameter grid. Any row whose `label_end_date` reaches an
 evaluation start is removed from training.
 
 Screening, imputation, scaling, rank transforms, PCA, and fitting are local to
-the relevant training fold. Each date receives equal total training weight.
-The model family is frozen from development `common` Rank IC, then evaluated on
-the final lockbox once.
+the relevant training fold. Model-loss weights give each date equal total
+weight; imputation, scaling, and PCA remain row-weighted preprocessing. The
+model family is frozen from development `common` Rank IC, then evaluated on the
+final lockbox once.
 
 Reports contain two scopes:
 
@@ -118,7 +119,9 @@ outer and inner windows after label purging.
 ## Run and outputs
 
 The panel may be CSV, compressed CSV, Parquet, or PQ. Parquet is the default
-prediction format:
+prediction format. The output directory must not already exist; the writer
+builds a temporary sibling bundle and publishes it atomically only after every
+file succeeds:
 
 ~~~text
 qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/benchmark-001 --prediction-format parquet
@@ -126,11 +129,13 @@ qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-
 
 The output directory contains:
 
-- `benchmark_manifest.json`: data/config/code fingerprint, date boundaries,
-  dataset versions, and library versions;
-- `data_gate.json`: structural result plus deliberately separate external-data
-  verification fields;
-- `fold_assignments.parquet`: every row's role and exclusion reason by split;
+- `benchmark_manifest.json`: artifact schema, full validated-panel and
+  model-input fingerprints, actual package-source fingerprint, configuration,
+  date boundaries, dataset versions, and library versions;
+- `data_gate.json`: structural result, locked target/realized-return coverage
+  and cross-section counts, plus separate external-data verification fields;
+- `fold_assignments.parquet`: every row's role and exclusion reason in outer
+  development and locked-test splits;
 - `hyperparameter_trials.csv`: inner-validation results and stable JSON model
   parameters;
 - `screening_by_fold.csv`: fold-local feature-screening record;
@@ -138,6 +143,34 @@ The output directory contains:
 - `daily_metrics.csv`, `fold_summary.csv`, and `benchmark_summary.csv`;
 - `acceptance.json`: frozen family, model checks, coverage comparison, and the
   Stage 4 blocker.
+
+The row-level inner tuning assignments are deterministic from the source panel
+and manifest configuration, but are not written as a separate table. Their
+fold-local screening and candidate outcomes are retained in
+`screening_by_fold.csv` and `hyperparameter_trials.csv`.
+
+## Artifact schemas
+
+Column order is stable:
+
+- `fold_assignments`: `phase`, `fold`, `split_id`, `row_id`, `role`,
+  `exclusion_reason`, `train_end_date`, `train_label_end_max`,
+  `evaluation_start`, `evaluation_end`;
+- `oos_predictions`: `phase`, `fold`, `as_of_date`, `symbol`, `row_id`,
+  `model`, `score`, `target`, `realized_return`, `candidate_id`, fit dates,
+  canonical-JSON `selected_features`, baseline metadata, and `feature_count`;
+- `daily_metrics`: phase/fold/date/model/scope plus Rank IC, spread, evaluation
+  count, eligible count, coverage, and tied-score fraction;
+- `fold_summary` and `benchmark_summary`: phase/model/scope aggregation,
+  stability, coverage, and inference fields;
+- `hyperparameter_trials`: outer fold, family/candidate, canonical-JSON
+  parameters, validation Rank IC/spread/count, and selection flag;
+- `screening_by_fold`: outer/inner fold, feature, selected/drop reason,
+  training Rank IC, fit cutoff, row count, family, and fit kind.
+
+JSON uses sorted UTF-8 keys, ISO timestamps, and strict finite values. CSV
+parameter cells and prediction feature lists use compact, sorted/canonical JSON
+rather than delimiter-dependent text.
 
 ## Reading the decision
 

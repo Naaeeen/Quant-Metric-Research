@@ -69,9 +69,10 @@ Last reviewed: 2026-08-27
    ranking quality. Scores are not presented as calibrated return forecasts.
 10. The non-ML bar is explicit: each usable metric, the best metric chosen only
     from training data, and an equal-weight composite of rank-oriented metrics.
-11. Training rows receive equal total weight per date. Otherwise a date with a
-    larger investable cross-section would receive more influence simply because
-    it has more rows.
+11. Supervised model-loss weights give each date equal total weight. Otherwise
+    a date with a larger investable cross-section would receive more influence
+    simply because it has more rows. Fold-local imputation, scaling, and PCA
+    remain row-weighted; this distinction is reported rather than hidden.
 12. Model complexity is bounded. Ridge is the regularized linear baseline and
     histogram gradient boosting is the small nonlinear comparison. Ridge+PCA
     is optional; PCA is only a compression comparator because variance
@@ -83,6 +84,10 @@ Last reviewed: 2026-08-27
 14. Both native and common-sample metrics are retained. Native results expose
     practical coverage; common results make the primary model-versus-baseline
     comparison on identical security-date rows.
+15. A benchmark result is an immutable artifact bundle. The destination must
+    not already exist, publication is atomic, feature lists and hyperparameters
+    use canonical JSON, and the manifest fingerprints the actual package source
+    plus the full validated panel contract—not only a manually bumped version.
 
 ## Exit-gate conclusion
 

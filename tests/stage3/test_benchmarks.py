@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pandas as pd
 
 from quant_metric_research.benchmark import (
@@ -32,6 +34,11 @@ def _panel() -> pd.DataFrame:
                     "quality": quality,
                     "noise": noise,
                     "forward_excess_return": target,
+                    "realized_return": (
+                        float("nan")
+                        if date_index == len(dates) - 1 and symbol_index == 9
+                        else target
+                    ),
                 }
             )
     return pd.DataFrame(rows)
@@ -41,7 +48,7 @@ def _config() -> BenchmarkConfig:
     return BenchmarkConfig(
         feature_columns=("momentum", "value", "quality", "noise"),
         target_column="forward_excess_return",
-        realized_return_column="forward_excess_return",
+        realized_return_column="realized_return",
         split=NestedSplitConfig(
             final_test_date_count=3,
             outer_n_splits=2,
@@ -88,6 +95,21 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
         pd.to_datetime(result.fold_assignments["train_label_end_max"])
         < pd.to_datetime(result.fold_assignments["evaluation_start"])
     ).all()
+    assert result.data_gate["locked_cross_section_count_by_date"]
+    assert result.data_gate["locked_evaluable_count_by_date"]
+    assert (
+        min(result.data_gate["locked_realized_return_coverage_by_date"].values()) == 0.9
+    )
+    assert result.manifest["artifact_schema_version"] == "1"
+    assert result.manifest["package_version"] == "0.2.0"
+    assert len(result.manifest["source_fingerprint"]) == 64
+    assert result.manifest["fingerprint_scope"] == (
+        "source_code+configuration+validated_panel_contract"
+    )
+    assert all(
+        isinstance(json.loads(value), list)
+        for value in result.predictions["selected_features"].dropna().unique()
+    )
 
 
 def test_locked_targets_cannot_change_development_or_frozen_model_scores() -> None:

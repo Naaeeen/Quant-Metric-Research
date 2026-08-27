@@ -101,9 +101,11 @@ The final model family is frozen from development common-sample Rank IC and the
 lockbox is evaluated once. Screening, imputation, scaling, rank transforms,
 PCA, and fitting are repeated from training data inside the relevant fold.
 
-Training weights give each decision date equal total weight and are normalized
-to mean one across rows. This prevents larger cross-sections from quietly
-controlling the objective.
+Supervised model-loss weights give each decision date equal total weight and
+are normalized to mean one across rows. This prevents larger cross-sections
+from quietly controlling the fitted objective. Imputation, scaling, and PCA
+are still row-weighted preprocessing operations; they are fold-local, but the
+engine does not claim that every preprocessing statistic is date-weighted.
 
 ## Stage 3 evaluation and artifacts
 
@@ -129,8 +131,13 @@ cannot create an unfair sample advantage.
 - `daily_metrics.csv`, `fold_summary.csv`, and `benchmark_summary.csv`;
 - `acceptance.json`.
 
-The manifest fingerprints the panel, configuration, implementation, and major
-library versions. The data gate deliberately keeps provider, stable-identifier,
+The manifest fingerprints the validated panel contract, model inputs,
+configuration, and actual package source files, and records the artifact schema
+and major library versions. The writer refuses an existing destination and
+publishes a completed bundle by renaming a temporary sibling directory, so a
+failed run cannot leave a partial result that looks final. The data gate reports
+locked target/realized-return coverage and cross-section counts, and deliberately
+keeps provider, stable-identifier,
 corporate-action, and delisting-policy verification false until those policies
 are independently audited. Therefore an engine run cannot by itself support an
 empirical alpha claim or Stage 4 promotion.

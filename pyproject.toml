@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quant-metric-research"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Leakage-aware point-in-time metric research for cross-sectional equity signals."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "numpy>=2.2,<3",
   "pandas>=2.3,<4",
-  "pyarrow>=19,<23",
+  "pyarrow>=23.0.1,<24",
   "scikit-learn>=1.9,<2",
   "scipy>=1.15,<2",
 ]
@@ -28,6 +28,9 @@ qmr = "quant_metric_research.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "quant_metric_research._version.__version__"}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

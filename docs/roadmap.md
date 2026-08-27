@@ -28,8 +28,10 @@ Implemented in the engine:
 - model-family freezing from development common-sample Rank IC, followed by one
   locked final-test evaluation;
 - native-coverage and common-sample Rank IC/spread reports, reproducibility
-  fingerprints, full assignments, tuning records, and explicit acceptance/data
-  gates.
+  fingerprints, outer/lockbox assignments, tuning records, and explicit
+  acceptance/data gates. Inner tuning windows are reproducible from the input
+  panel and manifest configuration; their screening and trial results are
+  persisted, but their row-level assignments are not a separate artifact.
 
 Remaining before Stage 3 can make an empirical conclusion:
 

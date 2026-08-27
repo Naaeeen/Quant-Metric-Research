@@ -1,5 +1,6 @@
 """Leakage-aware cross-sectional metric research."""
 
+from ._version import __version__
 from .benchmark import (
     BenchmarkConfig,
     BenchmarkRun,
@@ -21,6 +22,7 @@ from .validation import (
 )
 
 __all__ = [
+    "__version__",
     "BenchmarkArtifacts",
     "BenchmarkConfig",
     "BenchmarkRun",

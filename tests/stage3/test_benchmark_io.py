@@ -172,6 +172,29 @@ def test_write_benchmark_run_supports_csv_predictions(tmp_path) -> None:
     assert loaded.loc[0, "model"] == "ridge"
 
 
+def test_write_benchmark_run_produces_identical_text_artifacts(tmp_path) -> None:
+    first = tmp_path / "first-run"
+    second = tmp_path / "second-run"
+
+    write_benchmark_run(_benchmark_run(), first, prediction_format="csv")
+    write_benchmark_run(_benchmark_run(), second, prediction_format="csv")
+
+    text_names = {
+        "acceptance.json",
+        "benchmark_manifest.json",
+        "benchmark_summary.csv",
+        "daily_metrics.csv",
+        "data_gate.json",
+        "fold_summary.csv",
+        "hyperparameter_trials.csv",
+        "oos_predictions.csv",
+        "screening_by_fold.csv",
+    }
+    assert {name: (first / name).read_bytes() for name in text_names} == {
+        name: (second / name).read_bytes() for name in text_names
+    }
+
+
 @pytest.mark.parametrize("prediction_format", ["json", "PARQUET", ""])
 def test_write_benchmark_run_rejects_unsupported_prediction_format(
     tmp_path, prediction_format: str
@@ -198,3 +221,38 @@ def test_write_benchmark_run_rejects_file_as_output_directory(tmp_path) -> None:
         write_benchmark_run(_benchmark_run(), destination)
 
     assert destination.read_text(encoding="utf-8") == "occupied"
+
+
+@pytest.mark.parametrize("with_existing_file", [False, True])
+def test_write_benchmark_run_rejects_existing_directory(
+    tmp_path,
+    with_existing_file: bool,
+) -> None:
+    destination = tmp_path / "existing-run"
+    destination.mkdir()
+    if with_existing_file:
+        (destination / "old-result.csv").write_text("stale", encoding="utf-8")
+
+    with pytest.raises(FileExistsError, match="already exists"):
+        write_benchmark_run(_benchmark_run(), destination)
+
+    expected_names = {"old-result.csv"} if with_existing_file else set()
+    assert {path.name for path in destination.iterdir()} == expected_names
+
+
+def test_write_failure_does_not_publish_partial_bundle(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    destination = tmp_path / "failed-run"
+
+    def fail_csv(*args: object, **kwargs: object) -> None:
+        raise OSError("simulated write failure")
+
+    monkeypatch.setattr(pd.DataFrame, "to_csv", fail_csv)
+
+    with pytest.raises(OSError, match="simulated write failure"):
+        write_benchmark_run(_benchmark_run(), destination)
+
+    assert not destination.exists()
+    assert not list(tmp_path.glob(".failed-run.*"))

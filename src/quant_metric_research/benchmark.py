@@ -4,6 +4,7 @@ import json
 import platform
 from dataclasses import dataclass
 from hashlib import sha256
+from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
@@ -11,6 +12,7 @@ import numpy as np
 import pandas as pd
 import sklearn
 
+from ._version import __version__
 from .baselines import fit_non_ml_baselines, predict_non_ml_baselines
 from .benchmark_config import BenchmarkConfig, NestedSplitConfig
 from .benchmark_data import Stage3DataPlan, build_stage3_data_plan
@@ -27,7 +29,8 @@ from .benchmark_tuning import (
 )
 from .screening import MetricScreenResult
 
-IMPLEMENTATION_VERSION = "0.2.0"
+IMPLEMENTATION_VERSION = __version__
+ARTIFACT_SCHEMA_VERSION = "1"
 
 
 @dataclass(frozen=True)
@@ -109,7 +112,9 @@ def _baseline_predictions(
     enriched["fit_end_date"] = fitted.fitted_through
     enriched["train_label_end_max"] = pd.Timestamp(training["label_end_date"].max())
     enriched["evaluation_start"] = evaluation_start
-    enriched["selected_features"] = "|".join(features)
+    enriched["selected_features"] = json.dumps(
+        list(features), ensure_ascii=False, separators=(",", ":")
+    )
     enriched["best_metric_feature"] = fitted.best_feature
     return enriched
 
@@ -146,7 +151,9 @@ def _model_predictions(
     targets["fit_end_date"] = fitted.fitted_through
     targets["train_label_end_max"] = fitted.train_label_end_max
     targets["evaluation_start"] = evaluation_start
-    targets["selected_features"] = "|".join(screen.selected_features)
+    targets["selected_features"] = json.dumps(
+        list(screen.selected_features), ensure_ascii=False, separators=(",", ":")
+    )
     targets["best_metric_feature"] = pd.NA
     return targets
 
@@ -435,13 +442,36 @@ def _fingerprints(
     ]
     if config.realized_return_column not in relevant:
         relevant.append(config.realized_return_column)
-    panel_hashes = pd.util.hash_pandas_object(frame.loc[:, relevant], index=False)
-    panel_fingerprint = sha256(panel_hashes.to_numpy().tobytes()).hexdigest()
+    model_frame = frame.loc[:, relevant]
+    model_hashes = pd.util.hash_pandas_object(model_frame, index=False)
+    model_input_fingerprint = sha256(model_hashes.to_numpy().tobytes()).hexdigest()
+    contract_columns = sorted(str(column) for column in frame.columns)
+    contract_frame = frame.loc[:, contract_columns].sort_values("row_id", kind="stable")
+    panel_hasher = sha256()
+    for column in contract_columns:
+        panel_hasher.update(column.encode("utf-8"))
+        panel_hasher.update(b"\0")
+        panel_hasher.update(str(contract_frame[column].dtype).encode("utf-8"))
+        panel_hasher.update(b"\0")
+    contract_hashes = pd.util.hash_pandas_object(contract_frame, index=False)
+    panel_hasher.update(contract_hashes.to_numpy().tobytes())
+    panel_fingerprint = panel_hasher.hexdigest()
+    source_hasher = sha256()
+    package_directory = Path(__file__).resolve().parent
+    for source_path in sorted(package_directory.glob("*.py")):
+        source_hasher.update(source_path.name.encode("utf-8"))
+        source_hasher.update(b"\0")
+        source_hasher.update(source_path.read_bytes())
+        source_hasher.update(b"\0")
+    source_fingerprint = source_hasher.hexdigest()
     config_json = json.dumps(
         config.to_mapping(), sort_keys=True, separators=(",", ":"), default=str
     )
     run_fingerprint = sha256(
-        f"{IMPLEMENTATION_VERSION}|{panel_fingerprint}|{config_json}".encode()
+        (
+            f"{IMPLEMENTATION_VERSION}|{source_fingerprint}|"
+            f"{panel_fingerprint}|{config_json}"
+        ).encode()
     ).hexdigest()
     dataset_versions = (
         sorted(str(value) for value in frame["dataset_version"].dropna().unique())
@@ -450,9 +480,14 @@ def _fingerprints(
     )
     return MappingProxyType(
         {
+            "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
             "implementation_version": IMPLEMENTATION_VERSION,
+            "package_version": __version__,
+            "source_fingerprint": source_fingerprint,
+            "fingerprint_scope": ("source_code+configuration+validated_panel_contract"),
             "run_fingerprint": run_fingerprint,
             "panel_fingerprint": panel_fingerprint,
+            "model_input_fingerprint": model_input_fingerprint,
             "dataset_versions": dataset_versions,
             "configuration": config.to_mapping(),
             "python_version": platform.python_version(),
@@ -469,10 +504,31 @@ def _fingerprints(
 def _data_gate(
     plan: Stage3DataPlan, config: BenchmarkConfig
 ) -> MappingProxyType[str, Any]:
-    locked = plan.panel.rows(plan.locked_test.test_row_ids)
+    panel = plan.panel.frame
+    locked = panel.loc[
+        (panel["as_of_date"] >= plan.locked_test.test_start_date)
+        & (panel["as_of_date"] <= plan.locked_test.test_end_date)
+    ].copy(deep=True)
     target_coverage = (
         locked.groupby("as_of_date", sort=True)[config.target_column]
         .apply(lambda values: float(values.notna().mean()))
+        .to_dict()
+    )
+    realized_coverage = (
+        locked.groupby("as_of_date", sort=True)[config.realized_return_column]
+        .apply(lambda values: float(values.notna().mean()))
+        .to_dict()
+    )
+    cross_section_counts = locked.groupby("as_of_date", sort=True).size().to_dict()
+    evaluable_counts = (
+        locked.assign(
+            _evaluable=(
+                locked[config.target_column].notna()
+                & locked[config.realized_return_column].notna()
+            )
+        )
+        .groupby("as_of_date", sort=True)["_evaluable"]
+        .sum()
         .to_dict()
     )
     return MappingProxyType(
@@ -482,6 +538,18 @@ def _data_gate(
             "locked_target_coverage_by_date": {
                 str(pd.Timestamp(date).date()): coverage
                 for date, coverage in target_coverage.items()
+            },
+            "locked_realized_return_coverage_by_date": {
+                str(pd.Timestamp(date).date()): coverage
+                for date, coverage in realized_coverage.items()
+            },
+            "locked_cross_section_count_by_date": {
+                str(pd.Timestamp(date).date()): int(count)
+                for date, count in cross_section_counts.items()
+            },
+            "locked_evaluable_count_by_date": {
+                str(pd.Timestamp(date).date()): int(count)
+                for date, count in evaluable_counts.items()
             },
             "point_in_time_provider_verified": False,
             "stable_identifier_policy_verified": False,
