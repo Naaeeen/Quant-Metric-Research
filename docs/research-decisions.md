@@ -1,6 +1,6 @@
 # Research decisions
 
-Last reviewed: 2026-08-27
+Last reviewed: 2026-09-07
 
 ## Entry-gate evidence
 
@@ -80,14 +80,15 @@ Last reviewed: 2026-08-27
 13. The final dates are locked before tuning. Outer purged folds estimate
     development performance; inner purged folds select parameters. The frozen
     model family is chosen from development common-sample Rank IC, then the
-    lockbox is evaluated once within that engine run.
+    lockbox is evaluated only after an explicit opt-in in that engine run.
 14. Both native and common-sample metrics are retained. Native results expose
     practical coverage; common results make the primary model-versus-baseline
     comparison on identical security-date rows.
 15. A benchmark result is an immutable artifact bundle. The destination must
     not already exist, publication is atomic, feature lists and hyperparameters
     use canonical JSON, and the manifest fingerprints the actual package source
-    plus the full validated panel contract—not only a manually bumped version.
+    plus the full validated panel contract and execution mode—not only a
+    manually bumped version.
 16. Rank IC and economic spread use separate complete-case samples. Their
     counts and coverage are reported separately because a distinct realized
     return column may be missing when the learning target is still valid.
@@ -100,6 +101,41 @@ Last reviewed: 2026-08-27
     team from rerunning the same lockbox requires an external experiment ID and
     reuse registry; the engine does not claim to enforce that organizational
     control.
+
+## September 2026 audit: keep the engine, repair the evidence path
+
+The audit reproduced defects before implementation and added regression tests.
+No result justified a wholesale rebuild or a more complex model.
+
+- Future target missingness previously removed stocks before feature ranking,
+  changing other stocks' scores. Score full contemporaneous date cross-sections
+  first; mask unauthorized outcomes separately. Apply this distinction in
+  training transforms, inner validation and final scoring.
+- Keep daily decision timestamps within their as-of day and reject malformed
+  membership ends. A later timestamp must not authorize future features under
+  an earlier decision-date split.
+- Replace arbitrary stable-sort tie slicing with equal fractional weight across
+  boundary ties. Keep the old bucket mass and undefined flat-score behavior.
+  This is our explicitly tested descriptive-statistic convention, not a claim
+  that every quant platform uses it.
+- Default Stage 3 to development only, require explicit final-test opt-in, and
+  distinguish unperformed acceptance from empirical failure. Schema 3 records
+  the execution mode and separates prediction coverage from outcome coverage.
+
+The methodological basis remains training-only model choices and preprocessing,
+as described by [scikit-learn](https://scikit-learn.org/stable/common_pitfalls.html).
+[Qlib Recorder](https://qlib.readthedocs.io/en/stable/component/recorder.html)
+records experiment/run identity, parameters, metrics and artifacts; that informs
+our next persistent experiment-registry milestone, not a claim that we already
+have it. [Bailey et al., The Probability of Backtest Overfitting](https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf)
+explains why holdouts alone do not account for repeated strategy searches.
+Accordingly, an opt-in flag and one-run p-value are insufficient evidence of
+unbiased discovery after an unrecorded research search.
+
+Preflight, one-use study reservation, richer data-provenance review and a
+synthetic command-line example remain planned. Provider acquisition, a market
+choice, net-cost portfolio testing and any production promotion remain outside
+this software-correctness milestone.
 
 ## Exit-gate conclusion
 

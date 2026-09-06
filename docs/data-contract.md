@@ -30,7 +30,8 @@ Required columns:
 - `source`
 
 Intervals are half-open: `effective_from <= as_of_date < effective_to`. Null
-`effective_to` means open-ended. Intervals for the same universe and symbol may
+`effective_to` means open-ended. Malformed non-null end dates are rejected,
+never converted to an open interval. Intervals for the same universe and symbol may
 not overlap. A current constituent list without dated intervals is allowed only
 as an explicitly labelled demo and cannot support an unbiased historical claim.
 
@@ -74,7 +75,9 @@ Dates must be valid, normalized, timezone-naive calendar dates. Features and
 targets may be null, because missingness is handled inside each fold, but any
 non-null value must be finite and numeric. If `decision_time` or per-feature
 availability columns are supplied, the validator rejects features that became
-available after the decision time. The loader creates a deterministic `row_id`
+available after the decision time. A supplied `decision_time` must fall within
+the same calendar day as `as_of_date`; same-day intraday decisions are allowed.
+The loader creates a deterministic `row_id`
 from the normalized security-date key; callers should not use a DataFrame index
 as identity.
 
@@ -100,10 +103,15 @@ targets; other rows may still be missing and are visible in the data gate.
 Development then uses expanding outer walk-forward folds;
 each model candidate is selected with inner purged walk-forward validation.
 The final model family is frozen from development common-sample Rank IC and the
-lockbox is evaluated once within that engine run; preventing reuse across runs
+lockbox is evaluated only with explicit opt-in; preventing reuse across runs
 requires the external registry described below. Screening, imputation, scaling,
 rank transforms, PCA, and fitting are repeated from training data inside the
-relevant fold.
+relevant fold. Cross-sectional ranks are computed over each contemporaneous
+date's full feature universe, not a universe selected using future labels.
+Rows excluded from supervised training may supply contemporaneous features for
+that rank transform, but their outcomes are masked and cannot enter the loss.
+Evaluation scores similarly include unlabeled stocks; development outcomes
+whose label end reaches the lockbox are masked before evaluation.
 
 Supervised model-loss weights give each decision date equal total weight and
 are normalized to mean one across rows. This prevents larger cross-sections
@@ -122,12 +130,20 @@ Evaluation reports per-date Rank IC, raw top-minus-bottom realized-return
 spread, score coverage, and tied-score fraction. Rank IC uses score/target
 pairs; spread independently uses score/realized-return pairs, with separate
 counts and coverage so one field's missingness cannot silently remove valid
-observations for the other. `native` results use each
+observations for the other. `score_coverage` is instead finite predictions
+divided by the full scoring-universe count, independent of outcome missingness.
+`native` results use each
 model's available rows. `common` uses one security-date intersection across all
 configured model families plus the primary baseline during development, then
 across the frozen model and primary baseline in the lockbox. Model selection
 and the main acceptance comparison use the common scope so missing predictions
 cannot create an unfair sample advantage.
+
+Each spread bucket has `floor(n / quantiles)` units of mass. If its boundary
+cuts through an equal-score group, every member gets the same fractional
+weight. This makes the statistic invariant to row order and security names.
+Flat scores still have no defined spread; these are descriptive signal
+statistics, not holdings or net portfolio returns.
 
 `qmr benchmark` writes:
 
@@ -145,12 +161,21 @@ observed count among that prediction model's selected inputs for the row;
 present in the source row but excluded by fold-local screening are not counted.
 
 The manifest fingerprints the validated panel contract, model inputs,
-configuration, and actual package source files, and records artifact schema 2
+configuration, execution mode, and actual package source files, and records artifact schema 3
 and major library versions. The writer refuses an existing destination and
 publishes a completed bundle by renaming a temporary sibling directory, so a
-failed run cannot leave a partial result that looks final. The data gate reports
-locked target/realized-return coverage and cross-section counts, and deliberately
+failed run cannot leave a partial result that looks final. In an explicitly
+requested full run, the data gate reports locked target/realized-return
+coverage and cross-section counts. It deliberately
 keeps provider, stable-identifier,
 corporate-action, and delisting-policy verification false until those policies
 are independently audited. Therefore an engine run cannot by itself support an
 empirical alpha claim or Stage 4 promotion.
+
+In default development mode, artifacts contain no locked predictions,
+performance summaries, or reserved-stock assignments. The reserved date
+boundary is recorded; the acceptance status is `not_evaluated`, not a failed
+empirical test. Structural validation, boundary reservation using label
+completeness, and full-input fingerprints still inspect the panel. This is not
+a physically sealed data store; changing label completeness can change whether
+a declared split is feasible. Reuse prevention remains a separate control.

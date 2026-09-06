@@ -11,7 +11,7 @@ The repository now covers three research stages:
    redundant metrics, optionally validate them on purged walk-forward folds,
    and optionally compare a train-only PCA baseline.
 3. Benchmark non-ML rank composites against supervised cross-sectional models
-   with nested purged development folds and one locked final test.
+   with nested purged development folds and an explicitly opened final test.
 
 It does not claim to be a complete trading system. Portfolio construction,
 cost-aware backtesting, risk controls, execution, and live monitoring come
@@ -29,8 +29,8 @@ after these research stages.
 - Model-loss weights give every training date equal total weight, so dates with
   more listed securities do not dominate the supervised objective. Fold-local
   imputation, scaling, and PCA remain row-weighted preprocessing steps.
-- Stage 3 selects a model family using development results, then evaluates that
-  frozen family on the final lockbox once within a run. A real experiment also
+- Stage 3 defaults to development only. Opening the final test requires
+  `--evaluate-lockbox` (Python: `evaluate_lockbox=True`). A real experiment also
   needs an external experiment ID/reuse registry so reruns cannot be presented
   as a fresh lockbox.
 - Lockbox dates must meet the configured minimum target cross-section. The
@@ -106,17 +106,27 @@ This run writes the metric panel, coverage report, daily and summary Rank IC,
 quantile spreads, redundancy pairs, selected/dropped metrics, optional
 walk-forward reports, and optional PCA scores/loadings.
 
-To run the implemented Stage 3 benchmark:
+To iterate on the Stage 3 benchmark without scoring final-test outcomes:
 
 ~~~text
 qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/benchmark-001 --prediction-format parquet
 ~~~
 
+Version 0.3 changes this command's default: only development results are
+produced. After freezing a declared experiment, add `--evaluate-lockbox` and use
+a new output directory for a full run. This flag does not prevent reuse across
+runs or hide the underlying data; validation and hashing still read the panel.
+
 The benchmark atomically publishes a new, non-overwriting output directory with
-a reproducibility manifest and data gate, outer/lockbox fold assignments,
+a reproducibility manifest and data gate, fold assignments,
 tuning and screening records, out-of-sample predictions, daily and fold
 metrics, summary comparisons, and the acceptance decision. See
 `docs/stage3-benchmark.md` for the config and artifact contract.
+
+Scores use the full contemporaneous stock cross-section, before filtering
+future outcomes. Daily prediction coverage is separate from labeled-pair
+coverage. Quantile spreads share bucket weight equally across boundary ties;
+these descriptive spreads are not executable portfolio returns.
 
 ## Stage 3 status and the next gate
 

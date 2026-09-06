@@ -9,7 +9,8 @@ non-ML baselines?
 The benchmark engine and artifact workflow are implemented. This is not an
 empirical alpha result. Until the historical provider, point-in-time universe,
 stable identifiers, corporate actions, and delisting returns are independently
-verified, every run has `claim_scope: benchmark_engine_only` and remains
+verified, full runs have `claim_scope: benchmark_engine_only`, development
+runs have `claim_scope: development_only`, and both remain
 ineligible for Stage 4.
 
 ## What the engine compares
@@ -47,7 +48,8 @@ Screening, imputation, scaling, rank transforms, PCA, and fitting are local to
 the relevant training fold. Model-loss weights give each date equal total
 weight; imputation, scaling, and PCA remain row-weighted preprocessing. The
 model family is frozen from development `common` Rank IC, then evaluated on the
-final lockbox once within that run. Preventing reuse across runs requires an
+final lockbox only when `evaluate_lockbox=True` is explicitly supplied.
+The CLI equivalent is `--evaluate-lockbox`. Preventing reuse across runs requires an
 external experiment ID/reuse registry and remains a Stage 4 entry control.
 
 Reports contain two scopes:
@@ -125,33 +127,59 @@ labels sampled each session. Choose it from the actual horizon and sampling
 schedule before looking at results. The split also needs enough complete dates
 to satisfy all outer and inner windows after label purging.
 
+Twenty locked dates with nineteen HAC lags is a deliberately small configuration
+illustration, not persuasive statistical evidence for an overlapping 20-session
+signal. Declare a sufficiently informative test period and sensitivity checks;
+no universal date-count threshold guarantees reliable small-sample inference.
+
 ## Run and outputs
 
 The panel may be CSV, compressed CSV, Parquet, or PQ. Parquet is the default
 prediction format. The output directory must not already exist; the writer
 builds a temporary sibling bundle and publishes it atomically only after every
-file succeeds:
+file succeeds. The default command runs development only:
 
 ~~~text
 qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/benchmark-001 --prediction-format parquet
 ~~~
 
+After recording and freezing the research plan, the explicit full-run command is:
+
+~~~text
+qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/final-001 --evaluate-lockbox
+~~~
+
+This prints a reuse warning. It repeats the deterministic development procedure
+and selects the family from development, then opens the final test. It does not
+load a previously frozen artifact or enforce a persistent one-use reservation.
+Do not interpret a renamed output folder as a fresh holdout.
+
+Development mode does not fit, score, or export outcomes for the reserved test
+period. Validation, split feasibility and full-panel hashing still inspect the
+input, so this is not a physical secrecy boundary. Perturbing reserved outcome
+values with the dates and availability pattern unchanged leaves development
+scores and selection unchanged, but intentionally changes the input fingerprint.
+
 The output directory contains:
 
-- `benchmark_manifest.json`: artifact schema version 2, full validated-panel and
+- `benchmark_manifest.json`: artifact schema version 3, `execution_mode`
+  (`development` or `full`), full validated-panel and
   model-input fingerprints, actual package-source fingerprint, configuration,
   date boundaries, dataset versions, and library versions;
-- `data_gate.json`: structural result, locked target/realized-return coverage
-  and cross-section counts, plus separate external-data verification fields;
+- `data_gate.json`: structural result and external-data verification fields;
+  locked target/return coverage and cross-section counts appear only in full mode;
 - `fold_assignments.parquet`: every row's role and exclusion reason in outer
-  development and locked-test splits;
+  development splits, plus locked-test splits only in full mode. These are
+  labeled/purged eligibility assignments, not the complete scoring universe;
 - `hyperparameter_trials.csv`: inner-validation results and stable JSON model
   parameters;
 - `screening_by_fold.csv`: fold-local feature-screening record;
-- `oos_predictions.parquet` or `.csv`: development and locked-test scores;
+- `oos_predictions.parquet` or `.csv`: full scoring-universe development rows,
+  including missing outcomes, plus locked-test rows only in full mode;
 - `daily_metrics.csv`, `fold_summary.csv`, and `benchmark_summary.csv`;
 - `acceptance.json`: frozen family, model checks, coverage comparison, and the
-  Stage 4 blocker.
+  Stage 4 blocker. Development mode reports `acceptance_status: not_evaluated`
+  and cannot pass the model or Stage 4 gate.
 
 The row-level inner tuning assignments are deterministic from the source panel
 and manifest configuration, but are not written as a separate table. Their
@@ -171,7 +199,8 @@ Column order is stable:
   `feature_count`, `selected_feature_count`, and `zero_observed_features`;
 - `daily_metrics`: phase/fold/date/model/scope plus Rank IC, spread, evaluation
   count, separate Rank-IC/spread counts and eligible counts, their two coverage
-  rates, and tied-score fraction;
+  rates, scoring-universe/scored counts, absolute prediction coverage, and
+  tied-score fraction;
 - `fold_summary` and `benchmark_summary`: phase/model/scope aggregation,
   stability, coverage, and inference fields;
 - `hyperparameter_trials`: outer fold, family/candidate, canonical-JSON
@@ -182,6 +211,17 @@ Column order is stable:
 JSON uses sorted UTF-8 keys, ISO timestamps, and strict finite values. CSV
 parameter cells and prediction feature lists use compact, sorted/canonical JSON
 rather than delimiter-dependent text.
+
+Schema 3 distinguishes `score_coverage` (finite scores / scoring universe) from
+`rank_ic_coverage` (score-target pairs / non-null targets). The former feeds
+the native prediction-coverage acceptance gate. `spread_coverage` independently
+measures score-return pairs. Future outcome missingness never selects the
+cross-section used to compute scores.
+
+Stage 2, inner tuning and Stage 3 use the same spread convention: fixed
+`floor(n / quantiles)` bucket mass, shared fractionally by all boundary ties.
+Reordering or renaming equal-score stocks cannot change the reported spread.
+This convention describes a statistic, not a tradeable portfolio.
 
 ## Reading the decision
 

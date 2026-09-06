@@ -4,8 +4,9 @@
 
 Stages 1 and 2 build the point-in-time panel and screen individual metrics. The
 Stage 3 benchmark engine is also implemented: it trains supervised ranking
-models, evaluates purged development folds, freezes a model family, and touches
-one final lockbox. The repository still does not claim empirical alpha or
+models, evaluates purged development folds, and selects a model family. Opening
+the reserved final test is now explicit, not the default. The repository still
+does not claim empirical alpha or
 simulate a portfolio.
 
 That boundary is intentional. A model cannot repair survivorship bias,
@@ -25,13 +26,28 @@ Implemented in the engine:
   Ridge+PCA as a controlled dimensionality-reduction comparator;
 - fold-local screening, imputation, scaling, rank transforms, PCA, and fitting;
 - inner purged validation inside outer purged development folds;
-- model-family freezing from development common-sample Rank IC, followed by one
-  locked final-test evaluation within each run;
+- model-family selection from development common-sample Rank IC, with optional
+  explicit final-test evaluation;
 - native-coverage and common-sample Rank IC/spread reports, reproducibility
   fingerprints, outer/lockbox assignments, tuning records, and explicit
   acceptance/data gates. Inner tuning windows are reproducible from the input
   panel and manifest configuration; their screening and trial results are
   persisted, but their row-level assignments are not a separate artifact.
+
+The September 2026 audit retained this direction and corrected four hazards:
+future-label filtering before ranking, unconstrained decision timestamps,
+arbitrary tie-bucket selection, and malformed membership-end dates. Coverage
+now distinguishes actual prediction coverage from labeled-pair coverage.
+CI checks a clean install, tests with branch tracking, lint, CLI and packaging.
+
+Next engineering milestone (before a new model family): a no-training preflight
+and persistent study/holdout reservation. Record hypothesis, data/code/config
+fingerprints, trial history (including failures), fixed boundaries, frozen
+selection and status. Reserve before final evaluation; treat interruptions as
+potentially consumed. Changing a config hash must not reset the same holdout.
+This local guard would prevent accidents, not intentional bypass or earlier
+human inspection. Also add a runnable synthetic example; it must make no alpha
+claim. These controls are not implemented by the current opt-in flag.
 
 Remaining before Stage 3 can make an empirical conclusion:
 
