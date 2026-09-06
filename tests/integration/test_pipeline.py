@@ -25,12 +25,13 @@ def test_run_research_connects_point_in_time_panel_to_train_only_screening(
 ) -> None:
     prices, memberships, dates = market_fixture
 
+    # BBB joins on date 8; its first two-session label matures on date 11.
     result = run_research(
         prices,
         memberships,
-        as_of_dates=tuple(dates[4:11]),
+        as_of_dates=tuple(dates[4:12]),
         config=_config(),
-        train_end_date=dates[10],
+        train_end_date=dates[11],
         min_cross_section=2,
         minimum_coverage=0.8,
         redundancy_threshold=0.9,
@@ -45,7 +46,7 @@ def test_run_research_connects_point_in_time_panel_to_train_only_screening(
     )
 
     assert not result.panel.empty
-    assert result.screen.fitted_through == pd.Timestamp(dates[10])
+    assert result.screen.fitted_through == pd.Timestamp(dates[11])
     assert result.screen.selected_features
     assert result.pca is not None
     assert result.pca_scores is not None
