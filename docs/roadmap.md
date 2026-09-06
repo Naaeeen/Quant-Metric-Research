@@ -58,13 +58,23 @@ The next engineering milestone is now implemented in version 0.4:
 This guard prevents local workflow accidents, not intentional bypass, earlier
 human inspection or unregistered research. It does not establish empirical alpha.
 
+Version 0.5 adds the raw-input readiness milestone: `qmr audit-inputs` checks
+coverage and future endpoint presence without calculating research outcomes.
+Its normalized-input fingerprints support comparison, not historical
+provenance certification. The same audit cycle tightened daily dates and price
+types, rejected duplicate CSV headers, and excluded immature targets from the
+single-cutoff Stage 2 screen while retaining the original panel.
+
 Next planning gate: agree the real-data research specification and provider
-evidence before choosing another model family. Start with a read-only provider
-audit and a declared universe/decision schedule, then implement only the required
-adapter and lifecycle tests. Record licensing/redistribution permission before
-publishing data. No vendor purchase or new market choice is implied by this
-engineering milestone. If research-grade data is unavailable, continue with
-labelled demonstrations and documentation, not claims of historical performance.
+evidence before choosing another model family. Use the offline audit with a
+declared universe/decision schedule and the human checklist in
+`data-contract.md`, then implement only the required adapter and lifecycle
+tests. Provider documentation, independently checked samples, and unknowns must
+remain distinct. No provider or real dataset has been certified by these
+software tests. Record licensing/redistribution permission before publishing
+data. No vendor purchase or new market choice is implied. If research-grade
+data is unavailable, continue with labelled demonstrations and documentation,
+not claims of historical performance.
 
 Remaining before Stage 3 can make an empirical conclusion:
 

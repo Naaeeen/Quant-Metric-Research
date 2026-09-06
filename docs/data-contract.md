@@ -7,6 +7,12 @@ The MVP assumes signals are formed after the `as_of_date` market close. An
 benchmark session. A horizon of 20 means 20 close-to-close benchmark-session
 intervals from that entry point. Both dates are stored in every output row.
 
+Stage 1 price dates, membership boundaries, requested decision dates, and the
+Stage 2 training cutoff must be normalized, timezone-naive daily dates.
+Intraday/timezone-aware values and numeric epoch offsets are rejected instead
+of silently converted. Decision-date requests must be nonempty and unique.
+These are daily input boundaries, not evidence of when a vendor published data.
+
 ## Price input
 
 Required columns:
@@ -18,6 +24,10 @@ Required columns:
 Rows must be unique by `(date, symbol)`. The benchmark must be present in the
 same table. The core library does not download or silently repair market data;
 provider-specific ingestion belongs in an adapter with its own provenance.
+
+Boolean, temporal and complex prices are rejected before numeric conversion;
+valid real-number strings are supported. Duplicate DataFrame columns and
+duplicate raw CSV/CSV.GZ headers are rejected before parser renaming can hide them.
 
 ## Universe membership input
 
@@ -34,6 +44,73 @@ Intervals are half-open: `effective_from <= as_of_date < effective_to`. Null
 never converted to an open interval. Intervals for the same universe and symbol may
 not overlap. A current constituent list without dated intervals is allowed only
 as an explicitly labelled demo and cannot support an unbiased historical claim.
+
+## Raw-input audit before building a panel
+
+The Python API is `audit_inputs(prices, memberships, *, as_of_dates, config)`,
+where `config` is a `PanelConfig`. The equivalent CLI accepts the same input
+tables and configuration as Stage 1:
+
+~~~text
+qmr audit-inputs --prices data/prices.parquet --memberships data/memberships.parquet --as-of-dates data/as_of_dates.csv --config config.json
+~~~
+
+The command prints strict JSON to standard output; it has no `--output-dir`
+and writes no artifact bundle. Exit code zero means that a diagnostic report
+was generated, not that the data is research-ready. Malformed contracts fail;
+valid inputs with coverage gaps produce a report with warnings.
+
+The report contains:
+
+- coverage by requested decision date and active security, including members
+  with no prices and missing decision-date prices;
+- counts of members with enough adjacent historical price pairs within the
+  configured lookback, compared with `min_observations`; these check possible
+  observations without calculating returns or proving a metric will be defined;
+- scheduled label dates and stock entry/exit price presence, including an
+  insufficient benchmark-calendar tail; no target, IC, or model is computed;
+- benchmark-derived calendar bounds and off-calendar price-row counts;
+- SHA-256 fingerprints of normalized required price/membership columns and the
+  request, including configuration and sorted decision dates; the report also
+  records the configuration, package version and pandas version.
+
+Price rows outside the supplied benchmark calendar do not contribute to
+coverage. This calendar is not independently checked against an exchange
+calendar, so a missing benchmark session can also distort adjacency and label
+offsets. Future price presence is inspected, and hashing reads price values:
+this is not a sealed holdout or permission to choose dates after inspecting
+outcome availability. The hashes exclude extra columns and original file bytes;
+retain separately permitted raw snapshots, acquisition times and adapter versions.
+
+`claim_scope` is `raw_input_diagnostics_only`. Every external-evidence check
+remains `unverified`; `empirical_data_provenance_verified` and `stage4_eligible`
+remain false. Do not treat a clean coverage report as provider certification.
+Panel-level `qmr preflight` is a separate later check of benchmark schedules.
+
+## Human provider-evidence gate
+
+Before a real-data experiment, record the dataset/product, market, date range,
+intended decision schedule and access scope. For each item below, distinguish a
+`provider claim`, a `sample checked` result, and `unknown/unsupported` evidence.
+Keep its source URL/document version, review date, applicable period/security
+scope, limitations, and the independent sample-check method/result. A sample
+check does not establish complete historical coverage.
+
+| Evidence item | What the review must establish |
+| --- | --- |
+| Historical universe | Dated eligibility and membership changes; identify reconstructed/backfilled periods and exclusions, not just current constituents. |
+| Stable identifiers | Security-level continuity, ticker reuse and entity changes, including mergers and exchange/OTC transitions. |
+| Corporate actions | Price-adjustment convention, split/dividend treatment and its effect on features and forward returns; adjusted prices alone do not prove event coverage. |
+| Delisting outcomes | Terminal payments/returns, absent endpoints and unresolved events; merely retaining delisted names is insufficient. |
+| Availability and revisions | Observation period versus publication/availability time; amended versions and when they became usable. |
+| Independent calendar | Exchange sessions, timezone and decision/entry conventions, checked independently of the supplied benchmark bars. |
+| Snapshot lineage | Product/extraction version and time, permitted raw snapshots, file hashes, transformations and correction policy. |
+| Licensing | Permitted users, research/commercial use, retention and redistribution of raw data or derived outputs. Public code approval is not data-publication permission. |
+
+This is a review checklist, not a machine-validated dossier or certification API.
+Choose an adapter only after the market, provider and permitted sample are agreed.
+Keep private evidence and licensed exports outside the public repository.
+See `research-decisions.md` for the supporting primary sources and known gaps.
 
 ## Panel output
 
@@ -86,6 +163,14 @@ continuous target, but their output is treated as a ranking score rather than a
 calibrated expected-return estimate.
 
 ## Split and fitting boundaries
+
+The Stage 1/2 `run_research` workflow treats `train_end_date` as an end-of-day
+knowledge cutoff. On a screening-only copy, it masks `forward_excess_return`
+when `label_end_date` is unknown or later than the cutoff. A label ending on
+the cutoff is allowed under that closing-price assumption. It retains the
+original panel and contemporaneous features for coverage, redundancy and PCA;
+unavailable outcomes must not decide which feature rows exist. This workflow
+guard does not change the generic screening helper or Stage 3's purging rule.
 
 All training folds must end before the first test decision date, and every
 training row must also have `label_end_date < first_test_as_of_date`. This

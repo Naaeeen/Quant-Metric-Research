@@ -183,6 +183,76 @@ cannot prevent manual edits, alternative registries or prior human inspection.
 Provider acquisition, a new market choice, net-cost portfolio testing and
 production promotion remain outside this software-correctness milestone.
 
+## Real-data entry preparation: diagnostics before an adapter
+
+The next useful increment is an offline input audit plus a human provider-evidence
+checklist, not another model or a general certification system. A market, vendor,
+access agreement and independent sample have not yet been established. This is
+our bounded engineering choice, not a claim that one vendor or workflow is best.
+
+Research exposed distinctions that the input contract alone cannot verify:
+
+- [Qlib's PIT database](https://qlib.readthedocs.io/en/stable/advanced/PIT.html)
+  separates a financial statement's period from publication date and retains
+  amendments. Downloading today's corrected history and hashing it does not
+  reconstruct what was available at an earlier decision time.
+- [Norgate's FAQ](https://norgatedata.com/data-package-faq.php) distinguishes
+  effective-date membership and stable asset IDs from ticker strings. It also
+  documents continuously applied corrections without versioning, and no
+  delisting-return/reason or post-delisting-event data. Its suggested final-bar
+  liquidation is a vendor approximation, not proof of a fixed-horizon terminal
+  return. These are documented product limitations, not findings from our samples.
+- [Norgate's content tables](https://norgatedata.com/data-content-tables.php)
+  identify synthetic pre-March-2000 ASX membership histories and certain
+  Canadian histories using current methodology. Record coverage by period and
+  distinguish reconstructed history from observed eligibility.
+- [QuantConnect's security identifiers](https://www.quantconnect.com/docs/v2/writing-algorithms/key-concepts/security-identifiers)
+  distinguish permanent security identity from mutable tickers. Its
+  [security master](https://www.quantconnect.com/docs/v2/writing-algorithms/datasets/quantconnect/us-equity-security-master)
+  represents corporate-action events separately from underlying equity prices.
+  Provider documentation informs the checks; it does not verify a QMR dataset.
+- [Datasheets for Datasets](https://arxiv.org/html/1803.09010v8) motivates
+  documenting composition, collection, preprocessing, uses, distribution and
+  maintenance, including explicit unknowns. We adopt a small factual checklist
+  rather than treating filled fields as a certificate. Usage rights require
+  separate evidence; for example, [Norgate's EULA](https://norgatedata.com/subscribe/eula.php)
+  restricts redistribution and commercial use.
+
+The resulting `audit_inputs` API and `qmr audit-inputs` command validate existing
+raw-input contracts and report coverage by date/security, members with enough
+adjacent historical price pairs and future label-endpoint presence. They calculate no returns,
+signals or models. Normalized-required-column/request fingerprints identify the
+audited inputs but exclude extra fields and original file bytes. All external
+checks stay unverified and Stage 4 remains blocked. Exit code zero confirms
+report generation only; the checklist in `data-contract.md` still needs a human
+record of provider claims, independent sample checks and unresolved gaps.
+
+This audit cannot establish session completeness from benchmark bars alone:
+compare against an independent exchange calendar. It also reads future price
+presence and hashes supplied values, so it is not a sealed holdout. Acquisition
+timestamps and reproducible snapshots help trace later changes, not establish
+missing historical vintages. No provider was selected or empirically audited.
+
+The same boundary review corrected these earlier-path issues:
+
+1. Daily Stage 1 dates and the Stage 2 cutoff now reject intraday, timezone-aware
+   and numeric epoch inputs instead of silently normalizing them. Duplicate or
+   empty decision-date requests fail explicitly.
+2. The `run_research` screening copy masks outcomes with unknown label ends or
+   label ends after its end-of-day cutoff. Same-day matured labels are allowed.
+   The original panel and contemporaneous feature rows remain available for
+   coverage, redundancy and PCA. This correction is local to that workflow:
+   Stage 3 and walk-forward folds retain their stricter label-end-before-test
+   purging, and the generic screening helper is unchanged.
+3. Reject boolean, temporal and complex prices before pandas can reinterpret
+   them as numbers, and reject raw duplicate CSV headers before pandas can
+   rename them. Independently reviewed real-file and mixed-type regressions
+   cover these input boundaries.
+
+After agreeing the research specification and access rights, inspect a permitted
+sample across dated membership, identifier changes, actions, delisting and
+revision cases. Only then implement the necessary adapter and lifecycle tests.
+
 ## Exit-gate conclusion
 
 The first two stages and the Stage 3 benchmark engine are logically aligned

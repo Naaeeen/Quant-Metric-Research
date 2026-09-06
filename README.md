@@ -96,6 +96,30 @@ columns. See `docs/data-contract.md` before treating any panel as research-grade
 
 ## Run
 
+Start with the version 0.5 offline raw-input audit:
+
+~~~text
+qmr audit-inputs --prices data/prices.parquet --memberships data/memberships.parquet --as-of-dates data/as_of_dates.csv --config config.json
+~~~
+
+This prints JSON coverage by date and security: active historical members,
+adjacent historical price pairs, missing decision prices, and future label
+endpoint availability. It does not calculate returns, screen metrics, train a
+model, or write artifacts. Exit code 0 means the report was generated, **not**
+that the data is approved. Invalid contracts fail; coverage gaps remain warnings.
+Daily inputs must be normalized timezone-naive dates; ambiguous prices and
+duplicate CSV column names are rejected instead of silently repaired.
+
+Fingerprints identify normalized required columns and the request, not raw file
+bytes or provider provenance. Future price presence is inspected, so this is
+not a sealed holdout. The benchmark calendar is inferred from supplied prices,
+not independently verified. All external-evidence checks stay unverified and
+Stage 4 stays ineligible. Complete the human evidence checklist in
+[the data contract](docs/data-contract.md) before an empirical experiment;
+keep licensed input data and reports out of public commits.
+
+Once that intake review is complete, build the panel and run Stage 2:
+
 ~~~text
 qmr run --prices data/prices.parquet --memberships data/memberships.parquet --as-of-dates data/as_of_dates.csv --config config.json --train-end 2024-12-31 --output-dir artifacts/run-001 --min-cross-section 50 --hac-lags 19 --walk-forward-splits 5 --walk-forward-test-date-count 20 --walk-forward-min-train-date-count 252 --with-pca
 ~~~
@@ -106,6 +130,11 @@ frequency; 19 is only an example for a heavily overlapping 20-session target.
 This run writes the metric panel, coverage report, daily and summary Rank IC,
 quantile spreads, redundancy pairs, selected/dropped metrics, optional
 walk-forward reports, and optional PCA scores/loadings.
+
+The single-cutoff screen uses only labels matured by the end of `--train-end`.
+The returned panel still contains all supplied outcomes, and optional
+walk-forward evaluation uses its own purged folds over the supplied panel.
+Do not use `qmr run` as a no-outcome intake check.
 
 For Stage 3, check structural feasibility before training, then record the
 hypothesis and run development without scoring final-test outcomes:
