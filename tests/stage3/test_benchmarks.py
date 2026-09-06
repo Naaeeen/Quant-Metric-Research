@@ -4,6 +4,7 @@ import json
 from types import MappingProxyType
 
 import pandas as pd
+import pytest
 
 from quant_metric_research.benchmark import (
     BenchmarkConfig,
@@ -86,7 +87,7 @@ def _config() -> BenchmarkConfig:
 
 
 def test_stage3_runs_nested_development_and_one_locked_test() -> None:
-    result = run_stage3_benchmark(_panel(), config=_config())
+    result = run_stage3_benchmark(_panel(), config=_config(), evaluate_lockbox=True)
 
     development = result.predictions.loc[result.predictions["phase"] == "development"]
     locked = result.predictions.loc[result.predictions["phase"] == "locked_test"]
@@ -113,11 +114,12 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
     assert (
         min(result.data_gate["locked_realized_return_coverage_by_date"].values()) == 0.9
     )
-    assert result.manifest["artifact_schema_version"] == "2"
-    assert result.manifest["package_version"] == "0.2.0"
+    assert result.manifest["artifact_schema_version"] == "3"
+    assert result.manifest["package_version"] == "0.3.0"
+    assert result.manifest["execution_mode"] == "full"
     assert len(result.manifest["source_fingerprint"]) == 64
     assert result.manifest["fingerprint_scope"] == (
-        "source_code+configuration+validated_panel_contract"
+        "source_code+configuration+validated_panel_contract+execution_mode"
     )
     assert all(
         isinstance(json.loads(value), list)
@@ -132,6 +134,62 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
     assert (zero_input_models["feature_count"] == 0).all()
     assert zero_input_models["zero_observed_features"].all()
     assert (zero_input_models["selected_feature_count"] > 0).all()
+
+
+def test_default_run_never_evaluates_or_exports_lockbox(monkeypatch, tmp_path) -> None:
+    import quant_metric_research.benchmark as benchmark
+    from quant_metric_research.benchmark_io import write_benchmark_run
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Development must not evaluate locked outcomes.")
+
+    monkeypatch.setattr(benchmark, "_locked_run", forbidden)
+    monkeypatch.setattr(benchmark, "_data_gate", forbidden)
+    result = run_stage3_benchmark(_panel(), config=_config())
+    for frame in (
+        result.predictions,
+        result.daily_metrics,
+        result.fold_metrics,
+        result.tuning_trials,
+        result.screening_by_fold,
+        result.summary,
+        result.fold_assignments,
+    ):
+        assert set(frame["phase"]) == {"development"}
+    assert result.acceptance["lockbox_evaluated_once_in_this_run"] is False
+    assert result.acceptance["acceptance_status"] == "not_evaluated"
+    assert result.acceptance["model_gate_passed"] is False
+    assert result.acceptance["stage4_eligible"] is False
+    assert result.manifest["execution_mode"] == "development"
+    assert not any("coverage_by_date" in key for key in result.data_gate)
+    artifacts = write_benchmark_run(result, tmp_path / "development")
+    saved = pd.read_parquet(artifacts.files["oos_predictions"])
+    assert set(saved["phase"]) == {"development"}
+
+
+def test_development_results_do_not_depend_on_reserved_outcomes() -> None:
+    panel = _panel()
+    first = run_stage3_benchmark(panel, config=_config())
+    locked_start = pd.Timestamp(first.manifest["locked_test_start"])
+    changed = panel.assign(
+        forward_excess_return=panel["forward_excess_return"].where(
+            panel["as_of_date"] < locked_start, -999.0
+        ),
+        realized_return=panel["realized_return"].where(
+            panel["as_of_date"] < locked_start, 999.0
+        ),
+    )
+    second = run_stage3_benchmark(changed, config=_config())
+    assert set(first.predictions["phase"]) == {"development"}
+    for name in ("predictions", "summary", "tuning_trials", "screening_by_fold"):
+        pd.testing.assert_frame_equal(getattr(first, name), getattr(second, name))
+    assert first.acceptance == second.acceptance
+
+
+@pytest.mark.parametrize("value", [1, "false", None])
+def test_lockbox_opt_in_requires_a_boolean(value) -> None:
+    with pytest.raises(ValueError, match="evaluate_lockbox must be a boolean"):
+        run_stage3_benchmark(_panel(), config=_config(), evaluate_lockbox=value)
 
 
 def test_model_feature_count_only_counts_selected_observed_inputs() -> None:
@@ -197,14 +255,14 @@ def test_model_feature_count_only_counts_selected_observed_inputs() -> None:
 def test_locked_targets_cannot_change_development_or_frozen_model_scores() -> None:
     panel = _panel()
     config = _config()
-    first = run_stage3_benchmark(panel, config=config)
+    first = run_stage3_benchmark(panel, config=config, evaluate_lockbox=True)
     lock_dates = sorted(panel["as_of_date"].unique())[-3:]
 
     changed = panel.copy(deep=True)
     changed.loc[
         changed["as_of_date"].isin(lock_dates), "forward_excess_return"
     ] *= -1000
-    second = run_stage3_benchmark(changed, config=config)
+    second = run_stage3_benchmark(changed, config=config, evaluate_lockbox=True)
 
     prediction_key = ["phase", "fold", "as_of_date", "symbol", "model"]
     first_scores = first.predictions.sort_values(prediction_key).reset_index(drop=True)

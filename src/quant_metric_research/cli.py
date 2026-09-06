@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from .benchmark import run_stage3_benchmark
@@ -112,6 +113,11 @@ def _build_parser() -> argparse.ArgumentParser:
     benchmark_parser.add_argument("--config", required=True)
     benchmark_parser.add_argument("--output-dir", required=True)
     benchmark_parser.add_argument(
+        "--evaluate-lockbox",
+        action="store_true",
+        help="Evaluate final-test outcomes explicitly; reuse is not registry-enforced.",
+    )
+    benchmark_parser.add_argument(
         "--prediction-format",
         choices=("csv", "parquet"),
         default="parquet",
@@ -187,9 +193,21 @@ def _run_command(args: argparse.Namespace) -> int:
 
 
 def _benchmark_command(args: argparse.Namespace) -> int:
+    destination = Path(args.output_dir)
+    if destination.exists():
+        raise FileExistsError(f"Output directory already exists: {destination}")
+    if args.evaluate_lockbox:
+        print(
+            "Final-test evaluation explicitly requested. Reusing this period for "
+            "model choices invalidates its holdout status; "
+            "no reuse registry is enforced.",
+            file=sys.stderr,
+        )
     panel = read_table(Path(args.panel))
     config = BenchmarkConfig.from_mapping(read_json_object(Path(args.config)))
-    result = run_stage3_benchmark(panel, config=config)
+    result = run_stage3_benchmark(
+        panel, config=config, evaluate_lockbox=args.evaluate_lockbox
+    )
 
     write_benchmark_run(
         result,

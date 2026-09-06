@@ -75,10 +75,13 @@ def validate_memberships(memberships: pd.DataFrame) -> pd.DataFrame:
         validated["effective_from"],
         errors="coerce",
     )
+    originally_missing_end = validated["effective_to"].isna()
     validated["effective_to"] = pd.to_datetime(
         validated["effective_to"],
         errors="coerce",
     )
+    if (validated["effective_to"].isna() & ~originally_missing_end).any():
+        raise DataContractError("effective_to contains invalid non-null dates.")
 
     required_non_null = ["universe_id", "symbol", "effective_from", "source"]
     if validated[required_non_null].isna().any().any():

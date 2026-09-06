@@ -52,10 +52,15 @@ def _write_config(path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    ("panel_suffix", "format_arguments", "expected_prediction_format"),
+    (
+        "panel_suffix",
+        "format_arguments",
+        "expected_prediction_format",
+        "evaluate_lockbox",
+    ),
     [
-        (".csv", [], "parquet"),
-        (".parquet", ["--prediction-format", "csv"], "csv"),
+        (".csv", [], "parquet", False),
+        (".parquet", ["--prediction-format", "csv", "--evaluate-lockbox"], "csv", True),
     ],
 )
 def test_benchmark_command_loads_panel_runs_and_delegates_artifacts(
@@ -64,6 +69,7 @@ def test_benchmark_command_loads_panel_runs_and_delegates_artifacts(
     panel_suffix: str,
     format_arguments: list[str],
     expected_prediction_format: str,
+    evaluate_lockbox: bool,
 ) -> None:
     panel_path = tmp_path / f"panel{panel_suffix}"
     expected_panel = _write_panel(panel_path)
@@ -77,9 +83,11 @@ def test_benchmark_command_loads_panel_runs_and_delegates_artifacts(
         panel: pd.DataFrame,
         *,
         config: BenchmarkConfig,
+        evaluate_lockbox: bool = False,
     ) -> object:
         observed["panel"] = panel
         observed["config"] = config
+        observed["evaluate_lockbox"] = evaluate_lockbox
         return expected_run
 
     def fake_write(
@@ -115,6 +123,30 @@ def test_benchmark_command_loads_panel_runs_and_delegates_artifacts(
     assert observed["result"] is expected_run
     assert observed["destination"] == output_dir
     assert observed["prediction_format"] == expected_prediction_format
+    assert observed["evaluate_lockbox"] is evaluate_lockbox
+
+
+def test_existing_output_is_rejected_before_training(tmp_path, monkeypatch) -> None:
+    output = tmp_path / "existing"
+    output.mkdir()
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("An invalid destination must not consume the lockbox.")
+
+    monkeypatch.setattr(cli, "run_stage3_benchmark", forbidden)
+    with pytest.raises(FileExistsError, match="already exists"):
+        cli.main(
+            [
+                "benchmark",
+                "--panel",
+                "unused.csv",
+                "--config",
+                "unused.json",
+                "--output-dir",
+                str(output),
+                "--evaluate-lockbox",
+            ]
+        )
 
 
 def test_benchmark_command_reports_missing_panel_before_running(

@@ -1,27 +1,31 @@
 from __future__ import annotations
 
 import json
-import platform
 from dataclasses import dataclass
-from hashlib import sha256
-from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
 import numpy as np
 import pandas as pd
-import sklearn
 
-from ._version import __version__
 from .baselines import fit_non_ml_baselines, predict_non_ml_baselines
 from .benchmark_config import BenchmarkConfig, NestedSplitConfig
-from .benchmark_data import Stage3DataPlan, build_stage3_data_plan
+from .benchmark_data import (
+    Stage3DataPlan,
+    build_stage3_data_plan,
+    evaluation_cross_section,
+    expand_training_cross_sections,
+)
 from .benchmark_metrics import (
     PredictionEvaluation,
     choose_frozen_model,
     evaluate_prediction_frame,
 )
 from .benchmark_models import ModelCandidate, fit_candidate
+from .benchmark_reporting import (
+    IMPLEMENTATION_VERSION as IMPLEMENTATION_VERSION,
+)
+from .benchmark_reporting import _data_gate, _fingerprints
 from .benchmark_tuning import (
     fit_fold_screen,
     screen_records,
@@ -29,9 +33,6 @@ from .benchmark_tuning import (
 )
 from .screening import MetricScreenResult
 from .statistics import newey_west_mean_tstat
-
-IMPLEMENTATION_VERSION = __version__
-ARTIFACT_SCHEMA_VERSION = "2"
 
 
 @dataclass(frozen=True)
@@ -236,6 +237,19 @@ def _fit_evaluation_block(
     )
 
 
+def _training_universe(
+    plan: Stage3DataPlan,
+    row_ids: tuple[str, ...],
+    config: BenchmarkConfig,
+) -> pd.DataFrame:
+    frame = plan.panel.frame
+    return expand_training_cross_sections(
+        frame,
+        training_indices=tuple(frame.index[frame["row_id"].isin(row_ids)]),
+        outcome_columns=(config.target_column, config.realized_return_column),
+    )
+
+
 def _development_run(
     plan: Stage3DataPlan,
     *,
@@ -245,8 +259,14 @@ def _development_run(
     trial_frames: list[pd.DataFrame] = []
     screen_frames: list[pd.DataFrame] = []
     for exposed_fold, fold in enumerate(plan.development_folds, start=1):
-        training = plan.panel.rows(fold.train_row_ids)
-        evaluation = plan.panel.rows(fold.evaluation_row_ids)
+        training = _training_universe(plan, fold.train_row_ids, config)
+        evaluation = evaluation_cross_section(
+            plan.panel,
+            start_date=fold.evaluation_start_date,
+            end_date=fold.evaluation_end_date,
+            outcome_columns=(config.target_column, config.realized_return_column),
+            label_before=plan.locked_test.test_start_date,
+        )
         predictions, trials, screens = _fit_evaluation_block(
             training,
             evaluation,
@@ -272,8 +292,13 @@ def _locked_run(
     config: BenchmarkConfig,
     frozen_family: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    training = plan.panel.rows(plan.locked_test.training_row_ids)
-    evaluation = plan.panel.rows(plan.locked_test.test_row_ids)
+    training = _training_universe(plan, plan.locked_test.training_row_ids, config)
+    evaluation = evaluation_cross_section(
+        plan.panel,
+        start_date=plan.locked_test.test_start_date,
+        end_date=plan.locked_test.test_end_date,
+        outcome_columns=(config.target_column, config.realized_return_column),
+    )
     locked_fold = config.split.outer_n_splits + 1
     return _fit_evaluation_block(
         training,
@@ -286,7 +311,9 @@ def _locked_run(
     )
 
 
-def _assignment_frame(plan: Stage3DataPlan, config: BenchmarkConfig) -> pd.DataFrame:
+def _assignment_frame(
+    plan: Stage3DataPlan, config: BenchmarkConfig, *, include_lockbox: bool = True
+) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     for exposed_fold, fold in enumerate(plan.development_folds, start=1):
         for assignment in fold.assignments:
@@ -304,6 +331,16 @@ def _assignment_frame(plan: Stage3DataPlan, config: BenchmarkConfig) -> pd.DataF
                     "evaluation_end": fold.evaluation_end_date,
                 }
             )
+    if not include_lockbox:
+        frame = plan.panel.frame
+        development_ids = frame.loc[
+            frame["as_of_date"] < plan.locked_test.test_start_date, "row_id"
+        ]
+        return (
+            pd.DataFrame(rows)
+            .loc[lambda values: values["row_id"].isin(development_ids)]
+            .reset_index(drop=True)
+        )
     locked = plan.locked_test
     locked_training = plan.panel.rows(locked.training_row_ids)
     train_end = pd.Timestamp(locked_training["as_of_date"].max())
@@ -528,140 +565,6 @@ def _acceptance(
     )
 
 
-def _fingerprints(
-    plan: Stage3DataPlan,
-    *,
-    config: BenchmarkConfig,
-) -> MappingProxyType[str, Any]:
-    frame = plan.panel.frame
-    relevant = [
-        "row_id",
-        "as_of_date",
-        "symbol",
-        "label_end_date",
-        *config.feature_columns,
-        config.target_column,
-    ]
-    if config.realized_return_column not in relevant:
-        relevant.append(config.realized_return_column)
-    model_frame = frame.loc[:, relevant]
-    model_hashes = pd.util.hash_pandas_object(model_frame, index=False)
-    model_input_fingerprint = sha256(model_hashes.to_numpy().tobytes()).hexdigest()
-    contract_columns = sorted(str(column) for column in frame.columns)
-    contract_frame = frame.loc[:, contract_columns].sort_values("row_id", kind="stable")
-    panel_hasher = sha256()
-    for column in contract_columns:
-        panel_hasher.update(column.encode("utf-8"))
-        panel_hasher.update(b"\0")
-        panel_hasher.update(str(contract_frame[column].dtype).encode("utf-8"))
-        panel_hasher.update(b"\0")
-    contract_hashes = pd.util.hash_pandas_object(contract_frame, index=False)
-    panel_hasher.update(contract_hashes.to_numpy().tobytes())
-    panel_fingerprint = panel_hasher.hexdigest()
-    source_hasher = sha256()
-    package_directory = Path(__file__).resolve().parent
-    for source_path in sorted(package_directory.glob("*.py")):
-        source_hasher.update(source_path.name.encode("utf-8"))
-        source_hasher.update(b"\0")
-        source_hasher.update(source_path.read_bytes())
-        source_hasher.update(b"\0")
-    source_fingerprint = source_hasher.hexdigest()
-    config_json = json.dumps(
-        config.to_mapping(), sort_keys=True, separators=(",", ":"), default=str
-    )
-    run_fingerprint = sha256(
-        (
-            f"{IMPLEMENTATION_VERSION}|{source_fingerprint}|"
-            f"{panel_fingerprint}|{config_json}"
-        ).encode()
-    ).hexdigest()
-    dataset_versions = (
-        sorted(str(value) for value in frame["dataset_version"].dropna().unique())
-        if "dataset_version" in frame.columns
-        else []
-    )
-    return MappingProxyType(
-        {
-            "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
-            "implementation_version": IMPLEMENTATION_VERSION,
-            "package_version": __version__,
-            "source_fingerprint": source_fingerprint,
-            "fingerprint_scope": ("source_code+configuration+validated_panel_contract"),
-            "run_fingerprint": run_fingerprint,
-            "panel_fingerprint": panel_fingerprint,
-            "model_input_fingerprint": model_input_fingerprint,
-            "dataset_versions": dataset_versions,
-            "configuration": config.to_mapping(),
-            "python_version": platform.python_version(),
-            "numpy_version": np.__version__,
-            "pandas_version": pd.__version__,
-            "scikit_learn_version": sklearn.__version__,
-            "development_start": str(frame["as_of_date"].min().date()),
-            "locked_test_start": str(plan.locked_test.test_start_date.date()),
-            "locked_test_end": str(plan.locked_test.test_end_date.date()),
-        }
-    )
-
-
-def _data_gate(
-    plan: Stage3DataPlan, config: BenchmarkConfig
-) -> MappingProxyType[str, Any]:
-    panel = plan.panel.frame
-    locked = panel.loc[
-        (panel["as_of_date"] >= plan.locked_test.test_start_date)
-        & (panel["as_of_date"] <= plan.locked_test.test_end_date)
-    ].copy(deep=True)
-    target_coverage = (
-        locked.groupby("as_of_date", sort=True)[config.target_column]
-        .apply(lambda values: float(values.notna().mean()))
-        .to_dict()
-    )
-    realized_coverage = (
-        locked.groupby("as_of_date", sort=True)[config.realized_return_column]
-        .apply(lambda values: float(values.notna().mean()))
-        .to_dict()
-    )
-    cross_section_counts = locked.groupby("as_of_date", sort=True).size().to_dict()
-    evaluable_counts = (
-        locked.assign(
-            _evaluable=(
-                locked[config.target_column].notna()
-                & locked[config.realized_return_column].notna()
-            )
-        )
-        .groupby("as_of_date", sort=True)["_evaluable"]
-        .sum()
-        .to_dict()
-    )
-    return MappingProxyType(
-        {
-            "structural_contract_passed": True,
-            "locked_test_date_count": int(locked["as_of_date"].nunique()),
-            "locked_target_coverage_by_date": {
-                str(pd.Timestamp(date).date()): coverage
-                for date, coverage in target_coverage.items()
-            },
-            "locked_realized_return_coverage_by_date": {
-                str(pd.Timestamp(date).date()): coverage
-                for date, coverage in realized_coverage.items()
-            },
-            "locked_cross_section_count_by_date": {
-                str(pd.Timestamp(date).date()): int(count)
-                for date, count in cross_section_counts.items()
-            },
-            "locked_evaluable_count_by_date": {
-                str(pd.Timestamp(date).date()): int(count)
-                for date, count in evaluable_counts.items()
-            },
-            "point_in_time_provider_verified": False,
-            "stable_identifier_policy_verified": False,
-            "corporate_action_policy_verified": False,
-            "delisting_return_policy_verified": False,
-            "claim_scope": "benchmark_engine_only",
-        }
-    )
-
-
 def _sort_predictions(predictions: pd.DataFrame) -> pd.DataFrame:
     columns = [
         "phase",
@@ -691,13 +594,70 @@ def _sort_predictions(predictions: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _development_result(
+    plan: Stage3DataPlan,
+    *,
+    config: BenchmarkConfig,
+    predictions: pd.DataFrame,
+    trials: pd.DataFrame,
+    screening: pd.DataFrame,
+    evaluation: PredictionEvaluation,
+    frozen_family: str,
+) -> BenchmarkRun:
+    return BenchmarkRun(
+        data_gate=MappingProxyType(
+            {
+                "structural_contract_passed": True,
+                "locked_test_date_count": config.split.final_test_date_count,
+                "point_in_time_provider_verified": False,
+                "stable_identifier_policy_verified": False,
+                "corporate_action_policy_verified": False,
+                "delisting_return_policy_verified": False,
+                "claim_scope": "development_only",
+            }
+        ),
+        fold_assignments=_assignment_frame(plan, config, include_lockbox=False),
+        predictions=_sort_predictions(predictions),
+        daily_metrics=evaluation.daily_metrics,
+        fold_metrics=evaluation.fold_metrics,
+        tuning_trials=trials,
+        screening_by_fold=screening,
+        summary=evaluation.summary,
+        acceptance=MappingProxyType(
+            {
+                "acceptance_status": "not_evaluated",
+                "lockbox_evaluated_once_in_this_run": False,
+                "lockbox_reuse_registry_enforced": False,
+                "frozen_model_family": frozen_family,
+                "primary_baseline": config.primary_baseline,
+                "model_gate_passed": False,
+                "eligible_for_stage4_data_review": False,
+                "empirical_data_provenance_verified": False,
+                "stage4_eligible": False,
+                "stage4_blocker": (
+                    "Final-test evaluation and data provenance review pending."
+                ),
+            }
+        ),
+        manifest=_fingerprints(plan, config=config, evaluate_lockbox=False),
+    )
+
+
 def run_stage3_benchmark(
     panel: pd.DataFrame,
     *,
     config: BenchmarkConfig,
+    evaluate_lockbox: bool = False,
 ) -> BenchmarkRun:
+    """Run development by default; final-test outcomes require explicit opt-in.
+
+    This is a workflow guard, not a sealed data store or a cross-run reuse registry.
+    Panel validation, date reservation and input hashing still inspect the panel.
+    """
     if not isinstance(config, BenchmarkConfig):
         raise ValueError("config must be a BenchmarkConfig.")
+    if not isinstance(evaluate_lockbox, bool):
+        raise ValueError("evaluate_lockbox must be a boolean.")
     _validate_realized_return(panel, config)
     plan = build_stage3_data_plan(
         panel,
@@ -720,6 +680,16 @@ def run_stage3_benchmark(
         development_evaluation.summary,
         model_families=config.model_families,
     )
+    if not evaluate_lockbox:
+        return _development_result(
+            plan,
+            config=config,
+            predictions=development_predictions,
+            trials=development_trials,
+            screening=development_screens,
+            evaluation=development_evaluation,
+            frozen_family=frozen_family,
+        )
     locked_predictions, locked_trials, locked_screens = _locked_run(
         plan,
         config=config,

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
+from ._spreads import fractional_quantile_spread
 from .statistics import benjamini_hochberg, newey_west_mean_tstat
 
 PREDICTION_KEYS = ("phase", "fold", "as_of_date", "symbol", "model")
@@ -57,9 +58,11 @@ def _daily_row(
     scope: str,
     min_cross_section: int,
     quantiles: int,
+    scoring_universe_count: int,
     eligible_target_count: int,
     eligible_realized_return_count: int,
 ) -> dict[str, object]:
+    scored_count = int(frame["score"].notna().sum())
     rank_pairs = frame.loc[:, ["score", "target"]].dropna()
     spread_pairs = frame.loc[:, ["score", "realized_return"]].dropna()
     rank_count = int(rank_pairs.shape[0])
@@ -75,16 +78,16 @@ def _daily_row(
             rank_pairs["score"].corr(rank_pairs["target"], method="spearman")
         )
     if spread_count >= min_cross_section and spread_pairs["score"].nunique() > 1:
-        ordered = spread_pairs.sort_values("score", kind="stable")
-        bucket_size = max(1, spread_count // quantiles)
-        spread = float(
-            ordered.iloc[-bucket_size:]["realized_return"].mean()
-            - ordered.iloc[:bucket_size]["realized_return"].mean()
+        spread = fractional_quantile_spread(
+            spread_pairs["score"], spread_pairs["realized_return"], quantiles=quantiles
         )
     tied_fraction = (
         float(1.0 - rank_pairs["score"].nunique() / rank_count)
         if rank_count
         else float("nan")
+    )
+    score_coverage = (
+        scored_count / scoring_universe_count if scoring_universe_count else 0.0
     )
     rank_coverage = rank_count / eligible_target_count if eligible_target_count else 0.0
     spread_coverage = (
@@ -100,12 +103,14 @@ def _daily_row(
         "evaluation_scope": scope,
         "rank_ic": rank_ic,
         "spread": spread,
+        "scoring_universe_count": scoring_universe_count,
+        "scored_count": scored_count,
         "evaluation_count": rank_count,
         "rank_ic_count": rank_count,
         "spread_count": spread_count,
         "eligible_target_count": eligible_target_count,
         "eligible_realized_return_count": eligible_realized_return_count,
-        "score_coverage": float(rank_coverage),
+        "score_coverage": float(score_coverage),
         "rank_ic_coverage": float(rank_coverage),
         "spread_coverage": float(spread_coverage),
         "tied_score_fraction": tied_fraction,
@@ -135,6 +140,7 @@ def _native_daily_rows(
                 scope="native",
                 min_cross_section=min_cross_section,
                 quantiles=quantiles,
+                scoring_universe_count=int(group.shape[0]),
                 eligible_target_count=eligible_target,
                 eligible_realized_return_count=eligible_realized,
             )
@@ -194,6 +200,7 @@ def _common_daily_rows(
                     scope="common",
                     min_cross_section=min_cross_section,
                     quantiles=quantiles,
+                    scoring_universe_count=int(combined.shape[0]),
                     eligible_target_count=eligible_target,
                     eligible_realized_return_count=eligible_realized,
                 )
