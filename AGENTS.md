@@ -28,7 +28,15 @@
   score. Apply outcome-availability masks only when evaluating outcomes.
 - Use development results for model selection. Final holdout evaluation must be
   explicit and follow a frozen experiment plan; opening it repeatedly invalidates
-  its independence. A flag or manifest is not a cross-run lockbox-reuse registry.
+  its independence. Use the same durable experiment registry for related work.
+  Validate frozen development identity before rerunning development, then commit
+  the final outcome-date reservation before fitting or evaluating final models.
+  Failed/interrupted reservations stay consumed; do not delete or replace the
+  registry to obtain a fresh result. This guard does not detect untracked research.
+- Run the no-training preflight before a declared experiment. It checks the
+  schedule and data contract, not predictive usefulness or provider provenance.
+  Keep source, panel, configuration, and recorded runtime versions unchanged
+  between registered development and final evaluation.
 - Keep native coverage and common-sample comparisons visible. Report label
   overlap and uncertainty assumptions rather than treating observations as IID.
 - Synthetic fixtures prove software behavior, not alpha, provider provenance, or

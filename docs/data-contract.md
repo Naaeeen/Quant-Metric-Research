@@ -103,8 +103,8 @@ targets; other rows may still be missing and are visible in the data gate.
 Development then uses expanding outer walk-forward folds;
 each model candidate is selected with inner purged walk-forward validation.
 The final model family is frozen from development common-sample Rank IC and the
-lockbox is evaluated only with explicit opt-in; preventing reuse across runs
-requires the external registry described below. Screening, imputation, scaling,
+lockbox is evaluated only with explicit opt-in referencing completed development
+evidence in the local experiment registry described below. Screening, imputation, scaling,
 rank transforms, PCA, and fitting are repeated from training data inside the
 relevant fold. Cross-sectional ranks are computed over each contemporaneous
 date's full feature universe, not a universe selected using future labels.
@@ -161,8 +161,9 @@ observed count among that prediction model's selected inputs for the row;
 present in the source row but excluded by fold-local screening are not counted.
 
 The manifest fingerprints the validated panel contract, model inputs,
-configuration, execution mode, and actual package source files, and records artifact schema 3
-and major library versions. The writer refuses an existing destination and
+configuration, execution mode, and actual package source files, and records artifact schema 4,
+experiment references, maximum locked label-end date, and major library versions.
+The writer refuses an existing destination and
 publishes a completed bundle by renaming a temporary sibling directory, so a
 failed run cannot leave a partial result that looks final. In an explicitly
 requested full run, the data gate reports locked target/realized-return
@@ -178,4 +179,35 @@ boundary is recorded; the acceptance status is `not_evaluated`, not a failed
 empirical test. Structural validation, boundary reservation using label
 completeness, and full-input fingerprints still inspect the panel. This is not
 a physically sealed data store; changing label completeness can change whether
-a declared split is feasible. Reuse prevention remains a separate control.
+a declared split is feasible.
+
+## Preflight and experiment records
+
+`qmr preflight` validates the panel and reconstructs outer, inner, and final
+training schedules without fitting, screening metrics, or computing IC.
+It reports purged/usable counts, development feature coverage and HAC/sample-size
+warnings. `feasible` means the schedule can be constructed, not that screening
+will retain a feature, inference is reliable, or the provider is point-in-time.
+Locked-period output is structural metadata, not performance.
+
+Registered development records hypothesis, configuration, identities and
+development outcome exposure before training. Final evaluation requires that
+completed record and exact panel, source, configuration, boundaries, and recorded
+Python/NumPy/pandas/SciPy/scikit-learn versions. These version fields are not a
+complete environment lock (for example, BLAS and hardware are not captured).
+
+Within one durable local SQLite registry, final evaluation cannot overlap an
+already recorded development or final outcome-date envelope. Development is
+conservatively marked from the first panel date through the calendar day before
+the lockbox; final exposure extends through the maximum locked label-end date,
+not merely the last decision date. Changing study/configuration names cannot
+reset these date intervals. The reservation is committed before final fitting
+and remains consumed after failure or interruption.
+
+Records contain metadata, not raw panel rows. `completed` means benchmark
+computation completed, not that the later artifact publication succeeded.
+Keep the registry with the research evidence; Git ignores local SQLite files.
+Separate registry files, unregistered work, earlier human inspection, or manual
+database changes bypass this local accident-prevention control. It is not an
+organizational access-control system or a correction for multiple testing.
+See `stage3-benchmark.md` for commands and lifecycle details.

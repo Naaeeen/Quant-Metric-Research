@@ -48,9 +48,11 @@ Screening, imputation, scaling, rank transforms, PCA, and fitting are local to
 the relevant training fold. Model-loss weights give each date equal total
 weight; imputation, scaling, and PCA remain row-weighted preprocessing. The
 model family is frozen from development `common` Rank IC, then evaluated on the
-final lockbox only when `evaluate_lockbox=True` is explicitly supplied.
-The CLI equivalent is `--evaluate-lockbox`. Preventing reuse across runs requires an
-external experiment ID/reuse registry and remains a Stage 4 entry control.
+final lockbox only when `evaluate_lockbox=True` is explicitly supplied with an
+`ExperimentRegistry` and a matching completed `development_run_id`. The CLI
+requires `--evaluate-lockbox --registry PATH --development-run-id RUN_ID`.
+Version 0.4 implements the local outcome-exposure guard described below; this
+does not replace an independently frozen research plan or data-provenance review.
 
 Reports contain two scopes:
 
@@ -137,22 +139,83 @@ no universal date-count threshold guarantees reliable small-sample inference.
 The panel may be CSV, compressed CSV, Parquet, or PQ. Parquet is the default
 prediction format. The output directory must not already exist; the writer
 builds a temporary sibling bundle and publishes it atomically only after every
-file succeeds. The default command runs development only:
+file succeeds. All commands below use the same panel, config, and durable local
+registry. Substitute actual paths and a hypothesis declared before inspection.
+
+### 1. Check structural feasibility without training
 
 ~~~text
-qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/benchmark-001 --prediction-format parquet
+qmr preflight --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json
 ~~~
 
-After recording and freezing the research plan, the explicit full-run command is:
+The JSON report includes `feasible`, scoped errors/warnings, development feature
+coverage and label availability, purged outer/inner window summaries, and planned
+final dates. It flags short HAC windows and unreachable acceptance date-count
+thresholds. The CLI returns zero for a feasible report and two for structural
+infeasibility; input-file or config loading can fail before a report is built.
+
+This performs no screening, model fitting, Rank IC calculation, or final-outcome
+scoring. `feasible: true` only means the requested split schedules exist; constant
+features, fitting errors, or weak signal can still prevent a successful benchmark.
+Warnings are diagnostics, not universal statistical adequacy rules. The report
+contains no per-security rows or final-test performance, but structural checks
+still read the entire panel and use label availability to reserve final dates.
+
+### 2. Register and run development
 
 ~~~text
-qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/final-001 --evaluate-lockbox
+qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/benchmark-001 --registry artifacts/research-registry.sqlite3 --study-id metrics-v1 --hypothesis "Combined metrics improve unseen-date ranking over equal-weight ranks."
 ~~~
 
-This prints a reuse warning. It repeats the deterministic development procedure
-and selects the family from development, then opens the final test. It does not
-load a previously frozen artifact or enforce a persistent one-use reservation.
-Do not interpret a renamed output folder as a fresh holdout.
+Registered development requires all three of `--registry`, `--study-id`, and
+`--hypothesis`. An existing study cannot silently change its hypothesis. The run
+is recorded before calculation, its exposure interval before development fitting,
+and its selected model family on successful completion. Failed calculations remain
+in the run history. Inner-candidate outcomes are retained in the artifact bundle;
+the registry records run-level status, configuration, identity, and frozen choice.
+
+Read the development reference from
+`benchmark_manifest.json` at `experiment.run_id`, or inspect history:
+
+~~~text
+qmr experiments --registry artifacts/research-registry.sqlite3
+qmr experiments --registry artifacts/research-registry.sqlite3 --run-id DEVELOPMENT_RUN_ID
+~~~
+
+The first command prints a JSON list; the second prints one run. Records include
+`kind` (`development` or `final`), `status` (`running`, `completed`, or `failed`),
+study/hypothesis, timestamps, configuration, manifest, and exposure boundaries.
+`completed` means the calculation completed, not that the CLI subsequently
+published its artifact directory. Check both the registry and bundle; a write
+failure after calculation cannot undo exposure or make a final test reusable.
+
+Unregistered development remains available by omitting the three registration
+flags, but it cannot authorize a final evaluation and is invisible to this
+registry's exposure history. Use registered development for governed research.
+
+### 3. Explicitly evaluate the referenced final test
+
+After reviewing development evidence and freezing the experiment, replace the
+placeholder below with the completed development run's ID:
+
+~~~text
+qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/final-001 --registry artifacts/research-registry.sqlite3 --development-run-id DEVELOPMENT_RUN_ID --evaluate-lockbox
+~~~
+
+Do not supply a new study or hypothesis on this command: both come from the
+reference. The engine validates completed, matching development evidence before
+repeating the deterministic development procedure. It verifies the repeated
+family selection, then atomically checks and reserves the outcome interval before
+locked-model fitting or scoring. It does not load a saved fitted model. Concurrent
+or repeated attempts cannot both reserve overlapping final intervals in the same
+registry. The manifest records the final run ID and its development reference.
+
+Evidence identity requires the same validated panel, actual package source,
+configuration, package version, date boundaries, and Python, NumPy, pandas,
+SciPy, and scikit-learn versions. This is not a full environment lock: operating
+system, hardware, BLAS implementation, and other dependencies are not completely
+captured. Changes to the bound identity require new registered development;
+they do not clear existing outcome exposure.
 
 Development mode does not fit, score, or export outcomes for the reserved test
 period. Validation, split feasibility and full-panel hashing still inspect the
@@ -160,12 +223,40 @@ input, so this is not a physical secrecy boundary. Perturbing reserved outcome
 values with the dates and availability pattern unchanged leaves development
 scores and selection unchanged, but intentionally changes the input fingerprint.
 
+### Registry scope and failure semantics
+
+Keep one durable SQLite registry for related research. Final reservations are
+checked against every prior development and final exposure in that file, across
+all study names, datasets, securities, model choices, and configurations. This is
+deliberately conservative calendar-envelope matching, not a claim that all these
+datasets have identical outcomes:
+
+- Development records the inclusive envelope from `development_start` through
+  the calendar day before `locked_test_start`.
+- Final evaluation reserves `locked_test_start` through `locked_label_end_max`,
+  the maximum `label_end_date` across the reserved rows, not merely the last
+  final decision date. This protects the forward-outcome tail too.
+- Once an exposure is recorded, failure, interruption, or a `running` status
+  does not release it. A new output folder or study ID cannot reopen it. An error
+  before a final reservation is committed does not itself consume that final
+  interval; existing development exposures still remain.
+
+The guard is local to one registry file, not tamper-proof governance. A fresh
+registry filename, manual database changes, unregistered experiments, or earlier
+human inspection can bypass its knowledge. Renaming/copying files does not restore
+statistical independence. It neither conceals raw labels nor establishes provider
+provenance, empirical validity, or tradability. Record and independently review
+research performed outside this workflow rather than presenting it as unseen.
+
+### Artifact bundle
+
 The output directory contains:
 
-- `benchmark_manifest.json`: artifact schema version 3, `execution_mode`
+- `benchmark_manifest.json`: artifact schema version 4, `execution_mode`
   (`development` or `full`), full validated-panel and
   model-input fingerprints, actual package-source fingerprint, configuration,
-  date boundaries, dataset versions, and library versions;
+  date boundaries including the final label-end envelope, dataset versions,
+  library versions, and `experiment` registration/run-reference metadata;
 - `data_gate.json`: structural result and external-data verification fields;
   locked target/return coverage and cross-section counts appear only in full mode;
 - `fold_assignments.parquet`: every row's role and exclusion reason in outer
@@ -212,7 +303,8 @@ JSON uses sorted UTF-8 keys, ISO timestamps, and strict finite values. CSV
 parameter cells and prediction feature lists use compact, sorted/canonical JSON
 rather than delimiter-dependent text.
 
-Schema 3 distinguishes `score_coverage` (finite scores / scoring universe) from
+Schema 4 retains the distinction introduced in schema 3 between
+`score_coverage` (finite scores / scoring universe) and
 `rank_ic_coverage` (score-target pairs / non-null targets). The former feeds
 the native prediction-coverage acceptance gate. `spread_coverage` independently
 measures score-return pairs. Future outcome missingness never selects the

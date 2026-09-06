@@ -98,9 +98,9 @@ Last reviewed: 2026-09-07
     lockbox date counts, a strict improvement over the baseline, and a
     predeclared HAC p-value bound on the paired daily Rank-IC improvement.
 18. `lockbox_evaluated_once_in_this_run` is deliberately narrow. Preventing a
-    team from rerunning the same lockbox requires an external experiment ID and
-    reuse registry; the engine does not claim to enforce that organizational
-    control.
+    team from rerunning the same lockbox needs cross-run evidence. Version 0.4
+    adds a local experiment registry and reports its enforcement separately;
+    this is not a claim to enforce an organization-wide access-control policy.
 
 ## September 2026 audit: keep the engine, repair the evidence path
 
@@ -126,16 +126,62 @@ The methodological basis remains training-only model choices and preprocessing,
 as described by [scikit-learn](https://scikit-learn.org/stable/common_pitfalls.html).
 [Qlib Recorder](https://qlib.readthedocs.io/en/stable/component/recorder.html)
 records experiment/run identity, parameters, metrics and artifacts; that informs
-our next persistent experiment-registry milestone, not a claim that we already
-have it. [Bailey et al., The Probability of Backtest Overfitting](https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf)
+the version 0.4 registry described below. [Bailey et al., The Probability of Backtest Overfitting](https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf)
 explains why holdouts alone do not account for repeated strategy searches.
 Accordingly, an opt-in flag and one-run p-value are insufficient evidence of
 unbiased discovery after an unrecorded research search.
 
-Preflight, one-use study reservation, richer data-provenance review and a
-synthetic command-line example remain planned. Provider acquisition, a market
-choice, net-cost portfolio testing and any production promotion remain outside
-this software-correctness milestone.
+## Version 0.4: preflight and durable experiment evidence
+
+Keep the existing numerical benchmark and add evidence controls before adding
+models. The no-training preflight shares the benchmark's temporal split builders,
+checks all outer/inner/final-training schedules after purging, and reports
+development coverage and sample-size limitations. It deliberately does not
+screen features, calculate IC, or promise that a model can pass acceptance.
+
+Qlib Recorder supplies the experiment/run separation. [MLflow's backend-store
+documentation](https://mlflow.org/docs/latest/self-hosting/architecture/backend-store/)
+separates run metadata from artifacts and supports a local SQLite backend.
+We use standard-library SQLite instead of adding an experiment server dependency;
+this is a scope/cost decision, not a claim of feature parity with either system.
+
+[SQLite's transaction documentation](https://www.sqlite.org/lang_transaction.html)
+explains how `BEGIN IMMEDIATE` obtains the write transaction and serializes
+competing writers. The registry checks overlap and inserts the reservation in
+one transaction, then commits before final model fitting or evaluation. Keeping
+that transaction open through training would let a crash roll back the protection.
+Failed/interrupted runs retain their exposure; no reset/unreserve API is provided.
+
+Research and independent review changed the initial implementation in three ways:
+
+1. Protect against previously exposed development periods, not only earlier final
+   runs. Otherwise a shortened panel could rename development dates as a fresh
+   final test. Overlap checks span all studies/configurations in the same registry.
+2. Extend final exposure through maximum locked `label_end_date` so a shifted
+   decision block cannot silently reuse the forward-return tail. Development
+   exposure conservatively ends the calendar day before the lockbox.
+3. Validate the referenced plan before repeating any development fitting, then
+   repeat validation atomically when reserving the final test. This prevents a
+   stale configuration from evaluating unregistered development dates before
+   being rejected. Match panel/source/config/boundaries and recorded runtime
+   versions, then require the same development-selected model family.
+
+These envelope rules are our conservative safeguards, not a universal industry
+standard. They may reject unrelated markets sharing dates in the same registry.
+Registry `completed` means computation finished; subsequent artifact publication
+can still fail without releasing the consumed interval. Unknown schemas and
+invalid/corrupt files fail closed. Metadata uses parameterized SQL, validated
+finite JSON and exception class names instead of potentially sensitive error text.
+
+The runnable offline synthetic example verifies the CLI lifecycle and refusal
+behavior. It proves no empirical signal. Neither the registry nor a one-run
+p-value corrects for an entire history of strategy searches: multiple-testing,
+independent review and a genuinely unobserved period remain research obligations.
+Full-panel validation and hashing still read the underlying data, and local files
+cannot prevent manual edits, alternative registries or prior human inspection.
+
+Provider acquisition, a new market choice, net-cost portfolio testing and
+production promotion remain outside this software-correctness milestone.
 
 ## Exit-gate conclusion
 

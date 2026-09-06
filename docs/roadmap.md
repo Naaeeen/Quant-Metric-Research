@@ -5,7 +5,8 @@
 Stages 1 and 2 build the point-in-time panel and screen individual metrics. The
 Stage 3 benchmark engine is also implemented: it trains supervised ranking
 models, evaluates purged development folds, and selects a model family. Opening
-the reserved final test is now explicit, not the default. The repository still
+the reserved final test requires completed matching development evidence and a
+durable local outcome-date reservation, not just an opt-in flag. The repository still
 does not claim empirical alpha or
 simulate a portfolio.
 
@@ -40,14 +41,30 @@ arbitrary tie-bucket selection, and malformed membership-end dates. Coverage
 now distinguishes actual prediction coverage from labeled-pair coverage.
 CI checks a clean install, tests with branch tracking, lint, CLI and packaging.
 
-Next engineering milestone (before a new model family): a no-training preflight
-and persistent study/holdout reservation. Record hypothesis, data/code/config
-fingerprints, trial history (including failures), fixed boundaries, frozen
-selection and status. Reserve before final evaluation; treat interruptions as
-potentially consumed. Changing a config hash must not reset the same holdout.
-This local guard would prevent accidents, not intentional bypass or earlier
-human inspection. Also add a runnable synthetic example; it must make no alpha
-claim. These controls are not implemented by the current opt-in flag.
+The next engineering milestone is now implemented in version 0.4:
+
+- no-training preflight reconstructs the purged outer/inner schedules and reports
+  coverage and sample-size warnings without ranking metrics or screening features;
+- a local SQLite registry keeps hypothesis, data/code/config/runtime identity,
+  fixed boundaries, frozen family and run status, including failed attempts;
+- referenced final runs validate identity before development is repeated, then
+  atomically reserve the final outcome envelope before final fitting;
+- all recorded development and final outcome envelopes block a proposed
+  overlapping final test, including failed/interrupted reservations and forward
+  label tails. A renamed study or changed configuration does not reset dates;
+- the offline synthetic CLI example exercises preflight, development, one final
+  evaluation, experiment history and a refused second evaluation.
+
+This guard prevents local workflow accidents, not intentional bypass, earlier
+human inspection or unregistered research. It does not establish empirical alpha.
+
+Next planning gate: agree the real-data research specification and provider
+evidence before choosing another model family. Start with a read-only provider
+audit and a declared universe/decision schedule, then implement only the required
+adapter and lifecycle tests. Record licensing/redistribution permission before
+publishing data. No vendor purchase or new market choice is implied by this
+engineering milestone. If research-grade data is unavailable, continue with
+labelled demonstrations and documentation, not claims of historical performance.
 
 Remaining before Stage 3 can make an empirical conclusion:
 

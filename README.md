@@ -30,9 +30,10 @@ after these research stages.
   more listed securities do not dominate the supervised objective. Fold-local
   imputation, scaling, and PCA remain row-weighted preprocessing steps.
 - Stage 3 defaults to development only. Opening the final test requires
-  `--evaluate-lockbox` (Python: `evaluate_lockbox=True`). A real experiment also
-  needs an external experiment ID/reuse registry so reruns cannot be presented
-  as a fresh lockbox.
+  `--evaluate-lockbox`, a durable local `--registry`, and a matching completed
+  `--development-run-id`. Recorded outcome-date exposure blocks overlapping
+  final tests within that registry, even after a failed or interrupted run.
+  This guards accidental reuse, not deliberate bypass or prior human inspection.
 - Lockbox dates must meet the configured minimum target cross-section. The
   model gate also requires native score and spread coverage, enough valid
   Rank-IC and spread dates, strict improvement over the baseline, and the
@@ -106,22 +107,37 @@ This run writes the metric panel, coverage report, daily and summary Rank IC,
 quantile spreads, redundancy pairs, selected/dropped metrics, optional
 walk-forward reports, and optional PCA scores/loadings.
 
-To iterate on the Stage 3 benchmark without scoring final-test outcomes:
+For Stage 3, check structural feasibility before training, then record the
+hypothesis and run development without scoring final-test outcomes:
 
 ~~~text
-qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/benchmark-001 --prediction-format parquet
+qmr preflight --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json
+qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/benchmark-001 --registry artifacts/research-registry.sqlite3 --study-id metrics-v1 --hypothesis "Combined metrics improve unseen-date ranking over equal-weight ranks."
 ~~~
 
-Version 0.3 changes this command's default: only development results are
-produced. After freezing a declared experiment, add `--evaluate-lockbox` and use
-a new output directory for a full run. This flag does not prevent reuse across
-runs or hide the underlying data; validation and hashing still read the panel.
+Version 0.4 adds preflight, registered evidence, referenced final evaluation,
+and `qmr experiments` history. Keep one registry for related research: a new
+registry filename does not make previously seen outcomes independent. Preflight
+feasibility does not guarantee successful fitting or a useful signal. Validation
+and hashing still read the full input; this is not a sealed data store.
 
 The benchmark atomically publishes a new, non-overwriting output directory with
 a reproducibility manifest and data gate, fold assignments,
 tuning and screening records, out-of-sample predictions, daily and fold
 metrics, summary comparisons, and the acceptance decision. See
-`docs/stage3-benchmark.md` for the config and artifact contract.
+[the Stage 3 guide](docs/stage3-benchmark.md) for final-run commands, the schema 4
+artifact contract, and registry limitations. A registry status of `completed`
+means calculation completed; verify the artifact bundle was also published.
+
+For a deterministic offline smoke check, run the
+[synthetic example](examples/README.md):
+
+~~~text
+python examples/synthetic_workflow.py --output-dir artifacts/synthetic-demo-001
+~~~
+
+It trains a tiny Ridge model on invented data and verifies final-test reuse is
+refused. It is a software check, not evidence of market alpha.
 
 Scores use the full contemporaneous stock cross-section, before filtering
 future outcomes. Daily prediction coverage is separate from labeled-pair
