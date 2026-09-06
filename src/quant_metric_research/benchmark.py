@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -12,20 +12,18 @@ from .baselines import fit_non_ml_baselines, predict_non_ml_baselines
 from .benchmark_config import BenchmarkConfig, NestedSplitConfig
 from .benchmark_data import (
     Stage3DataPlan,
-    build_stage3_data_plan,
     evaluation_cross_section,
     expand_training_cross_sections,
 )
 from .benchmark_metrics import (
     PredictionEvaluation,
-    choose_frozen_model,
     evaluate_prediction_frame,
 )
 from .benchmark_models import ModelCandidate, fit_candidate
 from .benchmark_reporting import (
     IMPLEMENTATION_VERSION as IMPLEMENTATION_VERSION,
 )
-from .benchmark_reporting import _data_gate, _fingerprints
+from .benchmark_reporting import _fingerprints
 from .benchmark_tuning import (
     fit_fold_screen,
     screen_records,
@@ -33,6 +31,9 @@ from .benchmark_tuning import (
 )
 from .screening import MetricScreenResult
 from .statistics import newey_west_mean_tstat
+
+if TYPE_CHECKING:
+    from .experiment_registry import ExperimentRegistry
 
 
 @dataclass(frozen=True)
@@ -648,113 +649,26 @@ def run_stage3_benchmark(
     *,
     config: BenchmarkConfig,
     evaluate_lockbox: bool = False,
+    registry: ExperimentRegistry | None = None,
+    study_id: str | None = None,
+    hypothesis: str | None = None,
+    development_run_id: str | None = None,
 ) -> BenchmarkRun:
-    """Run development by default; final-test outcomes require explicit opt-in.
+    """Develop by default; final evaluation requires persisted matching evidence.
 
-    This is a workflow guard, not a sealed data store or a cross-run reuse registry.
-    Panel validation, date reservation and input hashing still inspect the panel.
+    The local registry guards accidental reuse, not raw-data access or deliberate
+    bypass. Register development with a study and hypothesis to enable a final run.
     """
-    if not isinstance(config, BenchmarkConfig):
-        raise ValueError("config must be a BenchmarkConfig.")
-    if not isinstance(evaluate_lockbox, bool):
-        raise ValueError("evaluate_lockbox must be a boolean.")
-    _validate_realized_return(panel, config)
-    plan = build_stage3_data_plan(
+    from .experiment_workflow import run_experiment
+
+    return run_experiment(
         panel,
-        feature_columns=config.feature_columns,
-        target_column=config.target_column,
-        locked_test_date_count=config.split.final_test_date_count,
-        locked_min_cross_section=config.min_cross_section,
-        n_splits=config.split.outer_n_splits,
-        evaluation_date_count=config.split.outer_test_date_count,
-        min_train_date_count=config.split.outer_min_train_date_count,
-    )
-    development_predictions, development_trials, development_screens = _development_run(
-        plan, config=config
-    )
-    development_evaluation = _evaluate_development(
-        development_predictions,
         config=config,
-    )
-    frozen_family = choose_frozen_model(
-        development_evaluation.summary,
-        model_families=config.model_families,
-    )
-    if not evaluate_lockbox:
-        return _development_result(
-            plan,
-            config=config,
-            predictions=development_predictions,
-            trials=development_trials,
-            screening=development_screens,
-            evaluation=development_evaluation,
-            frozen_family=frozen_family,
-        )
-    locked_predictions, locked_trials, locked_screens = _locked_run(
-        plan,
-        config=config,
-        frozen_family=frozen_family,
-    )
-    locked_evaluation = evaluate_prediction_frame(
-        locked_predictions,
-        min_cross_section=config.min_cross_section,
-        quantiles=config.quantiles,
-        hac_lags=config.hac_lags,
-        primary_models=(frozen_family, config.primary_baseline),
-    )
-    predictions = _sort_predictions(
-        pd.concat([development_predictions, locked_predictions], ignore_index=True)
-    )
-    evaluation = PredictionEvaluation(
-        daily_metrics=pd.concat(
-            [
-                development_evaluation.daily_metrics,
-                locked_evaluation.daily_metrics,
-            ],
-            ignore_index=True,
-        ),
-        fold_metrics=pd.concat(
-            [
-                development_evaluation.fold_metrics,
-                locked_evaluation.fold_metrics,
-            ],
-            ignore_index=True,
-        ),
-        summary=pd.concat(
-            [development_evaluation.summary, locked_evaluation.summary],
-            ignore_index=True,
-        ),
-    )
-    tuning_trials = (
-        pd.concat([development_trials, locked_trials], ignore_index=True)
-        .sort_values(
-            ["phase", "outer_fold", "family", "candidate_order"], kind="stable"
-        )
-        .reset_index(drop=True)
-    )
-    screening = (
-        pd.concat([development_screens, locked_screens], ignore_index=True)
-        .sort_values(
-            ["phase", "outer_fold", "fit_kind", "family", "inner_fold", "feature"],
-            kind="stable",
-        )
-        .reset_index(drop=True)
-    )
-    return BenchmarkRun(
-        data_gate=_data_gate(plan, config),
-        fold_assignments=_assignment_frame(plan, config),
-        predictions=predictions,
-        daily_metrics=evaluation.daily_metrics,
-        fold_metrics=evaluation.fold_metrics,
-        tuning_trials=tuning_trials,
-        screening_by_fold=screening,
-        summary=evaluation.summary,
-        acceptance=_acceptance(
-            evaluation,
-            config=config,
-            frozen_family=frozen_family,
-        ),
-        manifest=_fingerprints(plan, config=config),
+        evaluate_lockbox=evaluate_lockbox,
+        registry=registry,
+        study_id=study_id,
+        hypothesis=hypothesis,
+        development_run_id=development_run_id,
     )
 
 

@@ -13,6 +13,7 @@ from quant_metric_research.benchmark import (
     run_stage3_benchmark,
 )
 from quant_metric_research.benchmark_models import ModelCandidate
+from quant_metric_research.experiment_workflow import _execute_benchmark
 from quant_metric_research.screening import MetricScreenResult
 
 
@@ -87,7 +88,14 @@ def _config() -> BenchmarkConfig:
 
 
 def test_stage3_runs_nested_development_and_one_locked_test() -> None:
-    result = run_stage3_benchmark(_panel(), config=_config(), evaluate_lockbox=True)
+    # This test isolates the numerical kernel. Public lifecycle tests separately
+    # enforce durable evidence and reservation; this callback is test-only.
+    result = _execute_benchmark(
+        _panel(),
+        config=_config(),
+        evaluate_lockbox=True,
+        before_lockbox=lambda manifest, family: None,
+    )
 
     development = result.predictions.loc[result.predictions["phase"] == "development"]
     locked = result.predictions.loc[result.predictions["phase"] == "locked_test"]
@@ -114,8 +122,8 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
     assert (
         min(result.data_gate["locked_realized_return_coverage_by_date"].values()) == 0.9
     )
-    assert result.manifest["artifact_schema_version"] == "3"
-    assert result.manifest["package_version"] == "0.3.0"
+    assert result.manifest["artifact_schema_version"] == "4"
+    assert result.manifest["package_version"] == "0.4.0"
     assert result.manifest["execution_mode"] == "full"
     assert len(result.manifest["source_fingerprint"]) == 64
     assert result.manifest["fingerprint_scope"] == (
@@ -138,13 +146,14 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
 
 def test_default_run_never_evaluates_or_exports_lockbox(monkeypatch, tmp_path) -> None:
     import quant_metric_research.benchmark as benchmark
+    import quant_metric_research.experiment_workflow as workflow
     from quant_metric_research.benchmark_io import write_benchmark_run
 
     def forbidden(*args, **kwargs):
         raise AssertionError("Development must not evaluate locked outcomes.")
 
     monkeypatch.setattr(benchmark, "_locked_run", forbidden)
-    monkeypatch.setattr(benchmark, "_data_gate", forbidden)
+    monkeypatch.setattr(workflow, "_data_gate", forbidden)
     result = run_stage3_benchmark(_panel(), config=_config())
     for frame in (
         result.predictions,
@@ -255,14 +264,24 @@ def test_model_feature_count_only_counts_selected_observed_inputs() -> None:
 def test_locked_targets_cannot_change_development_or_frozen_model_scores() -> None:
     panel = _panel()
     config = _config()
-    first = run_stage3_benchmark(panel, config=config, evaluate_lockbox=True)
+    first = _execute_benchmark(
+        panel,
+        config=config,
+        evaluate_lockbox=True,
+        before_lockbox=lambda manifest, family: None,
+    )
     lock_dates = sorted(panel["as_of_date"].unique())[-3:]
 
     changed = panel.copy(deep=True)
     changed.loc[
         changed["as_of_date"].isin(lock_dates), "forward_excess_return"
     ] *= -1000
-    second = run_stage3_benchmark(changed, config=config, evaluate_lockbox=True)
+    second = _execute_benchmark(
+        changed,
+        config=config,
+        evaluate_lockbox=True,
+        before_lockbox=lambda manifest, family: None,
+    )
 
     prediction_key = ["phase", "fold", "as_of_date", "symbol", "model"]
     first_scores = first.predictions.sort_values(prediction_key).reset_index(drop=True)

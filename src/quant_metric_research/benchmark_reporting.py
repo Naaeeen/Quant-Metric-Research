@@ -9,6 +9,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import scipy
 import sklearn
 
 from ._version import __version__
@@ -16,7 +17,7 @@ from .benchmark_config import BenchmarkConfig
 from .benchmark_data import Stage3DataPlan
 
 IMPLEMENTATION_VERSION = __version__
-ARTIFACT_SCHEMA_VERSION = "3"
+ARTIFACT_SCHEMA_VERSION = "4"
 
 
 def _fingerprints(
@@ -90,10 +91,21 @@ def _fingerprints(
             "python_version": platform.python_version(),
             "numpy_version": np.__version__,
             "pandas_version": pd.__version__,
+            "scipy_version": scipy.__version__,
             "scikit_learn_version": sklearn.__version__,
             "development_start": str(frame["as_of_date"].min().date()),
             "locked_test_start": str(plan.locked_test.test_start_date.date()),
             "locked_test_end": str(plan.locked_test.test_end_date.date()),
+            "locked_label_end_max": str(
+                frame.loc[
+                    frame["as_of_date"].between(
+                        plan.locked_test.test_start_date, plan.locked_test.test_end_date
+                    ),
+                    "label_end_date",
+                ]
+                .max()
+                .date()
+            ),
         }
     )
 

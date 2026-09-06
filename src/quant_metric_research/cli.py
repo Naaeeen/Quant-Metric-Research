@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -8,8 +9,10 @@ from .benchmark import run_stage3_benchmark
 from .benchmark_config import BenchmarkConfig
 from .benchmark_io import write_benchmark_run
 from .config import PanelConfig
+from .experiment_registry import ExperimentRegistry
 from .io import read_as_of_dates, read_json_object, read_table, write_research_run
 from .pipeline import run_research
+from .preflight import preflight_benchmark
 from .validation import WalkForwardMetricConfig
 
 
@@ -112,16 +115,26 @@ def _build_parser() -> argparse.ArgumentParser:
     benchmark_parser.add_argument("--panel", required=True)
     benchmark_parser.add_argument("--config", required=True)
     benchmark_parser.add_argument("--output-dir", required=True)
+    benchmark_parser.add_argument("--registry")
+    benchmark_parser.add_argument("--study-id")
+    benchmark_parser.add_argument("--hypothesis")
+    benchmark_parser.add_argument("--development-run-id")
     benchmark_parser.add_argument(
         "--evaluate-lockbox",
         action="store_true",
-        help="Evaluate final-test outcomes explicitly; reuse is not registry-enforced.",
+        help="Evaluate final outcomes using matching registered development evidence.",
     )
     benchmark_parser.add_argument(
         "--prediction-format",
         choices=("csv", "parquet"),
         default="parquet",
     )
+    preflight_parser = subparsers.add_parser("preflight")
+    preflight_parser.add_argument("--panel", required=True)
+    preflight_parser.add_argument("--config", required=True)
+    history_parser = subparsers.add_parser("experiments")
+    history_parser.add_argument("--registry", required=True)
+    history_parser.add_argument("--run-id")
     return parser
 
 
@@ -148,6 +161,26 @@ def _validate_cli_args(
     args: argparse.Namespace,
     parser: argparse.ArgumentParser,
 ) -> None:
+    if args.command == "benchmark":
+        if args.evaluate_lockbox:
+            if not args.registry or not args.development_run_id:
+                parser.error(
+                    "--evaluate-lockbox requires --registry and --development-run-id."
+                )
+            if args.study_id or args.hypothesis:
+                parser.error(
+                    "Final evaluation uses the registered study and hypothesis."
+                )
+        elif args.development_run_id:
+            parser.error("--development-run-id requires --evaluate-lockbox.")
+        elif args.registry:
+            if not args.study_id or not args.hypothesis:
+                parser.error(
+                    "Registered development requires --study-id and --hypothesis."
+                )
+        elif args.study_id or args.hypothesis:
+            parser.error("--study-id and --hypothesis require --registry.")
+        return
     if args.command != "run":
         return
     values = (
@@ -198,15 +231,20 @@ def _benchmark_command(args: argparse.Namespace) -> int:
         raise FileExistsError(f"Output directory already exists: {destination}")
     if args.evaluate_lockbox:
         print(
-            "Final-test evaluation explicitly requested. Reusing this period for "
-            "model choices invalidates its holdout status; "
-            "no reuse registry is enforced.",
+            "Final evaluation consumes a durable reservation in this local registry, "
+            "including on failure. It does not prove data provenance or tradability.",
             file=sys.stderr,
         )
     panel = read_table(Path(args.panel))
     config = BenchmarkConfig.from_mapping(read_json_object(Path(args.config)))
     result = run_stage3_benchmark(
-        panel, config=config, evaluate_lockbox=args.evaluate_lockbox
+        panel,
+        config=config,
+        evaluate_lockbox=args.evaluate_lockbox,
+        registry=ExperimentRegistry(args.registry) if args.registry else None,
+        study_id=args.study_id,
+        hypothesis=args.hypothesis,
+        development_run_id=args.development_run_id,
     )
 
     write_benchmark_run(
@@ -218,6 +256,25 @@ def _benchmark_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _preflight_command(args: argparse.Namespace) -> int:
+    report = preflight_benchmark(
+        read_table(Path(args.panel)),
+        config=BenchmarkConfig.from_mapping(read_json_object(Path(args.config))),
+    )
+    print(json.dumps(report, allow_nan=False, indent=2, sort_keys=True))
+    return 0 if report["feasible"] else 2
+
+
+def _history_command(args: argparse.Namespace) -> int:
+    path = Path(args.registry)
+    if not path.is_file():
+        raise FileNotFoundError(f"Registry does not exist: {path}")
+    registry = ExperimentRegistry(path)
+    records = registry.get_run(args.run_id) if args.run_id else registry.list_runs()
+    print(json.dumps(records, allow_nan=False, indent=2, sort_keys=True))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -226,6 +283,10 @@ def main(argv: list[str] | None = None) -> int:
         return _run_command(args)
     if args.command == "benchmark":
         return _benchmark_command(args)
+    if args.command == "preflight":
+        return _preflight_command(args)
+    if args.command == "experiments":
+        return _history_command(args)
     raise ValueError(f"Unsupported command: {args.command}")
 
 

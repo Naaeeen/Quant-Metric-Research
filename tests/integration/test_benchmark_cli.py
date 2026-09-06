@@ -84,10 +84,12 @@ def test_benchmark_command_loads_panel_runs_and_delegates_artifacts(
         *,
         config: BenchmarkConfig,
         evaluate_lockbox: bool = False,
+        **experiment_options: object,
     ) -> object:
         observed["panel"] = panel
         observed["config"] = config
         observed["evaluate_lockbox"] = evaluate_lockbox
+        observed["experiment_options"] = experiment_options
         return expected_run
 
     def fake_write(
@@ -114,6 +116,15 @@ def test_benchmark_command_loads_panel_runs_and_delegates_artifacts(
         str(output_dir),
         *format_arguments,
     ]
+    if evaluate_lockbox:
+        arguments.extend(
+            [
+                "--registry",
+                str(tmp_path / "registry.sqlite3"),
+                "--development-run-id",
+                "registered-reference",
+            ]
+        )
     exit_code = cli.main(arguments)
 
     assert exit_code == 0
@@ -145,6 +156,10 @@ def test_existing_output_is_rejected_before_training(tmp_path, monkeypatch) -> N
                 "--output-dir",
                 str(output),
                 "--evaluate-lockbox",
+                "--registry",
+                str(tmp_path / "registry.sqlite3"),
+                "--development-run-id",
+                "registered-reference",
             ]
         )
 
