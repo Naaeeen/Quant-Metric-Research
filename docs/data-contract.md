@@ -507,7 +507,7 @@ observed count among that prediction model's selected inputs for the row;
 present in the source row but excluded by fold-local screening are not counted.
 
 The manifest fingerprints the validated panel contract, model inputs,
-configuration, execution mode, and actual package source files, and records artifact schema 5,
+configuration, execution mode, and actual package source files, and records artifact schema 6,
 experiment references, maximum locked label-end date, and major library versions.
 The writer refuses an existing destination and
 publishes a completed bundle by renaming a temporary sibling directory, so a
