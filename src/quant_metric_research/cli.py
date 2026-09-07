@@ -13,6 +13,7 @@ from .experiment_registry import ExperimentRegistry
 from .input_audit import audit_inputs
 from .intake import import_yahoo_files
 from .io import read_as_of_dates, read_json_object, read_table, write_research_run
+from .notebook_history import run_checkpointed_public_demo, seed_notebook_history
 from .pipeline import run_research
 from .preflight import preflight_benchmark
 from .public_archive import fetch_public_archive
@@ -58,6 +59,7 @@ def _positive_unit_interval(value: str) -> float:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="qmr")
     subparsers = parser.add_subparsers(dest="command", required=True)
+    _add_notebook_parsers(subparsers)
 
     fetch_parser = subparsers.add_parser(
         "fetch-public-sample",
@@ -327,10 +329,50 @@ def _history_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_notebook_parsers(subparsers) -> None:
+    seed = subparsers.add_parser(
+        "seed-notebook", help="Snapshot an existing registry and evidence for Colab."
+    )
+    for option in ("registry", "history-dir"):
+        seed.add_argument(f"--{option}", required=True)
+    seed.add_argument("--evidence", action="append", required=True, metavar="NAME=PATH")
+    run = subparsers.add_parser(
+        "notebook-demo", help="Run development with append-only history checkpoints."
+    )
+    for option in ("archive-dir", "work-dir", "history-dir"):
+        run.add_argument(f"--{option}", required=True)
+
+
+def _notebook_command(args, parser: argparse.ArgumentParser) -> int:
+    if args.command == "seed-notebook":
+        evidence = {}
+        for item in args.evidence:
+            name, separator, path = item.partition("=")
+            name = name.strip()
+            if not separator or not name or not path.strip() or name in evidence:
+                parser.error("Evidence must use unique nonempty NAME=PATH pairs.")
+            evidence = {**evidence, name: path}
+        report = seed_notebook_history(
+            registry_path=args.registry,
+            history_dir=args.history_dir,
+            evidence_dirs=evidence,
+        )
+    else:
+        report = run_checkpointed_public_demo(
+            archive_dir=args.archive_dir,
+            work_dir=args.work_dir,
+            history_dir=args.history_dir,
+        )
+    print(json.dumps(report, allow_nan=False, indent=2, sort_keys=True))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     _validate_cli_args(args, parser)
+    if args.command in ("seed-notebook", "notebook-demo"):
+        return _notebook_command(args, parser)
     if args.command == "fetch-public-sample":
         print(
             json.dumps(fetch_public_archive(args.output_dir), allow_nan=False, indent=2)

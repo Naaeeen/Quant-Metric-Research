@@ -129,20 +129,23 @@ unverified, even if the statistical model gate passes.
 ## Next engineering sequence: Colab and controlled factor research
 
 The September 8 review prioritizes portability and reproducibility before more
-model complexity. These are planned milestones, not completed capabilities:
+model complexity. The declared real-data run is complete; the portability
+release carries its evidence forward, while factor expansion remains future work:
 
-1. Finish the declared real-data development run and preserve both its result
-   and the earlier interrupted attempt. Report unfavorable results without
-   changing the predeclared model or cohort to improve them.
+1. Preserve the completed real-data run and earlier interrupted attempt.
+   Ridge did not improve aggregate development Rank IC over equal-weight ranks;
+   retain that result without changing the declared model or cohort to improve it.
 2. Remove measured duplicate screening work only behind output-equivalence
    tests. Keep Stage 2 diagnostics, pairwise missingness, fold-local fitting,
    label purging, and all out-of-sample evaluation semantics unchanged.
-3. Add a CPU-only Colab walkthrough around the existing library: pinned source,
-   isolated environment, Python 3.12 Linux verification, and bounded result
-   displays. Keep live SQLite on local storage, with verified append-only
-   evidence checkpoints and unresolved-interruption markers in user-selected
-   persistent storage. Do not automatically fall back to older history or offer
-   final evaluation from the first notebook.
+3. Version 0.8.0 adds a CPU-only Colab walkthrough around the existing library:
+   pinned source, a constrained isolated environment and bounded result displays.
+   Seed the private handoff from the existing canonical registry and archive/
+   prior-run evidence; never silently replace it with a blank history. Keep live
+   SQLite on local VM storage, with append-only evidence checkpoints in
+   user-selected persistent storage. Unresolved interruptions block reuse.
+   Local and Python 3.12 Linux verification are distinct from a hosted Colab run;
+   the walkthrough does not claim hosted execution or offer final evaluation.
 4. Define a small factor catalog before computing additional features: formula,
    required inputs, lookback, availability, adjustment assumptions and missingness
    rules. Start with price-only candidates supported by the archive; OHLCV,
@@ -159,6 +162,10 @@ assuming reliable locking/synchronization on
 [network filesystems](https://sqlite.org/useovernet.html), so a mounted Drive
 database is not the intended live-registry design. These safeguards are
 single-user accident prevention, not distributed or tamper-proof governance.
+The [Colab example](../examples/README.md#colab-development-walkthrough) gives
+the private-folder handoff and failure procedure; the
+[checkpoint contract](data-contract.md#notebook-history-checkpoints) defines
+what is verified. File read-back is not a guarantee of remote durability.
 
 The modular data/model/evaluation separation follows the public
 [Qlib workflow](https://qlib.readthedocs.io/en/latest/component/workflow.html).
