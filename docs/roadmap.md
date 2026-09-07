@@ -65,16 +65,30 @@ provenance certification. The same audit cycle tightened daily dates and price
 types, rejected duplicate CSV headers, and excluded immature targets from the
 single-cutoff Stage 2 screen while retaining the original panel.
 
-Next planning gate: agree the real-data research specification and provider
-evidence before choosing another model family. Use the offline audit with a
-declared universe/decision schedule and the human checklist in
-`data-contract.md`, then implement only the required adapter and lifecycle
-tests. Provider documentation, independently checked samples, and unknowns must
-remain distinct. No provider or real dataset has been certified by these
-software tests. Record licensing/redistribution permission before publishing
-data. No vendor purchase or new market choice is implied. If research-grade
-data is unavailable, continue with labelled demonstrations and documentation,
-not claims of historical performance.
+Version 0.6.0 adds `qmr import-yahoo`, an offline adapter for flat, per-symbol
+`Date` and `Adj Close` exports. It stores exact source bytes and SHA-256 hashes,
+normalizes supplied inputs, preserves missing-price evidence, and writes an
+input audit. It does not download data, add a yfinance dependency, reconstruct
+membership or substitute `Close`. The final intake manifest marks completed
+processing; failures retain partial evidence and require a fresh destination.
+Neither a success marker nor `imported_at` verifies provider provenance or the
+original acquisition date. All external data gates remain unverified.
+
+The selected ASX demonstration cohort and VAS adjusted ETF proxy are documented
+in [the provider decision](research-decisions.md#september-2026-provider-decision-prepare-an-offline-asx-demonstration).
+This specification was chosen before inspecting price outcomes. It accepts
+present-selection bias as a demonstration limitation and does not claim
+historical ASX200 coverage. No real prices were downloaded and no model training
+or final-test evaluation was performed for this intake release.
+
+The next concrete gate is an authorized export intake with source/access,
+membership, identifier, corporate-action, revision and delisting evidence.
+Use [the import instructions](../examples/README.md#offline-yahoo-format-intake)
+and the human checklist in [the data contract](data-contract.md). Provider claims,
+independently checked observations and unknowns remain separate. No provider or
+real dataset has been certified, and no purchase or redistribution is included.
+Availability and rights for the chosen data remain unresolved; software tests
+alone cannot advance this demonstration to historical performance claims.
 
 Remaining before Stage 3 can make an empirical conclusion:
 

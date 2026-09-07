@@ -11,6 +11,7 @@ from .benchmark_io import write_benchmark_run
 from .config import PanelConfig
 from .experiment_registry import ExperimentRegistry
 from .input_audit import audit_inputs
+from .intake import import_yahoo_files
 from .io import read_as_of_dates, read_json_object, read_table, write_research_run
 from .pipeline import run_research
 from .preflight import preflight_benchmark
@@ -55,6 +56,13 @@ def _positive_unit_interval(value: str) -> float:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="qmr")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    import_parser = subparsers.add_parser(
+        "import-yahoo",
+        help="Snapshot and audit local Yahoo-format exports; no download.",
+    )
+    for option in ("exports", "memberships", "as-of-dates", "config", "output-dir"):
+        import_parser.add_argument(f"--{option}", required=True)
 
     audit_parser = subparsers.add_parser(
         "audit-inputs",
@@ -213,6 +221,18 @@ def _audit_command(args: argparse.Namespace) -> int:
     return 0  # Report generated; not a research-readiness or provenance approval.
 
 
+def _import_command(args: argparse.Namespace) -> int:
+    manifest = import_yahoo_files(
+        args.exports,
+        memberships_path=args.memberships,
+        as_of_dates_path=args.as_of_dates,
+        config_path=args.config,
+        output_dir=args.output_dir,
+    )
+    print(json.dumps(manifest, allow_nan=False, indent=2, sort_keys=True))
+    return 0  # Successful import is not data-provenance or research approval.
+
+
 def _run_command(args: argparse.Namespace) -> int:
     prices = read_table(Path(args.prices))
     memberships = read_table(Path(args.memberships))
@@ -298,6 +318,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     _validate_cli_args(args, parser)
+    if args.command == "import-yahoo":
+        return _import_command(args)
     if args.command == "audit-inputs":
         return _audit_command(args)
     if args.command == "run":

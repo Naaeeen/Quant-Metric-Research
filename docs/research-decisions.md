@@ -284,3 +284,74 @@ Repeat the research gate before changing any of these items:
 - model family, tuning grid, acceptance threshold, or lockbox boundary;
 - experiment identifier or lockbox-reuse policy;
 - transition to portfolio backtesting or live use.
+
+## September 2026 provider decision: prepare an offline ASX demonstration
+
+The next release prepares a Yahoo-format file import for a fixed, presently
+selected ASX cohort: `BHP.AX`, `CBA.AX`, `CSL.AX`, `NAB.AX`, `RIO.AX`, `TLS.AX`,
+`WES.AX` and `WOW.AX`. These selections precede inspection of price outcomes.
+They define a demonstration cohort, with selection and survivorship bias; they
+do not assert historical ASX200 membership. The
+[offline intake example](../examples/README.md#declared-intake-only-demonstration-scope)
+declares a 2015-01-01 through 2026-02-28 inclusive export window and weekly
+decision dates during 2016-2025, before data review. Actual coverage,
+an independent exchange calendar, historical identifiers and terminal returns
+remain unverified. This increment imports and audits inputs; it opens no training
+or final-test evaluation and establishes no empirical alpha.
+
+`VAS.AX` supplies the proposed adjusted ETF return proxy. Vanguard states that
+VAS seeks to track the S&P/ASX 300 before fees, expenses and tax. An adjusted ETF
+price series is not the official ASX200 total-return index, and provider adjustment
+quality remains a separate check.
+[Vanguard's product description](https://www.vanguard.com.au/adviser/invest/etf?portId=8205&productType=etf)
+
+The existing Financial-Investment-Tool source was inspected on 2026-09-07:
+`server/requirements.txt` pins `yfinance==0.2.65`; `server/src/metrics.py` adds one
+calendar day to the inclusive UI end date and calls `yf.download` with
+`group_by='ticker'`, `auto_adjust=False`, `threads=False` and `progress=False`.
+Its short-lived in-memory cache is not an archival data source. Its separate
+price-field helper can select `Close` when `Adj Close` is absent. The undated
+`data/asx200.csv` has 198 rows; the universe-sync script excludes `IFL.AX` and
+`NSR.AX`. This seed and its filtered output do not establish dated membership.
+No market-data download or original price snapshot was produced by this inspection.
+
+The QMR importer requires flat, per-symbol `Date` and `Adj Close` exports and
+never substitutes `Close`. It preserves original file bytes with a manifest and
+an audit so later transformations can be traced. This verifies file identity and
+schema, not the adjustment method: upstream yfinance 0.2.65 itself can substitute
+Close when the source omits adjusted-close values. Yahoo describes adjusted close
+as reflecting splits and distributions, but a column heading is not independent
+evidence that those events were correctly applied.
+[Pinned yfinance parser](https://raw.githubusercontent.com/ranaroussi/yfinance/0.2.65/yfinance/utils.py),
+[Yahoo adjustment explanation](https://help.yahoo.com/kb/SLN28256.html)
+
+The chosen file format does not select or authorize an acquisition method.
+Yahoo's Australian terms restrict automated collection without prior permission;
+its download help documents subscription-dependent historical CSV access.
+yfinance's software license does not grant rights to Yahoo data. These sources
+leave access, local reuse and any sharing for this project to be established;
+they do not support a blanket claim that every Yahoo use is prohibited. No
+automatic downloader, new data-provider dependency, purchase or redistribution
+is included, and no authorized real dataset is available in this release.
+[Yahoo AU terms](https://legal.yahoo.com/au/en/yahoo/terms/otos/index.html),
+[Yahoo export help](https://help.yahoo.com/kb/sln2311.html),
+[yfinance's upstream notice](https://github.com/ranaroussi/yfinance)
+
+Nasdaq WIKI was investigated but not selected. Its legacy documentation describes
+public-domain data and the `WIKI/<ticker>` time-series route; this is distinct from
+the `WIKI/PRICES` Tables route. The legacy getting-started page requires a key for
+each request, while current Tables documentation both requires a key and publishes
+anonymous-call limits. The WIKI product documentation and retirement FAQ returned
+404 during this review. Current endpoint availability and applicable access terms
+remain unresolved; Tables requirements alone do not settle the time-series route.
+No price endpoint was probed. A separately verified frozen archive could support
+a historical engineering example, but would not resolve this ASX cohort's needs.
+[Legacy WIKI route and metadata](https://docs.data.nasdaq.com/v1.0/docs/in-depth-usage),
+[Legacy authentication](https://docs.data.nasdaq.com/v1.0/docs/getting-started),
+[Tables authentication](https://docs.data.nasdaq.com/docs/api-and-analysis-tools-for-tables-data),
+[Tables anonymous limits](https://docs.data.nasdaq.com/docs/rate-limits-1)
+
+The next evidence gate is an authorized export plus its source/access record,
+followed by observed date, action, missingness and identity checks. Original-byte
+snapshots cannot recover historical provider vintages or certify delisting returns.
+Stage 4 remains blocked pending the existing data and research review requirements.

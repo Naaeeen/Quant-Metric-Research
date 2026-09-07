@@ -204,6 +204,53 @@ from quietly controlling the fitted objective. Imputation, scaling, and PCA
 are still row-weighted preprocessing operations; they are fold-local, but the
 engine does not claim that every preprocessing statistic is date-weighted.
 
+## Offline Yahoo export intake
+
+`qmr import-yahoo` accepts a JSON object mapping symbols to existing local
+CSV/CSV.GZ/Parquet/PQ files. Relative paths are resolved against the mapping
+file's directory. URLs, UNC/device paths, duplicate JSON keys and symbol aliases
+that normalize to the same label are rejected. This is an offline format adapter,
+not a downloader. There is no provider or credential configuration.
+
+Each file must have one flat `Date` column and one `Adj Close` column. MultiIndex
+exports and date-indexed frames are not supported. Dates must be unique,
+timezone-naive daily dates; the importer neither converts exchange time zones nor
+repairs duplicates. Present adjusted prices must be finite and strictly positive.
+Null adjusted prices are retained in `missing_prices.csv`; raw CSV blanks and
+pandas default NA tokens (including `null`, `NaN` and `NA`) count as missing.
+Other malformed values fail rather than becoming missing. `Close` is never used
+as a substitute. An upstream tool can itself have fabricated an `Adj Close`
+column, so field presence does not verify corporate-action adjustment.
+
+Memberships, decision dates and panel configuration are supplied separately and
+validated under the existing contracts. Missing exports and header-only/all-null
+exports do not remove securities from supplied memberships. The benchmark must
+have valid prices, and decision dates must be on its supplied calendar. Completely
+absent dates are reflected in coverage diagnostics where the benchmark calendar
+and requested research intervals establish an expectation; they are not fabricated
+as provider rows. The benchmark calendar itself remains independently unverified.
+
+The importer requires a new destination and stores exact original-file bytes in
+`raw/` before parsing the snapshots. Its final `intake_manifest.json` records raw
+SHA-256 digests, normalized-output digests, symbols without exports and exports
+without valid prices. Raw digests are rechecked before completion. Replay inputs
+are `prices.parquet`, `memberships.parquet`, `as_of_dates.csv` and `config.json`;
+`input_audit.json` records the same no-training coverage audit as `audit-inputs`.
+This is reproducibility evidence for supplied files, not provider authentication.
+
+Failures retain available snapshots and partial outputs for diagnosis, with a
+class-only `intake_failure.json` when writable. Only the final manifest is a
+completion marker (written through a temporary file); partial bundles must not be
+consumed. Existing destinations are never reused, including after a failure.
+Use a fresh directory to retry. Files must be trusted local inputs; these checks
+do not secure a filesystem against an adversary or freeze artifacts after import.
+
+`imported_at` is the local import time; `acquired_at` remains unknown. Adjustment
+policy, usage rights, historical provenance and Stage 4 eligibility remain false.
+No returns, metrics, model fits or final-holdout evaluation are performed by this
+command. Research eligibility still requires the external evidence checklist;
+never publish raw provider files merely because an import succeeded.
+
 ## Stage 3 evaluation and artifacts
 
 The engine fits three types of non-ML comparison: every usable individual

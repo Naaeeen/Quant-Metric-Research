@@ -3,6 +3,11 @@
 A standalone, leakage-aware research pipeline for testing whether historical
 equity metrics contain stable cross-sectional signal.
 
+Version 0.6.0 adds an offline Yahoo-format export importer with original-byte
+snapshots and an input audit. It adds no network or yfinance dependency. No real
+prices have been acquired or models trained as part of this intake milestone;
+authorized source data and its supporting evidence remain the next gate.
+
 The repository now covers three research stages:
 
 1. Build a point-in-time `(as_of_date, symbol)` panel from adjusted-close data,
@@ -41,8 +46,10 @@ after these research stages.
 - PCA is an optional compression comparator, not the definition of a useful
   metric or a required production step.
 
-See `docs/data-contract.md` and `docs/research-decisions.md` before adding a
-data provider or model.
+See [the data contract](docs/data-contract.md) and
+[the research decisions](docs/research-decisions.md) before adding a data
+provider or model. The latter records the selected ASX demonstration cohort
+and the limits of its VAS adjusted ETF return proxy.
 
 ## What “useful” means here
 
@@ -75,20 +82,24 @@ Example config:
 
 ~~~json
 {
-  "dataset_version": "asx-v1",
-  "universe_id": "ASX200",
-  "benchmark_symbol": "^AXJO",
+  "dataset_version": "asx-selected-cohort-demo-v1",
+  "universe_id": "ASX_SELECTED_COHORT_DEMO",
+  "benchmark_symbol": "VAS.AX",
   "lookback_sessions": 252,
   "min_observations": 126,
   "target_horizon_sessions": 20,
   "entry_lag_sessions": 1,
   "annualization_sessions": 252,
-  "annual_risk_free_rate": 0.04
+  "annual_risk_free_rate": 0.0
 }
 ~~~
 
 The existing application's current constituent file is not historical
 membership data. It can support a demo, but not an unbiased historical claim.
+The selected-cohort config above is for intake preparation. The later research
+commands are templates for an independently reviewed, larger research universe;
+their cross-section and validation settings are not the eight-stock demo's
+experiment specification.
 
 Stage 3 accepts a versioned panel containing `as_of_date`, `symbol`,
 `label_end_date`, the configured feature columns, and the target/realized-return
@@ -96,7 +107,35 @@ columns. See `docs/data-contract.md` before treating any panel as research-grade
 
 ## Run
 
-Start with the version 0.5 offline raw-input audit:
+For authorized, local Yahoo-format exports, start with the version 0.6.0 intake:
+
+~~~text
+qmr import-yahoo --exports data/raw/exports.json --memberships data/raw/memberships.csv --as-of-dates data/raw/as_of_dates.csv --config data/raw/panel_config.json --output-dir artifacts/yahoo-intake-001
+~~~
+
+`exports.json` maps each ticker to a local `.csv`, `.csv.gz`, `.parquet`, or
+`.pq` file; relative paths are resolved from that JSON file's parent directory.
+Each file must contain one flat table with explicit `Date` and `Adj Close`
+columns. Dates must be timezone-naive daily dates at midnight. The importer
+rejects MultiIndex exports and never substitutes `Close` or imputes prices.
+Supply dated memberships and decision dates separately: the importer does not
+reconstruct them from tickers. The configured benchmark needs usable prices.
+
+The intake stores exact source bytes and SHA-256 hashes, normalized prices,
+memberships, decision dates and configuration, `missing_prices.csv`, and
+`input_audit.json`. `intake_manifest.json` is the final success marker. Missing
+adjusted-close observations and members without usable prices remain visible
+in the gap and coverage reports. A successful import confirms processing;
+all provenance checks and Stage 4 eligibility remain false. `imported_at` is
+the local import time, not evidence of when the provider data was acquired.
+
+The output directory must not already exist. Failures after its creation retain
+partial artifacts and `intake_failure.json`; inspect them and rerun with a fresh
+directory. Do not treat a directory without `intake_manifest.json` as a completed
+intake. See [the offline import example](examples/README.md#offline-yahoo-format-intake)
+for the export mapping and missing-value rules.
+
+For already normalized inputs, the version 0.5 audit is also available:
 
 ~~~text
 qmr audit-inputs --prices data/prices.parquet --memberships data/memberships.parquet --as-of-dates data/as_of_dates.csv --config config.json

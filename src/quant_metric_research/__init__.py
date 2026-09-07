@@ -12,6 +12,7 @@ from .config import PanelConfig
 from .contracts import DataContractError, validate_memberships, validate_prices
 from .experiment_registry import ExperimentRegistry
 from .input_audit import audit_inputs
+from .intake import import_yahoo_files
 from .panel import build_point_in_time_panel
 from .pipeline import ResearchRun, run_research
 from .preflight import preflight_benchmark
@@ -40,6 +41,7 @@ __all__ = [
     "WalkForwardMetricConfig",
     "WalkForwardMetricResult",
     "audit_inputs",
+    "import_yahoo_files",
     "build_point_in_time_panel",
     "build_purged_walk_forward_splits",
     "fit_metric_screen",
