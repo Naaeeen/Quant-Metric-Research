@@ -126,6 +126,46 @@ model remains a hypothesis to benchmark, not evidence that the ranking is
 tradable. `stage4_eligible` therefore remains false while provenance checks are
 unverified, even if the statistical model gate passes.
 
+## Next engineering sequence: Colab and controlled factor research
+
+The September 8 review prioritizes portability and reproducibility before more
+model complexity. These are planned milestones, not completed capabilities:
+
+1. Finish the declared real-data development run and preserve both its result
+   and the earlier interrupted attempt. Report unfavorable results without
+   changing the predeclared model or cohort to improve them.
+2. Remove measured duplicate screening work only behind output-equivalence
+   tests. Keep Stage 2 diagnostics, pairwise missingness, fold-local fitting,
+   label purging, and all out-of-sample evaluation semantics unchanged.
+3. Add a CPU-only Colab walkthrough around the existing library: pinned source,
+   isolated environment, Python 3.12 Linux verification, and bounded result
+   displays. Keep live SQLite on local storage, with verified append-only
+   evidence checkpoints and unresolved-interruption markers in user-selected
+   persistent storage. Do not automatically fall back to older history or offer
+   final evaluation from the first notebook.
+4. Define a small factor catalog before computing additional features: formula,
+   required inputs, lookback, availability, adjustment assumptions and missingness
+   rules. Start with price-only candidates supported by the archive; OHLCV,
+   publication-lagged fundamentals and sentiment require separate source evidence.
+5. Predeclare ablations and comparisons with the existing PCA and tree families;
+   retain all attempts and exposure history. Additional horizons and later
+   portfolio work remain gated by the data and evaluation requirements below.
+
+Colab can discard VM files and changes preinstalled libraries over time; its
+[FAQ](https://research.google.com/colaboratory/faq.html) and
+[runtime guidance](https://research.google.com/colaboratory/runtime-version-faq.html)
+motivate environment isolation and explicit persistence. SQLite warns against
+assuming reliable locking/synchronization on
+[network filesystems](https://sqlite.org/useovernet.html), so a mounted Drive
+database is not the intended live-registry design. These safeguards are
+single-user accident prevention, not distributed or tamper-proof governance.
+
+The modular data/model/evaluation separation follows the public
+[Qlib workflow](https://qlib.readthedocs.io/en/latest/component/workflow.html).
+Its [factor definitions](https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/loader.py)
+are implementation references, not a reason to add unsupported inputs or claim
+that a larger factor set will improve this sample.
+
 ## Stage 4: portfolio and execution backtest
 
 Goal: determine whether signal quality survives implementation.

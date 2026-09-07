@@ -410,3 +410,46 @@ remains `not_evaluated` and Stage 4 remains false; retrospective revisions,
 survivorship, corporate actions, stable identifiers and delistings are not
 certified. Never present the reserved block as physically sealed or historically
 unseen merely because the workflow does not evaluate it.
+
+### Observed development result, 2026-09-08
+
+The declared experiment completed without changing its cohort, model, features
+or split settings. An earlier usage-interrupted attempt remains in the same
+registry as run `a9dc0e7b-4240-4205-b393-ba33a5bdab6d`; its partial output was
+not overwritten or treated as a completed result. The successful new-directory
+retry is `4fdd4eba-4c8f-459c-9e0f-981d2ebf47d0`.
+
+The source sample has 1,258 sessions and 722 explicit missing stock prices
+(ABBV: 250; ALLE: 472). No sparse member was replaced. The resulting panel has
+30,240 stock-date rows over 1,008 decision dates. Development evaluation covers
+189 dates; the primary baseline and Ridge have 100% prediction and evaluation
+coverage on both native and common scopes.
+
+| Development mean Rank IC | Equal-weight rank | Ridge |
+| --- | ---: | ---: |
+| Outer fold 1 | 0.03615 | 0.08545 |
+| Outer fold 2 | -0.13397 | -0.23891 |
+| Outer fold 3 | -0.01320 | 0.01044 |
+| Overall | -0.03701 | -0.04767 |
+
+Ridge is better in two folds but substantially worse in the second. It does
+not improve the predeclared aggregate ranking criterion. The mean raw
+top-minus-bottom 20-session spread is also negative for both methods
+(-0.005446 for equal ranks, -0.004336 for Ridge); these overlapping signal
+statistics are not annual returns, implemented portfolios, or net PnL.
+
+Conclusion: the real-data engineering path works, but this experiment provides
+no stable positive-signal or model-improvement result. Do not reverse directions,
+change the sample, tune parameters or open the final block to manufacture a win.
+This does not establish that all metrics or ML are universally ineffective.
+
+Independent review matched all 24 recorded artifact hashes, the registry link,
+and source fingerprint
+`7d91f3c65c811e1ecf1357159d6b594cce6ba04a496cfc19fb293493c022e5f0`.
+The final 63 eligible decision dates (2016-09-01 to 2016-11-30) were not evaluated;
+there is no final experiment record or exposure. Acceptance remains
+`not_evaluated`, with provenance and Stage 4 eligibility false. The raw files,
+row-level results, and canonical registry remain local. Version 0.7.0 code was
+released in commit `eff6bd14b753f4aad7640c5c022ccca9878534ca`, with 695 local
+tests passing, 89.76% aggregate branch-tracked coverage, and successful Linux
+Python 3.11/3.13 CI. The next engineering milestones are in the roadmap.
