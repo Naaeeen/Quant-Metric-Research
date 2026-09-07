@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
@@ -29,8 +30,15 @@ from .benchmark_tuning import (
     fit_fold_screen,
     screen_records,
 )
+from .contracts import _daily_dates
+from .scheduled_inference import (
+    HACMeanResult,
+    inference_diagnostics,
+    normalize_expected_dates,
+    scheduled_newey_west_mean,
+)
 from .screening import MetricScreenResult
-from .statistics import newey_west_mean_tstat
+from .statistics import _numeric_observations, _validate_hac_lags
 
 if TYPE_CHECKING:
     from .experiment_registry import ExperimentRegistry
@@ -368,10 +376,30 @@ def _assignment_frame(
     )
 
 
+def _phase_schedule(plan: Stage3DataPlan, *, phase: str) -> pd.DatetimeIndex:
+    """Use planned boundaries and panel dates, never surviving prediction rows.
+
+    Dates between development folds remain in the supplied observation clock.
+    This cannot identify dates that were absent from the panel itself.
+    """
+    if phase == "development":
+        start = min(fold.evaluation_start_date for fold in plan.development_folds)
+        end = max(fold.evaluation_end_date for fold in plan.development_folds)
+    elif phase == "locked_test":
+        start, end = plan.locked_test.test_start_date, plan.locked_test.test_end_date
+    else:
+        raise ValueError("Unknown evaluation phase.")
+    dates = plan.panel.frame["as_of_date"]
+    return normalize_expected_dates(
+        dates.loc[dates.between(start, end)].drop_duplicates().sort_values()
+    )
+
+
 def _evaluate_development(
     predictions: pd.DataFrame,
     *,
     config: BenchmarkConfig,
+    expected_dates: Sequence[object] | None = None,
 ) -> PredictionEvaluation:
     return evaluate_prediction_frame(
         predictions,
@@ -379,6 +407,9 @@ def _evaluate_development(
         quantiles=config.quantiles,
         hac_lags=config.hac_lags,
         primary_models=(*config.model_families, config.primary_baseline),
+        expected_dates_by_phase=(
+            {"development": expected_dates} if expected_dates is not None else None
+        ),
     )
 
 
@@ -407,35 +438,46 @@ def _paired_locked_rank_ic_improvement(
     model: str,
     baseline: str,
     hac_lags: int,
-) -> tuple[float, float, float, int]:
+    expected_locked_dates: Sequence[object] | None = None,
+) -> tuple[float, HACMeanResult]:
+    _validate_hac_lags(hac_lags)
     locked_common = daily_metrics.loc[
         (daily_metrics["phase"] == "locked_test")
         & (daily_metrics["evaluation_scope"] == "common")
         & daily_metrics["model"].isin([model, baseline]),
         ["fold", "as_of_date", "model", "rank_ic"],
     ]
-    if locked_common.empty:
-        return float("nan"), float("nan"), float("nan"), 0
+    locked_common = locked_common.assign(
+        as_of_date=_daily_dates(locked_common["as_of_date"], field="as_of_date"),
+        rank_ic=_numeric_observations(locked_common["rank_ic"]),
+    )
+    if locked_common.duplicated(["as_of_date", "model"]).any():
+        raise ValueError("Paired IC values must be unique by date/model across folds.")
     pivot = locked_common.pivot(
-        index=["fold", "as_of_date"],
+        index="as_of_date",
         columns="model",
         values="rank_ic",
     )
-    if model not in pivot.columns or baseline not in pivot.columns:
-        return float("nan"), float("nan"), float("nan"), 0
-    improvements = (
-        pd.to_numeric(pivot[model], errors="coerce")
-        - pd.to_numeric(pivot[baseline], errors="coerce")
-    ).replace([np.inf, -np.inf], np.nan)
+    paired = pivot.reindex(columns=[model, baseline])
+    improvements = paired[model] - paired[baseline]
     valid = improvements.dropna()
     mean_improvement = float(valid.mean()) if not valid.empty else float("nan")
-    t_stat, p_value = newey_west_mean_tstat(valid, hac_lags)
-    return (
-        mean_improvement,
-        float(t_stat) if t_stat is not None else float("nan"),
-        float(p_value) if p_value is not None else float("nan"),
-        int(valid.shape[0]),
+    inference = (
+        scheduled_newey_west_mean(
+            improvements, expected_dates=expected_locked_dates, hac_lags=hac_lags
+        )
+        if expected_locked_dates is not None
+        else HACMeanResult(
+            status="schedule_unavailable",
+            t_stat=None,
+            p_value=None,
+            scheduled_count=None,
+            observed_count=int(valid.shape[0]),
+            requested_lags=hac_lags,
+            effective_lags=None,
+        )
     )
+    return mean_improvement, inference
 
 
 def _acceptance(
@@ -443,6 +485,7 @@ def _acceptance(
     *,
     config: BenchmarkConfig,
     frozen_family: str,
+    expected_locked_dates: Sequence[object] | None = None,
 ) -> MappingProxyType[str, Any]:
     model_dev = _summary_row(
         evaluation.summary, phase="development", model=frozen_family
@@ -491,17 +534,16 @@ def _acceptance(
     )
     locked_native_spread_coverage = float(model_locked_native["mean_spread_coverage"])
     locked_spread_date_count = int(model_locked["spread_date_count"])
-    (
-        locked_rank_ic_improvement,
-        locked_rank_ic_improvement_t_stat,
-        locked_rank_ic_improvement_p_value,
-        locked_valid_date_count,
-    ) = _paired_locked_rank_ic_improvement(
+    locked_rank_ic_improvement, inference = _paired_locked_rank_ic_improvement(
         evaluation.daily_metrics,
         model=frozen_family,
         baseline=config.primary_baseline,
         hac_lags=config.hac_lags,
+        expected_locked_dates=expected_locked_dates,
     )
+    locked_valid_date_count = inference.observed_count
+    locked_rank_ic_improvement_t_stat = inference.t_stat
+    locked_rank_ic_improvement_p_value = inference.p_value
     checks = {
         "development_mean_rank_ic_positive": float(model_dev["mean_rank_ic"]) > 0,
         "development_median_rank_ic_positive": float(model_dev["median_rank_ic"]) > 0,
@@ -531,7 +573,8 @@ def _acceptance(
             locked_native_spread_coverage >= config.minimum_locked_spread_coverage
         ),
         "locked_rank_ic_improvement_p_value_passed": bool(
-            np.isfinite(locked_rank_ic_improvement_p_value)
+            locked_rank_ic_improvement_p_value is not None
+            and np.isfinite(locked_rank_ic_improvement_p_value)
             and locked_rank_ic_improvement_p_value
             <= config.maximum_locked_rank_ic_improvement_p_value
         ),
@@ -552,6 +595,10 @@ def _acceptance(
             "locked_rank_ic_improvement": locked_rank_ic_improvement,
             "locked_rank_ic_improvement_t_stat": (locked_rank_ic_improvement_t_stat),
             "locked_rank_ic_improvement_p_value": (locked_rank_ic_improvement_p_value),
+            **{
+                f"locked_rank_ic_improvement_{key}": value
+                for key, value in inference_diagnostics(inference).items()
+            },
             "checks": checks,
             "model_gate_passed": model_gate_passed,
             "eligible_for_stage4_data_review": model_gate_passed,

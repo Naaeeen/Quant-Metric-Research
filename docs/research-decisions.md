@@ -652,3 +652,34 @@ Do not infer exchange sessions from generic business-day dates. A conservative
 unavailable-inference status is preferable to silently presenting unsupported
 gap-aware significance; this is the next methodology-hardening task, not a new
 empirical search in this release.
+
+## September 2026 scheduled-inference correction
+
+Version 0.11 implements the prior audit's smallest methodological correction:
+retain a supplied observation schedule and withhold unsupported HAC inference.
+The change spans the numerical primitive, Stage 2 summaries, Stage 3 summaries
+and paired final acceptance; changing only the final missing-value filter would
+not recover dates already omitted upstream. The detailed
+[contract and limitations](stage3-benchmark.md#scheduled-inference) are normative.
+
+This is deliberately not a new missing-data estimator. The declared lag remains
+in scheduled-observation units, and gaps are not compressed, imputed or silently
+bridged. Descriptive available-pair statistics and feature selection retain their
+meaning; an unavailable p-value is reported explicitly and cannot pass the final
+significance gate. A schedule assembled from supplied panel dates cannot prove
+that the panel itself contains every intended trading session.
+
+Verification uses invented data, including dates with no valid feature IC,
+missing paired model results and duplicate dates across folds. No empirical model
+search, final-outcome evaluation or historical result rewrite is part of this
+correction. Package source identity and artifact schema advance normally; the
+earlier Colab source pin and retained private evidence remain unchanged.
+
+The frozen local verification passed 1,230 tests in 187.62 seconds with 90.35%
+aggregate coverage and branch tracking. The new scheduled-inference module has
+100% coverage; the numerical statistics module has 96%. Independent numerical
+review also checked 765 complete-case synthetic examples against the old
+calculation with exact results. Repository lint/format, dependency consistency,
+dependency vulnerability audit and source/wheel builds passed. These are software
+checks, not a new alpha experiment or hosted Colab result. Linux CI is recorded
+separately on the release pull request.

@@ -66,6 +66,11 @@ def fit_metric_screen(
     training = normalized.loc[normalized[as_of_date_column] <= cutoff].copy(deep=True)
     if training.empty:
         raise ValueError("training panel is empty for the requested train_end_date.")
+    # A date can be absent from every sparse IC series. Capture the declared
+    # training observations before metric validity or outcome filtering.
+    expected_dates = pd.DatetimeIndex(
+        training[as_of_date_column].sort_values().unique()
+    )
 
     quality = compute_feature_quality(
         training,
@@ -79,7 +84,9 @@ def fit_metric_screen(
         min_cross_section=min_cross_section,
         as_of_date_column=as_of_date_column,
     )
-    ic_summary = summarize_rank_ic(daily_rank_ic, hac_lags=hac_lags)
+    ic_summary = summarize_rank_ic(
+        daily_rank_ic, hac_lags=hac_lags, expected_dates=expected_dates
+    )
     if isinstance(quantiles, bool) or not isinstance(quantiles, int) or quantiles < 2:
         raise ValueError("quantiles must be an integer of at least 2.")
     quantile_spreads = (

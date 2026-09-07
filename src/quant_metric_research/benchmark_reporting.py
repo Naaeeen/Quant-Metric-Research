@@ -17,7 +17,7 @@ from .benchmark_config import BenchmarkConfig
 from .benchmark_data import Stage3DataPlan
 
 IMPLEMENTATION_VERSION = __version__
-ARTIFACT_SCHEMA_VERSION = "4"
+ARTIFACT_SCHEMA_VERSION = "5"
 
 
 def _fingerprints(

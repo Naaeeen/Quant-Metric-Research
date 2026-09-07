@@ -193,16 +193,20 @@ def test_hac_warnings_are_bounds_not_inference_results() -> None:
 
     assert report["feasible"] is True
     assert any(
-        warning["code"] == "hac_lag_truncation" for warning in report["warnings"]
+        warning["code"] == "unsupported_hac_lags" for warning in report["warnings"]
     )
     assert any(warning["code"] == "short_hac_period" for warning in report["warnings"])
     hac = report["folds"][0]["evaluation"]["hac"]
     assert hac["requested_lags"] == 19
-    assert hac["maximum_effective_lags"] == 3
+    assert hac["maximum_effective_lags"] is None
+    assert hac["maximum_supported_lags"] == 3
+    assert hac["requested_lags_supported_by_count"] is False
     assert hac["eligible_date_count_upper_bound"] == 4
     scheduled = report["summary"]["hac"]
     assert scheduled["locked_scheduled_date_count"] == 4
-    assert scheduled["locked_maximum_effective_lags"] == 3
+    assert scheduled["locked_maximum_effective_lags"] is None
+    assert "effective lags may be fewer" not in scheduled["interpretation"]
+    assert any("withheld" in warning["message"] for warning in report["warnings"])
     assert any(
         warning["scope"] == "locked_schedule" and warning["code"] == "short_hac_period"
         for warning in report["warnings"]
