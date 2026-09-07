@@ -13,7 +13,7 @@ def test_stage3_version_has_one_package_source() -> None:
         (project_root / "pyproject.toml").read_text(encoding="utf-8")
     )
 
-    assert qmr.__version__ == IMPLEMENTATION_VERSION == "0.9.0"
+    assert qmr.__version__ == IMPLEMENTATION_VERSION == "0.10.0"
     assert configuration["project"]["dynamic"] == ["version"]
     assert configuration["tool"]["setuptools"]["dynamic"]["version"] == {
         "attr": "quant_metric_research._version.__version__"

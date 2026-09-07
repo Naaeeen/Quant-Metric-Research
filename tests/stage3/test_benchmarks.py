@@ -123,7 +123,7 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
         min(result.data_gate["locked_realized_return_coverage_by_date"].values()) == 0.9
     )
     assert result.manifest["artifact_schema_version"] == "4"
-    assert result.manifest["package_version"] == "0.9.0"
+    assert result.manifest["package_version"] == "0.10.0"
     assert result.manifest["execution_mode"] == "full"
     assert len(result.manifest["source_fingerprint"]) == 64
     assert result.manifest["fingerprint_scope"] == (

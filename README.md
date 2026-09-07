@@ -3,7 +3,12 @@
 A standalone, leakage-aware research pipeline for testing whether historical
 equity metrics contain stable cross-sectional signal.
 
-Version 0.9.0 adds three opt-in, fixed-window price factors with explicit
+Version 0.10.0 adds explicit panel enrichment and two immutable candidate feature
+schemas. Existing rows, labels and legacy metric settings remain unchanged;
+new factors are used only when requested. See the
+[panel integration contract](docs/data-contract.md#opt-in-factor-panel-enrichment).
+
+Version 0.9.0 added three opt-in, fixed-window price factors with explicit
 calculation windows, missingness reasons and immutable results. They are a
 separate software capability, not automatically added to the existing experiment.
 See the [factor contract](docs/data-contract.md#opt-in-fixed-window-price-factors).

@@ -1,5 +1,38 @@
 # Examples
 
+## Opt-in factor panel on invented observations
+
+Version 0.10.0 can append explicitly selected factors to the existing panel:
+
+~~~text
+python examples/synthetic_factor_panel.py
+~~~
+
+This offline example checks that the original panel is preserved exactly and
+prints bounded status counts for invented observations. It retains warm-up,
+missing-price and missing-target rows. It does not train, score a strategy,
+write files or access a data provider.
+
+~~~python
+from quant_metric_research import FEATURE_BUNDLES, build_factor_panel
+
+bundle = FEATURE_BUNDLES["legacy10_plus_price3_v1"]
+panel = build_factor_panel(
+    prices,
+    memberships,
+    as_of_dates=decision_dates,
+    config=panel_config,
+    factor_names=bundle.price_factor_names,
+)
+candidate_columns = bundle.feature_columns
+~~~
+
+The bundle lists candidates for a separately declared benchmark; it does not
+change a config or run an experiment. Full-ten bundles require all ten legacy
+columns to be present. See the [adapter contract](../docs/data-contract.md#opt-in-factor-panel-enrichment)
+and [comparison boundary](../docs/research-decisions.md#september-2026-panel-enrichment-decision).
+The Colab notebook below still uses its earlier pinned source.
+
 ## Pure price factors on invented observations
 
 Version 0.9.0 adds an opt-in calculator for three fixed-window price features.

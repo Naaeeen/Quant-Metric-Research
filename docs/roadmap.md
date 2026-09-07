@@ -156,7 +156,17 @@ release carries its evidence forward, while factor expansion remains future work
    [factor contract](data-contract.md#opt-in-fixed-window-price-factors).
    Start with price-only candidates supported by the archive; OHLCV,
    publication-lagged fundamentals and sentiment require separate source evidence.
-5. Predeclare ablations and comparisons with the existing PCA and tree families;
+5. Version 0.10 adds opt-in panel enrichment and immutable candidate feature
+   schemas. It preserves the original membership/labels and does not start a
+   comparison. Cross-bundle reporting must align prediction keys, outcomes,
+   scoring universes and an explicitly retained original-ten baseline before
+   making comparative claims; within-run common metrics alone are insufficient.
+6. Harden scheduled-date inference before adding cross-bundle significance tests.
+   Current HAC paths compress unavailable observations; Stage 2 may omit their
+   dates. Preserve an explicit expected schedule or withhold unsupported
+   inference, without assuming a generic business-day index proves exchange
+   continuity. Keep descriptive coverage and point estimates separate.
+7. Predeclare ablations and comparisons with the existing PCA and tree families;
    retain all attempts and exposure history. Additional horizons and later
    portfolio work remain gated by the data and evaluation requirements below.
 
