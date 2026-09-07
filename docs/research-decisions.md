@@ -1,6 +1,6 @@
 # Research decisions
 
-Last reviewed: 2026-09-07
+Last reviewed: 2026-09-08
 
 ## Entry-gate evidence
 
@@ -453,3 +453,85 @@ row-level results, and canonical registry remain local. Version 0.7.0 code was
 released in commit `eff6bd14b753f4aad7640c5c022ccca9878534ca`, with 695 local
 tests passing, 89.76% aggregate branch-tracked coverage, and successful Linux
 Python 3.11/3.13 CI. The next engineering milestones are in the roadmap.
+
+## September 2026 Colab portability decision
+
+The user requested later Colab execution. Version 0.8.0 makes the existing
+development experiment portable rather than changing its research hypothesis.
+The cohort, ten metrics, target, Ridge parameter and purged folds remain those
+of the frozen public-archive declaration. The negative result above is not
+reversed, retuned or replaced, and the reserved final block remains unevaluated.
+
+The selected workflow uses a CPU runtime, immutable source revision and
+dedicated constrained virtual environment. Google documents that Colab VMs
+have limited lifetimes and their files/libraries are not included when a notebook
+is shared; its runtime guidance recommends installing required library versions.
+Those platform constraints motivate explicit setup and preservation of research
+evidence, not an assumption that every future Colab runtime is compatible.
+[Colab FAQ](https://research.google.com/colaboratory/faq.html),
+[runtime guidance](https://research.google.com/colaboratory/runtime-version-faq.html).
+
+The existing local canonical registry is exported with the archive and prior
+run evidence under aliases `archive`, `run001` and `run002`. The user privately
+uploads that intact seed folder to Drive; the notebook does not start a blank
+registry. Running and failed records, including the interrupted first attempt,
+remain part of the history. The whole checkpoint chain is validated before
+restoring a live registry into a new local VM work directory.
+
+SQLite's backup API supplies a consistent local snapshot; a closed snapshot is
+then copied as a file to checkpoint storage. SQLite warns that filesystem
+locking and synchronization over a network can fail, so the design does not
+open the live database on Drive. Checksummed file copies and read-back checks
+are evidence of what was observed, not proof of remote server durability.
+[SQLite backup](https://sqlite.org/backup.html),
+[network-filesystem cautions](https://sqlite.org/useovernet.html).
+
+Append-only start and completion markers preserve successful and catchably
+failed attempts. An incomplete or corrupt generation blocks the next automatic
+run rather than falling back to older history. This bounded single-user helper
+has no distributed lock, automatic repair, background job or final-evaluation
+entry point. The notebook refuses recognized `/content/drive` work paths; callers
+remain responsible for identifying other nonlocal mounts and keeping source/live
+SQLite local.
+
+Reusing configuration-driven data, model and signal-analysis components is
+consistent with Microsoft's public
+[Qlib workflow](https://github.com/microsoft/qlib/blob/main/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml).
+That is an architectural reference, not evidence that this archive is point-in-time
+or that more factors/models will improve it. No new model-selection exploration
+is part of the portability release.
+
+The notebook and its builder live under `examples/`; the
+[walkthrough](../examples/README.md#colab-development-walkthrough) describes
+private upload and interruption handling. Local tests, a pinned environment
+and Linux verification must be reported separately from hosted execution.
+No actual hosted Colab execution, empirical alpha, final acceptance, independently
+verified provider provenance or Stage 4 readiness is claimed by this decision.
+
+### Verified portability result: 2026-09-08
+
+The local notebook executed all five code cells sequentially in 667.41 seconds,
+including a fresh source clone, isolated installation, real-data training and
+checkpoint publication. Its library source is pinned to commit
+`7740dee1b4c6aeed463d6440511d7b606c6fe406`. The later notebook formatting/import
+correction does not change computation; independent syntax-tree review confirmed
+equivalence apart from the placement of the standard-library CSV import.
+
+The installed runtime was Python 3.14.3, NumPy 2.5.3, pandas 3.0.5,
+scikit-learn 1.9.0 and SciPy 1.18.1. Separately,
+[Linux CI on 68a6de1](https://github.com/Naaeeen/Quant-Metric-Research/actions/runs/34162757260)
+passed Python 3.11, 3.12 and 3.13; Python 3.12 used the research constraints,
+passed all 833 tests and reported 89.38% aggregate coverage with branch tracking.
+The original local full suite passed 832 tests; the generated-notebook lint
+regression was then added and verified, with all 16 notebook tests passing.
+Lint, formatting, package build, dependency consistency and an independent
+third-party vulnerability audit also passed. The unpublished local package is
+not advisory-indexed and was reviewed as source instead.
+
+Independent consistency checks found no numerical change in the existing
+development outputs. Prior registry entries and evidence were preserved.
+This is reproducibility evidence, not a new independent alpha experiment.
+Run identifiers, local handoff state and the executed notebook remain private.
+Final outcomes were not evaluated, acceptance is `not_evaluated` and Stage 4
+eligibility remains false. Hosted Colab, Drive authorization and remote-storage
+durability were not tested by this local execution.

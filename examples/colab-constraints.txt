@@ -1,0 +1,16 @@
+# Pinned research runtime constraints; not a full OS/hardware or hash lock.
+# Apply to the dedicated Colab venv, never to Colab's preloaded notebook kernel.
+# Python 3.12 Linux verification is required before claiming Colab compatibility.
+pip==26.2.1
+cloudpickle==3.1.2
+joblib==1.6.0
+narwhals==2.25.0
+numpy==2.5.3
+pandas==3.0.5
+pyarrow==23.0.1
+python-dateutil==2.9.0.post0
+scikit-learn==1.9.0
+scipy==1.18.1
+six==1.17.0
+threadpoolctl==3.6.0
+tzdata==2026.3

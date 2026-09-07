@@ -40,16 +40,25 @@ def compute_feature_redundancy(
     if normalized[as_of_date_column].isna().any():
         raise ValueError("as_of_date contains invalid values.")
 
+    pairs = tuple(combinations(feature_columns, 2))
+    # Convert each date once, not the whole panel: numeric precision can depend on
+    # the date-local dtype. Keep pair-major accumulation to avoid storing every
+    # pair's correlations at once as the feature count grows.
+    numeric_groups = tuple(
+        (
+            group.loc[:, list(dict.fromkeys(feature_columns))]
+            .apply(pd.to_numeric, errors="coerce")
+            .replace([np.inf, -np.inf], np.nan)
+        )
+        for _, group in (
+            normalized.groupby(as_of_date_column, sort=True) if pairs else ()
+        )
+    )
     rows: list[dict[str, object]] = []
-    for left, right in combinations(feature_columns, 2):
+    for left, right in pairs:
         correlations: list[float] = []
-        for _, group in normalized.groupby(as_of_date_column, sort=True):
-            paired = (
-                group.loc[:, [left, right]]
-                .apply(pd.to_numeric, errors="coerce")
-                .replace([np.inf, -np.inf], np.nan)
-                .dropna()
-            )
+        for numeric in numeric_groups:
+            paired = numeric.loc[:, [left, right]].dropna()
             if paired.shape[0] < min_cross_section:
                 continue
             if paired[left].nunique() <= 1 or paired[right].nunique() <= 1:
