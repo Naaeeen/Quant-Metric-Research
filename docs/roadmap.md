@@ -146,6 +146,8 @@ release carries its evidence forward, while factor expansion remains future work
    user-selected persistent storage. Unresolved interruptions block reuse.
    Local and Python 3.12 Linux verification are distinct from a hosted Colab run;
    the walkthrough does not claim hosted execution or offer final evaluation.
+   The local five-cell notebook run and all three Linux Python versions now pass;
+   see the [portability evidence](research-decisions.md#verified-portability-result-2026-09-08).
 4. Define a small factor catalog before computing additional features: formula,
    required inputs, lookback, availability, adjustment assumptions and missingness
    rules. Start with price-only candidates supported by the archive; OHLCV,

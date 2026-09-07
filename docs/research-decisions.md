@@ -507,3 +507,31 @@ private upload and interruption handling. Local tests, a pinned environment
 and Linux verification must be reported separately from hosted execution.
 No actual hosted Colab execution, empirical alpha, final acceptance, independently
 verified provider provenance or Stage 4 readiness is claimed by this decision.
+
+### Verified portability result: 2026-09-08
+
+The local notebook executed all five code cells sequentially in 667.41 seconds,
+including a fresh source clone, isolated installation, real-data training and
+checkpoint publication. Its library source is pinned to commit
+`7740dee1b4c6aeed463d6440511d7b606c6fe406`. The later notebook formatting/import
+correction does not change computation; independent syntax-tree review confirmed
+equivalence apart from the placement of the standard-library CSV import.
+
+The installed runtime was Python 3.14.3, NumPy 2.5.3, pandas 3.0.5,
+scikit-learn 1.9.0 and SciPy 1.18.1. Separately,
+[Linux CI on 68a6de1](https://github.com/Naaeeen/Quant-Metric-Research/actions/runs/34162757260)
+passed Python 3.11, 3.12 and 3.13; Python 3.12 used the research constraints,
+passed all 833 tests and reported 89.38% aggregate coverage with branch tracking.
+The original local full suite passed 832 tests; the generated-notebook lint
+regression was then added and verified, with all 16 notebook tests passing.
+Lint, formatting, package build, dependency consistency and an independent
+third-party vulnerability audit also passed. The unpublished local package is
+not advisory-indexed and was reviewed as source instead.
+
+Independent consistency checks found no numerical change in the existing
+development outputs. Prior registry entries and evidence were preserved.
+This is reproducibility evidence, not a new independent alpha experiment.
+Run identifiers, local handoff state and the executed notebook remain private.
+Final outcomes were not evaluated, acceptance is `not_evaluated` and Stage 4
+eligibility remains false. Hosted Colab, Drive authorization and remote-storage
+durability were not tested by this local execution.

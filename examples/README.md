@@ -94,12 +94,11 @@ generation, restore an older checkpoint, or choose a blank registry to continue.
 Preserve available local work and review the interrupted state.
 
 Use one writer, sequentially. The notebook rejects known `/content/drive` and
-`/content/gdrive` work
-locations; arbitrary mounted/network filesystems cannot be identified reliably,
+`/content/gdrive` work locations; arbitrary mounted/network filesystems cannot
+be identified reliably,
 so the caller must keep the live work directory and SQLite source on genuinely
 local storage. Read-back is not proof of remote server durability or a distributed
-lock, and
-the helper cannot detect deliberate deletion of an entire history tail.
+lock, and the helper cannot detect deliberate deletion of an entire history tail.
 See the [checkpoint contract](../docs/data-contract.md#notebook-history-checkpoints).
 
 The notebook is supplied for later execution by the user. Local checks and
@@ -108,6 +107,15 @@ files and its available resources can change; see its
 [FAQ](https://research.google.com/colaboratory/faq.html).
 No hosted Colab execution, final-test evaluation, verified historical provenance
 or trading readiness is claimed.
+
+### Verification status
+
+All five notebook code cells ran locally, including real training, in about
+11 minutes. Separate Linux Python 3.11/3.12/3.13 checks passed; the constrained
+Python 3.12 job passed 833 tests. See the
+[recorded verification and limitations](../docs/research-decisions.md#verified-portability-result-2026-09-08).
+Local execution and remote CI do not establish that the hosted Colab/Drive
+interaction has been tested.
 
 ## Public-archive development demo
 
