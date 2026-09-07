@@ -113,3 +113,42 @@ def test_validate_memberships_rejects_empty_or_reversed_intervals() -> None:
     )
     with pytest.raises(DataContractError, match="after effective_from"):
         validate_memberships(invalid)
+
+
+@pytest.mark.parametrize("end_date", ["misspelled-date", "", "2025-02-30"])
+def test_validate_memberships_rejects_malformed_nonmissing_end_dates(
+    end_date: str,
+) -> None:
+    memberships = pd.DataFrame(
+        {
+            "universe_id": ["TEST"],
+            "symbol": ["AAA"],
+            "effective_from": ["2025-01-01"],
+            "effective_to": [end_date],
+            "source": ["history"],
+        }
+    )
+
+    with pytest.raises(DataContractError, match="effective_to.*invalid"):
+        validate_memberships(memberships)
+
+
+@pytest.mark.parametrize("end_date", [None, pd.NaT, pd.NA])
+def test_validate_memberships_preserves_genuinely_open_intervals(
+    end_date: object,
+) -> None:
+    memberships = pd.DataFrame(
+        {
+            "universe_id": ["TEST"],
+            "symbol": ["AAA"],
+            "effective_from": ["2025-01-01"],
+            "effective_to": [end_date],
+            "source": ["history"],
+        }
+    )
+    original = memberships.copy(deep=True)
+
+    validated = validate_memberships(memberships)
+
+    assert pd.isna(validated.loc[0, "effective_to"])
+    pd.testing.assert_frame_equal(memberships, original)

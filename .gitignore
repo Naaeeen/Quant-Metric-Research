@@ -1,4 +1,7 @@
 .venv/
+.env
+.env.*
+!.env.example
 .pytest_cache/
 .ruff_cache/
 .coverage
@@ -12,4 +15,7 @@ data/raw/
 data/interim/
 data/processed/
 artifacts/
-
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm

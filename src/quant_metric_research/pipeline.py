@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from .config import PanelConfig
+from .contracts import DataContractError, validate_as_of_dates
 from .panel import build_point_in_time_panel
 from .reduction import PCABaseline, fit_pca_baseline
 from .screening import MetricScreenResult, fit_metric_screen
@@ -40,17 +41,29 @@ def run_research(
     pca_variance_to_keep: float = 0.95,
     walk_forward_config: WalkForwardMetricConfig | None = None,
 ) -> ResearchRun:
+    try:
+        cutoff = validate_as_of_dates((train_end_date,))[0]
+    except DataContractError as error:
+        raise DataContractError(
+            "train_end_date must be a normalized, timezone-naive daily date."
+        ) from error
+
     panel = build_point_in_time_panel(
         prices,
         memberships,
         as_of_dates=as_of_dates,
         config=config,
     )
+    # Keep contemporaneous features for quality, redundancy, and PCA while
+    # screening only outcomes known by this end-of-day training cutoff.
+    screening_panel = panel.copy(deep=True)
+    mature = panel["label_end_date"].notna() & panel["label_end_date"].le(cutoff)
+    screening_panel.loc[~mature, "forward_excess_return"] = float("nan")
     screen = fit_metric_screen(
-        panel,
+        screening_panel,
         feature_columns=config.feature_columns,
         target_column="forward_excess_return",
-        train_end_date=train_end_date,
+        train_end_date=cutoff,
         min_cross_section=min_cross_section,
         minimum_coverage=minimum_coverage,
         redundancy_threshold=redundancy_threshold,
@@ -64,7 +77,7 @@ def run_research(
         pca = fit_pca_baseline(
             panel,
             feature_columns=screen.selected_features,
-            train_end_date=train_end_date,
+            train_end_date=cutoff,
             variance_to_keep=pca_variance_to_keep,
         )
         pca_scores = pca.transform(panel)

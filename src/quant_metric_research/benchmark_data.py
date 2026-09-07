@@ -101,6 +101,7 @@ def _datetime_values(
     name: str,
     allow_missing: bool,
     reject_timezone: bool = False,
+    require_calendar_date: bool = False,
 ) -> pd.Series:
     originally_missing = series.isna()
     if reject_timezone:
@@ -111,8 +112,7 @@ def _datetime_values(
             except (TypeError, ValueError):
                 return False
 
-        timezone_aware = series.loc[~originally_missing].map(is_timezone_aware)
-        if timezone_aware.any():
+        if any(is_timezone_aware(value) for value in series.loc[~originally_missing]):
             raise ValueError(f"{name} must contain timezone-naive calendar dates.")
     try:
         converted = pd.to_datetime(series, errors="coerce", utc=True, format="mixed")
@@ -121,6 +121,10 @@ def _datetime_values(
     invalid = converted.isna() & ~originally_missing
     if invalid.any() or (not allow_missing and converted.isna().any()):
         raise ValueError(f"{name} contains invalid date values.")
+    if require_calendar_date:
+        intraday = converted.notna() & (converted != converted.dt.normalize())
+        if intraday.any():
+            raise ValueError(f"{name} must contain normalized calendar dates.")
     return converted.dt.tz_convert(None)
 
 
@@ -178,6 +182,11 @@ def _validate_availability(
         if (decision_time < frame[as_of_date_column]).any():
             raise ValueError(
                 f"{decision_time_column} must not be before {as_of_date_column}."
+            )
+        if (decision_time.dt.normalize() != frame[as_of_date_column]).any():
+            raise ValueError(
+                f"{decision_time_column} must be on the same calendar day as "
+                f"{as_of_date_column}."
             )
     else:
         decision_time = frame[as_of_date_column]
@@ -249,12 +258,14 @@ def validate_benchmark_panel(
         name=as_of_date_column,
         allow_missing=False,
         reject_timezone=True,
+        require_calendar_date=True,
     )
     validated[label_end_date_column] = _datetime_values(
         validated[label_end_date_column],
         name=label_end_date_column,
         allow_missing=True,
         reject_timezone=True,
+        require_calendar_date=True,
     )
     validated[symbol_column] = (
         validated[symbol_column].astype("string").str.strip().str.upper()
@@ -335,6 +346,55 @@ def equal_date_training_weights(
     counts = dates.groupby(dates, sort=False).transform("size")
     per_date_total = len(dates) / dates.nunique()
     return tuple(float(value) for value in (per_date_total / counts).to_numpy())
+
+
+def expand_training_cross_sections(
+    frame: pd.DataFrame,
+    *,
+    training_indices: Sequence[int],
+    outcome_columns: Sequence[str],
+    as_of_date_column: str = "as_of_date",
+    label_end_date_column: str = "label_end_date",
+) -> pd.DataFrame:
+    """Keep each fit date's feature universe, exposing only authorized labels.
+
+    Purged/missing-label rows can supply contemporaneously available features
+    for cross-sectional transforms, but cannot enter the supervised objective.
+    """
+
+    selected = frame.loc[list(training_indices)]
+    training = frame.loc[
+        frame[as_of_date_column].isin(selected[as_of_date_column])
+    ].copy(deep=True)
+    unauthorized = ~training.index.isin(training_indices)
+    columns = list(dict.fromkeys(outcome_columns))
+    training.loc[unauthorized, columns] = float("nan")
+    training.loc[unauthorized, label_end_date_column] = pd.NaT
+    return training
+
+
+def evaluation_cross_section(
+    panel: BenchmarkPanel,
+    *,
+    start_date: pd.Timestamp,
+    end_date: pd.Timestamp,
+    outcome_columns: Sequence[str],
+    label_before: pd.Timestamp | None = None,
+) -> pd.DataFrame:
+    """Score a date block without selecting stocks by future outcome availability."""
+
+    frame = panel.frame
+    evaluation = frame.loc[
+        frame[panel.as_of_date_column].between(start_date, end_date)
+    ].copy(deep=True)
+    label_end = evaluation[panel.label_end_date_column]
+    authorized = label_end.notna()
+    if label_before is not None:
+        authorized = authorized & (label_end < label_before)
+    # Missing targets and missing realized returns remain independent; only the
+    # label-time authorization masks both outcomes.
+    evaluation.loc[~authorized, list(dict.fromkeys(outcome_columns))] = float("nan")
+    return evaluation.reset_index(drop=True)
 
 
 def _training_exclusion_reason(
