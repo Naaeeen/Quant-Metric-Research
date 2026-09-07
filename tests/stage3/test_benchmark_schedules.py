@@ -9,6 +9,12 @@ from quant_metric_research.benchmark import (
 )
 
 
+def test_engine_uses_the_shared_schedule_derivation():
+    from quant_metric_research.benchmark_schedules import phase_schedule
+
+    assert _phase_schedule is phase_schedule
+
+
 def test_phase_schedule_uses_panel_bounds_and_keeps_between_fold_dates():
     dates = pd.to_datetime(
         ["2025-01-02", "2025-01-03", "2025-01-07", "2025-01-09", "2025-01-10"]

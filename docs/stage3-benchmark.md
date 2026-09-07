@@ -188,6 +188,60 @@ Old manifests and pinned notebook results are not recomputed or relabeled.
 New code changes source identity normally; any new empirical use must retain
 the existing exposure history rather than treating changed inference as fresh data.
 
+## Stored evaluation schedules
+
+Version 0.12 / artifact schema 6 adds `evaluation_schedule` to the benchmark
+manifest. Execution and reporting share one pure derivation from validated panel
+dates inside the planned phase boundaries. The metadata stores those exact dates,
+including supplied dates absent from every prediction row and between-fold gaps.
+Counts, endpoints and a union of surviving dates cannot replace this sequence.
+
+For example, an invented development schedule is stored as:
+
+~~~json
+{
+  "evaluation_schedule": {
+    "definition_version": "1",
+    "source": "validated_panel_within_planned_phase_bounds",
+    "lag_unit": "scheduled_observations",
+    "dates_by_phase": {
+      "development": ["2025-01-02", "2025-01-03", "2025-01-07"]
+    }
+  }
+}
+~~~
+
+Internally, both mappings and the ISO-string date tuples are immutable. The
+existing writer serializes tuples as JSON arrays and deep-freezes its returned
+metadata. Development manifests include only the development phase sequence;
+full-mode manifests add the locked-test sequence without changing development
+dates. These are planned schedules, not proof that evaluation completed or that
+every date had a usable metric.
+
+For a replay of caller-owned results, pass the stored `dates_by_phase` mapping
+as `expected_dates_by_phase` to `evaluate_prediction_frame`, alongside the original
+evaluation settings and predictions. Do not reconstruct dates from the saved
+daily IC table. In the example above, observations only on Jan 2 and Jan 7 must
+still produce `missing_scheduled_values`, not available two-observation inference.
+Recomputing descriptive metrics from existing scores is not a fresh experiment.
+
+The phase mapping is not added wholesale to the registry identity comparison:
+development/full mappings legitimately differ. The existing panel/source/package/
+configuration/runtime/boundary identity continues to constrain deterministic
+schedule derivation. Exposure tracking and final reservations are unchanged.
+This release adds no artifact loader, checksum/authentication scheme, registry
+migration or model run. Arbitrary saved predictions and outside research history
+are not authenticated by a manifest. Old artifacts and the earlier Colab source
+pin are untouched; missing schedule metadata is not retroactively invented.
+
+Retaining parameters and inspectable outputs is consistent with the separation
+in [Qlib Recorder](https://qlib.readthedocs.io/en/latest/component/recorder.html).
+This adopts that separation, not its pickle serialization examples or a new
+tracking service. Alphalens' historical documentation also makes data loss
+visible, while warning that its forward-return outlier filter introduces
+lookahead bias; that filter is not adopted here.
+[Alphalens data-alignment contract](https://quantopian.github.io/alphalens/alphalens.html#alphalens.utils.get_clean_factor_and_forward_returns).
+
 ## Run and outputs
 
 The panel may be CSV, compressed CSV, Parquet, or PQ. Parquet is the default
@@ -310,11 +364,12 @@ research performed outside this workflow rather than presenting it as unseen.
 
 The output directory contains:
 
-- `benchmark_manifest.json`: artifact schema version 5, `execution_mode`
+- `benchmark_manifest.json`: artifact schema version 6, `execution_mode`
   (`development` or `full`), full validated-panel and
   model-input fingerprints, actual package-source fingerprint, configuration,
   date boundaries including the final label-end envelope, dataset versions,
-  library versions, and `experiment` registration/run-reference metadata;
+  library versions, exact planned `evaluation_schedule` phase sequences, and
+  `experiment` registration/run-reference metadata;
 - `data_gate.json`: structural result and external-data verification fields;
   locked target/return coverage and cross-section counts appear only in full mode;
 - `fold_assignments.parquet`: every row's role and exclusion reason in outer
@@ -362,7 +417,8 @@ JSON uses sorted UTF-8 keys, ISO timestamps, and strict finite values. CSV
 parameter cells and prediction feature lists use compact, sorted/canonical JSON
 rather than delimiter-dependent text.
 
-Schema 5 adds scheduled-inference diagnostics and retains the distinction
+Schema 6 retains schema 5 scheduled-inference diagnostics and adds exact planned
+phase schedules to the manifest. It retains the distinction
 introduced in schema 3 between
 `score_coverage` (finite scores / scoring universe) and
 `rank_ic_coverage` (score-target pairs / non-null targets). The former feeds

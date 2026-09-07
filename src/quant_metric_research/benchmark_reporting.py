@@ -15,9 +15,10 @@ import sklearn
 from ._version import __version__
 from .benchmark_config import BenchmarkConfig
 from .benchmark_data import Stage3DataPlan
+from .benchmark_schedules import evaluation_schedule_metadata
 
 IMPLEMENTATION_VERSION = __version__
-ARTIFACT_SCHEMA_VERSION = "5"
+ARTIFACT_SCHEMA_VERSION = "6"
 
 
 def _fingerprints(
@@ -77,6 +78,9 @@ def _fingerprints(
         {
             "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
             "execution_mode": "full" if evaluate_lockbox else "development",
+            "evaluation_schedule": evaluation_schedule_metadata(
+                plan, evaluate_lockbox=evaluate_lockbox
+            ),
             "implementation_version": IMPLEMENTATION_VERSION,
             "package_version": __version__,
             "source_fingerprint": source_fingerprint,
