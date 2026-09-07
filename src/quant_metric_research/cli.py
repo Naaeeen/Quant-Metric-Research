@@ -15,6 +15,8 @@ from .intake import import_yahoo_files
 from .io import read_as_of_dates, read_json_object, read_table, write_research_run
 from .pipeline import run_research
 from .preflight import preflight_benchmark
+from .public_archive import fetch_public_archive
+from .public_demo import run_public_demo
 from .validation import WalkForwardMetricConfig
 
 
@@ -56,6 +58,17 @@ def _positive_unit_interval(value: str) -> float:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="qmr")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    fetch_parser = subparsers.add_parser(
+        "fetch-public-sample",
+        help="Download two pinned Mendeley CSVs and license records (network access).",
+    )
+    fetch_parser.add_argument("--output-dir", required=True)
+    demo_parser = subparsers.add_parser(
+        "public-demo", help="Run the declared public-archive development demo offline."
+    )
+    for option in ("archive-dir", "output-dir", "registry"):
+        demo_parser.add_argument(f"--{option}", required=True)
 
     import_parser = subparsers.add_parser(
         "import-yahoo",
@@ -318,6 +331,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     _validate_cli_args(args, parser)
+    if args.command == "fetch-public-sample":
+        print(
+            json.dumps(fetch_public_archive(args.output_dir), allow_nan=False, indent=2)
+        )
+        return 0
+    if args.command == "public-demo":
+        report = run_public_demo(
+            archive_dir=args.archive_dir,
+            output_dir=args.output_dir,
+            registry_path=args.registry,
+        )
+        print(json.dumps(report, allow_nan=False, indent=2, sort_keys=True))
+        return 0
     if args.command == "import-yahoo":
         return _import_command(args)
     if args.command == "audit-inputs":

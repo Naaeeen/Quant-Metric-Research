@@ -3,10 +3,12 @@
 A standalone, leakage-aware research pipeline for testing whether historical
 equity metrics contain stable cross-sectional signal.
 
-Version 0.6.0 adds an offline Yahoo-format export importer with original-byte
-snapshots and an input audit. It adds no network or yfinance dependency. No real
-prices have been acquired or models trained as part of this intake milestone;
-authorized source data and its supporting evidence remain the next gate.
+Version 0.7.0 adds a reproducible public-archive development workflow: acquire
+two pinned historical US data files, audit coverage, calculate trailing metrics,
+and train a fixed Ridge model against transparent ranking baselines. Acquisition
+uses the archive's declared license; the subsequent development run is offline
+and does not evaluate the reserved final test. The offline Yahoo-format importer
+remains available for separately authorized exports.
 
 The repository now covers three research stages:
 
@@ -48,8 +50,9 @@ after these research stages.
 
 See [the data contract](docs/data-contract.md) and
 [the research decisions](docs/research-decisions.md) before adding a data
-provider or model. The latter records the selected ASX demonstration cohort
-and the limits of its VAS adjusted ETF return proxy.
+provider or model. The decisions distinguish the retrospective US archive demo
+from the proposed ASX cohort, whose access and historical provenance remain
+unresolved.
 
 ## What “useful” means here
 
@@ -106,6 +109,28 @@ Stage 3 accepts a versioned panel containing `as_of_date`, `symbol`,
 columns. See `docs/data-contract.md` before treating any panel as research-grade.
 
 ## Run
+
+For the declared public US archive demo, use a repository virtual environment
+and new destinations under the ignored data/artifact directories:
+
+~~~text
+qmr fetch-public-sample --output-dir data/raw/mendeley-v3-001
+qmr public-demo --archive-dir data/raw/mendeley-v3-001 --output-dir artifacts/public-demo-001 --registry artifacts/research-registry.sqlite3
+~~~
+
+The first command downloads two versioned CSVs and their source/license records,
+verifying pinned sizes and SHA-256 hashes. The second verifies the saved files,
+retains the first 30 stock labels alphabetically, and runs coverage checks,
+panel construction, no-training preflight and registered Ridge development.
+It writes `public_demo_report.json` only on completion. See
+[the public-archive example](examples/README.md#public-archive-development-demo)
+for outputs, fixed settings and failure recovery.
+
+This cohort is drawn from a January 2017 constituent snapshot, so it carries
+survivorship bias. `FF_MARKET_PROXY` is a constructed research return index.
+The publisher's CC BY 4.0 declaration does not independently establish underlying
+third-party rights. Keep raw files and row-level results local; development
+statistics cannot establish alpha or Stage 4 eligibility.
 
 For authorized, local Yahoo-format exports, start with the version 0.6.0 intake:
 

@@ -81,14 +81,22 @@ present-selection bias as a demonstration limitation and does not claim
 historical ASX200 coverage. No real prices were downloaded and no model training
 or final-test evaluation was performed for this intake release.
 
-The next concrete gate is an authorized export intake with source/access,
-membership, identifier, corporate-action, revision and delisting evidence.
-Use [the import instructions](../examples/README.md#offline-yahoo-format-intake)
-and the human checklist in [the data contract](data-contract.md). Provider claims,
-independently checked observations and unknowns remain separate. No provider or
-real dataset has been certified, and no purchase or redistribution is included.
-Availability and rights for the chosen data remain unresolved; software tests
-alone cannot advance this demonstration to historical performance claims.
+Version 0.7.0 adds a separate public US archive demonstration to make development
+possible without supplying ASX exports. `qmr fetch-public-sample` acquires the two
+pinned Mendeley V3 files and license records; `qmr public-demo` verifies them,
+audits coverage, builds the daily metric panel, runs preflight and registers a
+fixed Ridge development experiment. It uses the first 30 stock labels
+alphabetically, retains missing histories and constructs `FF_MARKET_PROXY` from
+archived market-factor returns. The declared final block is not evaluated.
+See [the frozen declaration](research-decisions.md#september-2026-public-archive-development-declaration)
+and [the runnable example](../examples/README.md#public-archive-development-demo).
+
+This milestone exercises real historical observations under a publisher-declared
+CC BY license; it does not certify underlying third-party rights or historical
+provenance. The retrospective January 2017 constituent snapshot is unsuitable
+for an unbiased-universe claim. Raw data and row-level artifacts remain local
+and ignored. ASX access remains unresolved, and neither a completed development
+run nor favorable statistics can satisfy the independent data-evidence gate.
 
 Remaining before Stage 3 can make an empirical conclusion:
 

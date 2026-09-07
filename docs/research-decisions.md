@@ -355,3 +355,58 @@ The next evidence gate is an authorized export plus its source/access record,
 followed by observed date, action, missingness and identity checks. Original-byte
 snapshots cannot recover historical provider vintages or certify delisting returns.
 Stage 4 remains blocked pending the existing data and research review requirements.
+
+## September 2026 public-archive development declaration
+
+The user delegated source and implementation choices and requested autonomous
+progress beyond the unavailable local ASX exports. The ASX intake remains
+supported; this is a separate **US engineering/development demonstration**, not
+fulfilment of historical ASX membership or permission to trade.
+
+Before calculating features or inspecting model outcomes, the declared source is
+Chi Seng Pun's 2018 Mendeley Data V3 archive, DOI `10.17632/ndxfrshm74.3`:
+`sp500-1216.csv` (2012-2016 daily adjusted prices) and `FF3-0317.csv`.
+The public metadata identifies a January 2017 constituent snapshot and labels
+the dataset CC BY 4.0, while noting that third-party content may require further
+permission. This supports the publisher-declared research archive use here, not
+independent verification of Yahoo/French redistribution rights. Raw exports and
+row-level derived artifacts stay local and ignored by Git.
+[Dataset](https://data.mendeley.com/datasets/ndxfrshm74/3),
+[versioned metadata](https://data.mendeley.com/public-api/datasets/ndxfrshm74/snapshot/3).
+
+Fixed choices for the first run:
+
+- Select the first 30 normalized stock-column labels alphabetically from the
+  frozen file, before screening values; retain sparse histories, with no
+  replacement based on coverage or performance. This arbitrary bounded cohort
+  and the archive's survivor selection prevent an unbiased-universe claim.
+- Use daily observations from 2012-01-03 through 2016-12-30, with decision dates
+  from 2013-01-02 through 2016-12-30. The immature price-history tail stays visible.
+- Construct `FF_MARKET_PROXY` from archived daily `(Mkt-RF + RF) / 100`, starting
+  at 100 on the first included session. It is a derived broad-market return
+  index, not an ETF or the official S&P 500 total-return index. Do not use future
+  returns to define features. The benchmark calendar is supplied, not certified.
+- Keep the ten existing trailing metrics, a 252-session lookback, minimum 126
+  observations, 20-session forward excess return, one-session entry lag,
+  252-session annualization and zero assumed risk-free rate for trailing ratios.
+- Train only Ridge (`alpha=1`), against all individual-metric, best train-only
+  metric and equal-weight oriented-rank baselines. Use fold-local screening,
+  imputation, scaling and ranks; no model-family or parameter search after results.
+- Reserve 63 final decision dates without evaluating their outcomes. Development
+  uses three outer 63-date windows (minimum 252 training dates), each with two
+  inner 42-date windows (minimum 126 training dates), and purges label overlap.
+  Require a minimum 20-stock cross-section, three quantiles, coverage 0.8,
+  redundancy threshold 0.9, HAC lag 19 and random seed 42.
+- Audit raw coverage and build the panel without the separate `qmr run` screening
+  path. Persist no-training preflight before registered development, and retain
+  one durable local registry outside individual run directories.
+
+The benchmark construction follows
+[French's market-factor definition](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/f-f_factors.html);
+fold-local transforms follow
+[scikit-learn's leakage guidance](https://scikit-learn.org/stable/common_pitfalls.html).
+This run can demonstrate data handling and actual model training. Its acceptance
+remains `not_evaluated` and Stage 4 remains false; retrospective revisions,
+survivorship, corporate actions, stable identifiers and delistings are not
+certified. Never present the reserved block as physically sealed or historically
+unseen merely because the workflow does not evaluate it.

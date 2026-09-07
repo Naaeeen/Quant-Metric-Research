@@ -251,6 +251,62 @@ No returns, metrics, model fits or final-holdout evaluation are performed by thi
 command. Research eligibility still requires the external evidence checklist;
 never publish raw provider files merely because an import succeeded.
 
+## Pinned public-archive intake and development
+
+Version 0.7.0 adds `qmr fetch-public-sample` for exactly two CSVs in Mendeley
+dataset `ndxfrshm74`, version 3: `sp500-1216.csv` and `FF3-0317.csv`.
+Acquisition records the source URLs, dataset and file metadata, current fetch
+time, sizes and SHA-256 hashes. Dataset version, license declaration and the
+two file identities are pinned; changed metadata or bytes fail validation.
+`archive_manifest.json` is the completion marker. The offline `public-demo`
+command rechecks this evidence before and after normalization.
+
+The stock file is a wide `Date` plus ticker-column table, with ISO
+`YYYY-MM-DD` dates and publisher-described adjusted closes. The factor file
+requires `Date`, `Mkt-RF` and `RF`, with `M/D/YYYY` dates and returns expressed
+in percentage points. The normalizer validates all source dates before
+restricting them to 2012-01-03 through 2016-12-30. Duplicate dates/columns,
+normalized ticker collisions and a ticker equal to `FF_MARKET_PROXY` fail.
+Already parsed daily date objects follow the shared timezone-naive contract.
+
+The demo selects the first 30 normalized ticker labels alphabetically across
+all stock columns, independently of coverage or returns. Selected members with
+no usable prices are retained. Explicit null prices go to `missing_prices.csv`
+with reason `missing_adjusted_close`; present invalid prices in the selected
+sample fail the positive-price contract. Prices are never filled or replaced.
+Coverage uses the benchmark calendar, including dates with no stock rows.
+
+`FF_MARKET_PROXY` begins at 100 on the first factor date inside the window.
+Every later level multiplies the prior level by `1 + (Mkt-RF + RF) / 100`.
+Both components, including the base day and dates outside the sample window,
+must be finite real numbers without missing values or the `-99.99`/`-999`
+sentinels. Combined returns at or below -100% and nonpositive/nonfinite
+compounded levels fail. Every stock date must have a factor date; factor-only
+dates remain in the benchmark, rather than silently intersecting calendars.
+This is a constructed research return index, not a tradable instrument.
+
+`quality_profile.json` reports the selection rule, symbol/year coverage,
+missing rates and large adjacent-session moves without clipping. It records
+the source limitations, not future model performance. The source's January
+2017 membership snapshot is retrospective, and ticker continuity, adjustment
+events, delistings and the exchange calendar remain independently unverified.
+The publisher's dataset-specific CC BY 4.0 assertion is recorded separately
+from verification of underlying third-party rights. Keep original prices and
+row-level derived artifacts under the ignored `data/raw/` and `artifacts/`
+paths; the software license does not confer data-publication permission.
+
+The demo defines fixed membership intervals solely for that demonstration,
+then runs input audit, panel construction, no-training preflight and registered
+development. It writes `public_demo_report.json` only after the nested
+`research/development_report.json` and development bundle are verified.
+Final outcomes are not evaluated, `acceptance_status` remains `not_evaluated`,
+and provenance and Stage 4 eligibility remain false. The panel includes forward
+outcomes and preflight checks their availability; neither artifact is sealed.
+Failure may retain partial files and registry exposure. Use a fresh destination
+and preserve the same registry outside individual run directories.
+See [the runnable example](../examples/README.md#public-archive-development-demo)
+and [the frozen declaration](research-decisions.md#september-2026-public-archive-development-declaration).
+
 ## Stage 3 evaluation and artifacts
 
 The engine fits three types of non-ML comparison: every usable individual

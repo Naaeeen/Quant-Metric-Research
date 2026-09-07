@@ -1,4 +1,74 @@
-# Offline examples
+# Examples
+
+## Public-archive development demo
+
+Version 0.7.0 can fetch a small, pinned real-data research archive and run the
+declared development experiment. No data account or API key is required for
+these public archive endpoints. Use the installed repository virtual environment
+(Windows `.venv\Scripts\python.exe`; Unix `.venv/bin/python`). With that
+environment active:
+
+~~~text
+qmr fetch-public-sample --output-dir data/raw/mendeley-v3-001
+qmr public-demo --archive-dir data/raw/mendeley-v3-001 --output-dir artifacts/public-demo-001 --registry artifacts/research-registry.sqlite3
+~~~
+
+Only `fetch-public-sample` accesses the network. It downloads `sp500-1216.csv`
+and `FF3-0317.csv` from Chi Seng Pun's
+[Mendeley Data V3 archive](https://data.mendeley.com/datasets/ndxfrshm74/3),
+plus the dataset record and file inventory. It validates the publisher's CC BY
+4.0 declaration, exact file identities, byte counts and SHA-256 hashes. The
+archive directory contains `raw/`, `dataset_record.json`, `file_inventory.json`
+and the final success marker `archive_manifest.json`.
+
+`public-demo` rechecks the local evidence and performs these fixed steps:
+
+1. Select the first 30 normalized stock-column labels alphabetically, retaining
+   sparse members, over 2012-01-03 through 2016-12-30.
+2. Build `FF_MARKET_PROXY` from `(Mkt-RF + RF) / 100`: first included session
+   base 100, then compound subsequent daily returns. This constructed research
+   index is neither an ETF nor the official S&P 500 total-return index.
+3. Audit inputs and calculate the ten trailing metrics on daily decision dates
+   from 2013-01-02 through 2016-12-30, with a 252-session lookback, minimum
+   126 observations, one-session entry lag and 20-session excess-return target.
+4. Save no-training preflight, then run registered Ridge (`alpha=1`) development
+   against individual metrics, the best training-only metric and equal-weight
+   oriented ranks. Three outer 63-date windows contain two inner 42-date windows;
+   fitting and screening remain fold-local and labels are purged at boundaries.
+
+The [frozen declaration](../docs/research-decisions.md#september-2026-public-archive-development-declaration)
+records the full settings. The final 63 eligible decision dates remain reserved
+without final-outcome evaluation; this command has no final-evaluation option.
+The saved panel still contains forward outcomes, and preflight inspects their
+availability, so the reserved period is not a physically sealed holdout.
+
+On completion, `public_demo_report.json` links the development summary and run
+ID. `quality_profile.json` reports symbol/year missingness and large daily moves;
+`missing_prices.csv` retains explicit null observations. Under `research/` are
+normalized inputs and configs, `input_audit.json`, `metric_panel.parquet`,
+`preflight.json`, the `development/` benchmark bundle, `registry_record.json`
+and `development_report.json`. Inspect history with the same registry:
+
+~~~text
+qmr experiments --registry artifacts/research-registry.sqlite3
+~~~
+
+Both output directories must be new. After a failure, retain partial evidence
+and any failure record; a missing completion marker means the bundle is
+incomplete. Retry into a new output directory using the same durable registry,
+kept outside individual run directories. Do not recreate the registry to reset
+recorded outcome exposure.
+
+Attribution: Pun, Chi Seng (2018), *Low- and High-Dimensional Asset Prices Data*,
+Mendeley Data, V3, DOI `10.17632/ndxfrshm74.3`. The publisher declares
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and names Yahoo Finance
+and Ken French as upstream sources. That declaration is not an independent
+guarantee of third-party rights. The January 2017 constituent snapshot introduces
+survivorship bias; historical membership, identifiers, adjustments and delistings
+remain unverified. Keep raw and row-level derived data in the ignored locations
+above. A completed run is development evidence, with `acceptance_status` still
+`not_evaluated` and `stage4_eligible: false`. It does not resolve the separate ASX
+intake's source-access or historical-evidence gaps.
 
 ## Offline Yahoo-format intake
 
