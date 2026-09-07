@@ -16,6 +16,8 @@ from .intake import import_yahoo_files
 from .panel import build_point_in_time_panel
 from .pipeline import ResearchRun, run_research
 from .preflight import preflight_benchmark
+from .price_factor_catalog import PRICE_FACTOR_CATALOG, PriceFactorSpec
+from .price_factors import PriceFactorResult, PriceFactorValue, compute_price_factors
 from .reduction import PCABaseline, fit_pca_baseline
 from .screening import MetricScreenResult, fit_metric_screen
 from .splits import PurgedWalkForwardSplit, build_purged_walk_forward_splits
@@ -36,6 +38,10 @@ __all__ = [
     "NestedSplitConfig",
     "PCABaseline",
     "PanelConfig",
+    "PRICE_FACTOR_CATALOG",
+    "PriceFactorResult",
+    "PriceFactorSpec",
+    "PriceFactorValue",
     "PurgedWalkForwardSplit",
     "ResearchRun",
     "WalkForwardMetricConfig",
@@ -44,6 +50,7 @@ __all__ = [
     "import_yahoo_files",
     "build_point_in_time_panel",
     "build_purged_walk_forward_splits",
+    "compute_price_factors",
     "fit_metric_screen",
     "fit_pca_baseline",
     "evaluate_metrics_walk_forward",

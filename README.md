@@ -3,7 +3,12 @@
 A standalone, leakage-aware research pipeline for testing whether historical
 equity metrics contain stable cross-sectional signal.
 
-Version 0.8.0 adds a CPU-only Colab walkthrough with private, append-only
+Version 0.9.0 adds three opt-in, fixed-window price factors with explicit
+calculation windows, missingness reasons and immutable results. They are a
+separate software capability, not automatically added to the existing experiment.
+See the [factor contract](docs/data-contract.md#opt-in-fixed-window-price-factors).
+
+Version 0.8.0 added a CPU-only Colab walkthrough with private, append-only
 checkpoints around the existing public-archive development workflow. It carries
 the original research registry and evidence into the notebook instead of
 starting a blank history. Training and live SQLite remain on local VM storage;
