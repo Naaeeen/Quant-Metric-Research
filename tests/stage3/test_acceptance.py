@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+
 import pandas as pd
+import pytest
 
 from quant_metric_research.benchmark import _acceptance
 from quant_metric_research.benchmark_config import (
@@ -173,6 +176,7 @@ def test_acceptance_uses_native_and_absolute_coverage() -> None:
         _evaluation(),
         config=_config(),
         frozen_family="ridge",
+        expected_locked_dates=pd.bdate_range("2025-01-02", periods=20),
     )
 
     assert acceptance["locked_native_coverage_ratio"] == 0.5
@@ -181,6 +185,55 @@ def test_acceptance_uses_native_and_absolute_coverage() -> None:
     assert acceptance["checks"]["locked_native_score_coverage_passed"] is False
     assert acceptance["checks"]["locked_rank_ic_improvement_p_value_passed"] is True
     assert acceptance["model_gate_passed"] is False
+
+
+def test_acceptance_without_schedule_does_not_infer_from_surviving_rows() -> None:
+    acceptance = _acceptance(
+        _evaluation(model_native_coverage=0.9), config=_config(), frozen_family="ridge"
+    )
+    assert acceptance["locked_valid_date_count"] == 20
+    assert acceptance["locked_rank_ic_improvement"] > 0
+    assert (
+        acceptance["locked_rank_ic_improvement_inference_status"]
+        == "schedule_unavailable"
+    )
+    assert acceptance["locked_rank_ic_improvement_scheduled_date_count"] is None
+    assert pd.isna(acceptance["locked_rank_ic_improvement_p_value"])
+    assert not acceptance["checks"]["locked_rank_ic_improvement_p_value_passed"]
+    strict = json.loads(json.dumps(dict(acceptance), allow_nan=False))
+    assert strict["locked_rank_ic_improvement_p_value"] is None
+    assert strict["locked_rank_ic_improvement_scheduled_date_count"] is None
+
+
+@pytest.mark.parametrize("mode", ["missing_date", "missing_model", "null_model"])
+def test_acceptance_keeps_gap_in_paired_schedule(mode) -> None:
+    evaluation = _evaluation(model_native_coverage=0.9)
+    original = evaluation.daily_metrics.copy(deep=True)
+    missing_date = pd.Timestamp("2025-01-10")
+    selected = original["as_of_date"].eq(missing_date)
+    if mode != "missing_date":
+        selected = selected & original["model"].eq("ridge")
+    changed = (
+        original.assign(rank_ic=original["rank_ic"].mask(selected))
+        if mode == "null_model"
+        else original.loc[~selected].copy()
+    )
+    acceptance = _acceptance(
+        PredictionEvaluation(changed, evaluation.fold_metrics, evaluation.summary),
+        config=_config(),
+        frozen_family="ridge",
+        expected_locked_dates=pd.bdate_range("2025-01-02", periods=20),
+    )
+    assert acceptance["locked_valid_date_count"] == 19
+    assert acceptance["locked_rank_ic_improvement"] > 0
+    assert (
+        acceptance["locked_rank_ic_improvement_inference_status"]
+        == "missing_scheduled_values"
+    )
+    assert acceptance["locked_rank_ic_improvement_scheduled_date_count"] == 20
+    assert acceptance["locked_rank_ic_improvement_effective_hac_lags"] is None
+    assert not acceptance["checks"]["locked_rank_ic_improvement_p_value_passed"]
+    pd.testing.assert_frame_equal(evaluation.daily_metrics, original)
 
 
 def test_acceptance_rejects_tie_short_lockbox_and_weak_inference() -> None:

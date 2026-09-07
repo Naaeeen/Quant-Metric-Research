@@ -52,6 +52,7 @@ def _execute_benchmark(
     development_evaluation = engine._evaluate_development(
         development_predictions,
         config=config,
+        expected_dates=engine._phase_schedule(plan, phase="development"),
     )
     frozen_family = choose_frozen_model(
         development_evaluation.summary,
@@ -75,12 +76,14 @@ def _execute_benchmark(
         config=config,
         frozen_family=frozen_family,
     )
+    locked_schedule = engine._phase_schedule(plan, phase="locked_test")
     locked_evaluation = evaluate_prediction_frame(
         locked_predictions,
         min_cross_section=config.min_cross_section,
         quantiles=config.quantiles,
         hac_lags=config.hac_lags,
         primary_models=(frozen_family, config.primary_baseline),
+        expected_dates_by_phase={"locked_test": locked_schedule},
     )
     predictions = engine._sort_predictions(
         pd.concat([development_predictions, locked_predictions], ignore_index=True)
@@ -133,6 +136,7 @@ def _execute_benchmark(
             evaluation,
             config=config,
             frozen_family=frozen_family,
+            expected_locked_dates=locked_schedule,
         ),
         manifest=_fingerprints(plan, config=config),
     )
