@@ -209,6 +209,8 @@ def build_notebook(source_revision: str):
         (
             "code",
             """
+        import csv
+
         report_path = WORK_DIR / "demo" / "public_demo_report.json"
         report = json.loads(report_path.read_text(encoding="utf-8"))
         if (report["status"] != "complete"
@@ -226,7 +228,6 @@ def build_notebook(source_revision: str):
         if len(selected) != 2:
             raise RuntimeError("Expected both comparable development summaries.")
         print(json.dumps(selected, indent=2, allow_nan=False))
-        import csv
         fold_path = WORK_DIR / "demo/research/development/fold_summary.csv"
         with fold_path.open(encoding="utf-8", newline="") as stream:
             folds = [row for row in csv.DictReader(stream)

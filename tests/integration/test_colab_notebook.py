@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -74,6 +75,26 @@ def test_writer_refuses_overwrite_and_invalid_extension(tmp_path):
     with pytest.raises(ValueError, match="ipynb"):
         module.write_notebook("b" * 40, tmp_path / "result.txt")
     nbformat.validate(nbformat.read(output, as_version=4))
+
+
+def test_generated_notebook_passes_repository_lint(tmp_path):
+    output = tmp_path / "generated.ipynb"
+    builder().write_notebook("b" * 40, output)
+    checked = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "ruff",
+            "check",
+            "--config",
+            str(ROOT / "pyproject.toml"),
+            str(output),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert checked.returncode == 0, checked.stdout + checked.stderr
 
 
 def code_cells():
