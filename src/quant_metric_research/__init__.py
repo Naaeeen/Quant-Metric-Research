@@ -9,6 +9,7 @@ from .benchmark import (
 )
 from .benchmark_comparison import FeatureBundleComparison, compare_feature_bundles
 from .benchmark_io import BenchmarkArtifacts, write_benchmark_run
+from .comparison_io import ComparisonArtifacts, write_feature_bundle_comparison
 from .config import PanelConfig
 from .contracts import DataContractError, validate_memberships, validate_prices
 from .experiment_registry import ExperimentRegistry
@@ -35,6 +36,7 @@ __all__ = [
     "BenchmarkArtifacts",
     "BenchmarkConfig",
     "BenchmarkRun",
+    "ComparisonArtifacts",
     "DataContractError",
     "ExperimentRegistry",
     "FEATURE_BUNDLES",
@@ -68,4 +70,5 @@ __all__ = [
     "validate_memberships",
     "validate_prices",
     "write_benchmark_run",
+    "write_feature_bundle_comparison",
 ]

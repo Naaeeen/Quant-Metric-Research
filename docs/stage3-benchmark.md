@@ -545,6 +545,59 @@ still model-selection work, not fresh holdout evidence. Positive deltas are not
 net portfolio returns or proof of tradability. No data provenance, complete
 history, authenticity, hosted Colab execution or Stage 4 eligibility is certified.
 
+### Saving a comparison
+
+Version 0.14 adds an explicit writer for the existing result above:
+
+~~~python
+from quant_metric_research import write_feature_bundle_comparison
+
+artifacts = write_feature_bundle_comparison(
+    comparison, "artifacts/bundle-comparison-001"
+)
+artifacts.files["comparison_manifest"]
+artifacts.files["delta_summary"]
+~~~
+
+The parent must exist and the destination must be new. The writer creates
+`daily_metrics.csv`, `fold_metrics.csv`, `summary.csv`, `daily_deltas.csv` and
+`delta_summary.csv`, then publishes `comparison_manifest.json` last. It does not
+fit, evaluate, open the experiment registry, or load earlier artifact folders.
+This is a Python API, not an automatic step in the public demo or Colab notebook.
+
+Before creating output, it copies and validates all tables and metadata. The
+supported comparison definition is `"1"`; scope remains development/descriptive,
+with no final evaluation, inference, authenticity or history-verification claim.
+Each table must have exactly its known descriptive columns. Extra columns such
+as a p-value or winner fail rather than being dropped. Accepted row and column
+order are preserved; text fields use the existing phase/scope/role/contrast
+labels, dates must be valid, and numeric cells must be finite real values or
+genuinely missing. Numeric strings and formula-like text are not coerced or
+escaped into the report. Negative numeric values remain valid.
+
+CSV uses UTF-8, no index, stable newlines and empty missing fields. In particular,
+an unavailable paired mean stays blank, not zero. CSV supports inspection, not
+exact dtype reconstruction or a general spreadsheet-sanitization guarantee.
+The manifest records format version `"1"`, writer package version, unchanged
+report metadata, and each table's relative filename, row count, columns, byte
+count and SHA-256. These hashes describe output bytes; they do not authenticate
+the supplied result, establish provider rights or verify research history.
+Returned paths and nested metadata are immutable copies; on-disk files are not.
+
+Use one writer and ordinary local storage. Existing destinations, including
+empty directories and symlink/junction paths, are refused. There is no overwrite,
+resume or automatic cleanup. An error after directory creation preserves partial
+evidence and propagates the original exception with recovery guidance. Without
+the final manifest, a bundle is incomplete. If publication succeeded just before
+an error was reported, the manifest may already exist: inspect the directory
+before deciding what to do, rather than deleting it or blindly retrying.
+
+The final marker is checked immediately before publication, but this is not a
+race-proof defense against another writer or hostile filesystem replacement.
+A completed marker also does not guarantee crash recovery, durable remote sync,
+complete retained research history, or an empirically valid model. Keep any
+real-data reports private until their publication scope is approved.
+
 ## Reading the decision
 
 First verify the manifest and data gate, then audit fold exclusions and coverage.

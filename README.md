@@ -3,7 +3,14 @@
 A standalone, leakage-aware research pipeline for testing whether historical
 equity metrics contain stable cross-sectional signal.
 
-Version 0.13.0 adds a development-only comparison of the original metric bundle
+Version 0.14.0 adds explicit saving of an existing development comparison: five
+CSV tables and a strict JSON completion manifest, with no retraining or metric
+recalculation. The writer requires a fresh local destination and preserves
+partial output on failure. Saved reports remain descriptive, not authenticated
+research or evidence of alpha. See [saving comparison reports](docs/stage3-benchmark.md#saving-a-comparison).
+The Colab source pin remains at the separately verified 0.13 release.
+
+Version 0.13.0 added a development-only comparison of the original metric bundle
 and its three-factor extension. It checks saved experiment consistency and
 compares the same model family with a retained original-bundle equal-rank
 baseline, using native and three-arm common coverage. Results are descriptive,
