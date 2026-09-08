@@ -7,6 +7,7 @@ from .benchmark import (
     NestedSplitConfig,
     run_stage3_benchmark,
 )
+from .benchmark_comparison import FeatureBundleComparison, compare_feature_bundles
 from .benchmark_io import BenchmarkArtifacts, write_benchmark_run
 from .config import PanelConfig
 from .contracts import DataContractError, validate_memberships, validate_prices
@@ -37,6 +38,7 @@ __all__ = [
     "DataContractError",
     "ExperimentRegistry",
     "FEATURE_BUNDLES",
+    "FeatureBundleComparison",
     "FeatureBundleSpec",
     "MetricScreenResult",
     "NestedSplitConfig",
@@ -56,6 +58,7 @@ __all__ = [
     "build_factor_panel",
     "build_purged_walk_forward_splits",
     "compute_price_factors",
+    "compare_feature_bundles",
     "fit_metric_screen",
     "fit_pca_baseline",
     "evaluate_metrics_walk_forward",
