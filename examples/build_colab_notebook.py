@@ -22,8 +22,9 @@ def build_notebook(source_revision: str):
         Run the existing fixed 30-stock, ten-metric Ridge experiment on CPU.
         This notebook calls the tested library; it does not implement another model.
         It preserves earlier attempts in one private append-only checkpoint history.
-        **This is an engineering demo, with no proven alpha.** The earlier real-data
-        Ridge mean Rank IC was -0.0477 versus -0.0370 for equal-weight ranks.
+        **This is an engineering demo, with no proven alpha.** In the earlier
+        version 0.7/0.8 real-data development runs, Ridge mean Rank IC was -0.0477
+        versus -0.0370 for equal-weight ranks (not a new result from this source pin).
         Retrospective membership creates survivorship bias; provider adjustments,
         delistings and point-in-time availability remain unverified.
 
@@ -40,6 +41,12 @@ def build_notebook(source_revision: str):
         authorization; this notebook can then access the mounted files.
         The source and dependencies are public, but data/history and executed
         outputs remain private. Clear outputs before sharing a notebook.
+
+        This refreshed source has local isolated-install and synthetic workflow
+        checks plus Linux CI. The earlier five-cell real-data execution used the
+        0.8 pin; the full refreshed notebook and hosted Colab/Drive interaction
+        still require your execution. Follow every cell in order with the complete
+        existing history; do not reuse an older seed or erase prior attempts.
         """,
         ),
         (
@@ -248,9 +255,12 @@ def build_notebook(source_revision: str):
         and verify it is available after Drive sync. Clear notebook outputs before
         sharing. Do not treat rerunning an observed dataset as fresh evidence.
 
-        The next research milestone is a small, documented price-only factor
-        catalog and predeclared development ablations, after checking availability
-        and leakage. Additional models or PCA are comparisons to earn, not a
+        The library now includes an opt-in price-only factor catalog and a
+        development-only same-family feature-bundle comparison. This notebook
+        does not invoke them or change its fixed ten-metric experiment. A separate
+        predeclared study would test candidate factors while retaining every
+        attempt and checking availability, leakage and coverage. Additional models
+        or PCA are comparisons to earn, not a
         remedy assumed to fix a negative result. Independent historical evidence,
         costs, turnover and portfolio tests are needed before any trading claim.
 

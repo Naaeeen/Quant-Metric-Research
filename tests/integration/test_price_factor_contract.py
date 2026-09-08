@@ -120,12 +120,14 @@ def test_catalog_does_not_expand_legacy_or_fixed_public_experiment():
     assert benchmark.split.inner_validation_date_count == 42
 
 
-def test_colab_keeps_pre_factor_source_pin_and_no_automatic_new_experiment():
+def test_colab_approved_source_pin_does_not_start_a_new_factor_experiment():
     root = Path(__file__).resolve().parents[2]
     notebook = nbformat.read(root / "examples/colab_public_demo.ipynb", as_version=4)
     code = "\n".join(cell.source for cell in notebook.cells if cell.cell_type == "code")
-    assert 'SOURCE_REVISION = "7740dee1b4c6aeed463d6440511d7b606c6fe406"' in code
+    assert 'SOURCE_REVISION = "dadcb6c699f8d3ab2cf512669b74abff64c98f75"' in code
     assert "compute_price_factors" not in code
+    assert "build_factor_panel" not in code
+    assert "compare_feature_bundles" not in code
     assert "notebook-demo" in code
     assert all(
         cell.execution_count is None and cell.outputs == []

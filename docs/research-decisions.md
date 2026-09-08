@@ -792,3 +792,44 @@ artifact loading or registry access inside the comparator. Independent review,
 installed API/command checks and source/wheel builds passed. These software
 checks add no empirical result, final outcome exposure or hosted Colab claim.
 Linux verification is recorded separately on the release pull request.
+
+## September 2026 explicit Colab source refresh
+
+The Colab entrypoint now explicitly pins the independently reviewed
+[0.13 source](https://github.com/Naaeeen/Quant-Metric-Research/commit/dadcb6c699f8d3ab2cf512669b74abff64c98f75).
+The fixed CPU ten-metric Ridge experiment and dependency constraints are unchanged;
+new price factors and bundle comparisons remain opt-in outside this notebook.
+This adopts the newer schedule/consistency safeguards, not a new hypothesis or a
+claim that rerunning observed data supplies independent evidence.
+
+Direct comparison with the old 0.8 pin found the history helpers, experiment
+registry, public-demo entrypoint and constraints unchanged. History schema 1 is
+separate from benchmark artifact schema 6: existing generations are retained,
+not migrated, rewritten or relabeled under a new identity. A synthetic declared
+old identity can test retention but is not execution under the old interpreter.
+
+This is an explicit compatibility milestone, not automatic repinning after every
+release. [Colab runtime guidance](https://research.google.com/colaboratory/runtime-version-faq.html)
+supports installing required library versions as runtimes change. The existing
+local-compute/private-checkpoint separation remains appropriate given Colab's
+[temporary runtime and Drive limitations](https://research.google.com/colaboratory/faq.html).
+No remote durability or distributed-locking guarantee is inferred.
+
+The target public source passed a fresh isolated constrained bootstrap/API/CLI
+check and [all three Linux Python jobs](https://github.com/Naaeeen/Quant-Metric-Research/actions/runs/34172921551),
+including constrained Python 3.12. The earlier real-data five-cell/11-minute
+execution belongs to the 0.8 pin. Neither a full refreshed five-cell real-data
+run nor hosted Colab/Drive execution is claimed; the examples guide records the
+remaining private-history, Drive authorization and run-in-order steps.
+
+Final frozen refresh verification: **1,410 tests passed** in about 225 seconds
+with **90.44% aggregate coverage including branch tracking**. The extended
+existing synthetic workflow preserves prior file/directory entries and bytes,
+raw completed/failed/running records and an existing final reservation, appending
+exactly one current-identity development record/exposure. Both notebook summary
+sources read that genuine synthetic output and its schema-6 schedule evidence.
+No old interpreter or real archive acquisition was exercised by that fixture.
+Independent ten-file review, 128-file lint/format, dependency consistency/audit
+and source/wheel builds passed. Production source, package version, experiment
+defaults and dependency constraints were not changed by this refresh. Its Linux
+CI result is recorded separately on the refresh pull request.

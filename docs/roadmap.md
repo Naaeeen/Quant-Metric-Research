@@ -130,7 +130,8 @@ unverified, even if the statistical model gate passes.
 
 The September 8 review prioritizes portability and reproducibility before more
 model complexity. The declared real-data run is complete; the portability
-release carries its evidence forward, while factor expansion remains future work:
+release carries its evidence forward. The factor software is implemented below;
+new empirical factor comparisons remain separately declared future work:
 
 1. Preserve the completed real-data run and earlier interrupted attempt.
    Ridge did not improve aggregate development Rank IC over equal-weight ranks;
@@ -146,7 +147,7 @@ release carries its evidence forward, while factor expansion remains future work
    user-selected persistent storage. Unresolved interruptions block reuse.
    Local and Python 3.12 Linux verification are distinct from a hosted Colab run;
    the walkthrough does not claim hosted execution or offer final evaluation.
-   The local five-cell notebook run and all three Linux Python versions now pass;
+   The earlier 0.8-pin local five-cell run and all three Linux Python versions passed;
    see the [portability evidence](research-decisions.md#verified-portability-result-2026-09-08).
 4. Define a small factor catalog before computing additional features: formula,
    required inputs, lookback, availability, adjustment assumptions and missingness
@@ -178,7 +179,12 @@ release carries its evidence forward, while factor expansion remains future work
    three-way common population alongside native coverage. Paired daily contrasts
    are descriptive; they do not select a winner or open a final test. This is
    conditional consistency checking, not authenticated research history.
-9. Predeclare ablations and comparisons with the existing PCA and tree families;
+9. Explicitly refresh the Colab source pin to the verified 0.13 commit without
+   changing the fixed experiment or rewriting history. Check full notebook/builder
+   parity, declared-old-identity preservation and real synthetic workflow summary
+   compatibility. Retain version-specific execution evidence: the previous full
+   five-cell run does not validate a refreshed notebook or hosted Drive session.
+10. Predeclare ablations and comparisons with the existing PCA and tree families;
    retain all attempts and exposure history. Additional horizons and later
    portfolio work remain gated by the data and evaluation requirements below.
 
