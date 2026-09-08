@@ -173,7 +173,9 @@ def _forbid_comparator_side_effects(guard, qmr):
         guard.setattr(owner, "open", source_only_open)
 
 
-def test_real_development_pair_compares_saved_scores_without_fitting(monkeypatch):
+def test_real_development_pair_compares_saved_scores_without_fitting(
+    monkeypatch, tmp_path
+):
     import quant_metric_research as qmr
     from quant_metric_research import (
         FeatureBundleComparison,
@@ -184,7 +186,7 @@ def test_real_development_pair_compares_saved_scores_without_fitting(monkeypatch
     legacy, candidate = _development_pair(qmr)
     for run in (legacy, candidate):
         assert run.manifest["artifact_schema_version"] == "6"
-        assert run.manifest["package_version"] == "0.13.0"
+        assert run.manifest["package_version"] == "0.14.0"
         assert run.manifest["execution_mode"] == "development"
         assert run.manifest["experiment"]["registered"] is False
         assert set(run.predictions["phase"]) == {"development"}
@@ -293,7 +295,7 @@ def test_real_development_pair_compares_saved_scores_without_fitting(monkeypatch
     ):
         assert report.metadata[key] is False
     assert report.metadata["model_family"] == "ridge"
-    assert report.metadata["comparison_identity"]["package_version"] == "0.13.0"
+    assert report.metadata["comparison_identity"]["package_version"] == "0.14.0"
     with pytest.raises(TypeError):
         report.metadata["history_verified"] = True
     with pytest.raises(TypeError):
@@ -317,3 +319,31 @@ def test_real_development_pair_compares_saved_scores_without_fitting(monkeypatch
             json.dumps(dict(run.manifest), default=dict, sort_keys=True)
             == manifests[index]
         )
+
+    # Reuse this genuine synthetic pair: persistence must not evaluate it again.
+    def no_research(*args, **kwargs):
+        pytest.fail("Saving a comparison must not repeat research or open history.")
+
+    with monkeypatch.context() as guard:
+        guard.setattr(benchmark_comparison, "evaluate_prediction_frame", no_research)
+        guard.setattr(qmr, "run_stage3_benchmark", no_research)
+        guard.setattr(sqlite3, "connect", no_research)
+        artifacts = qmr.write_feature_bundle_comparison(report, tmp_path / "report")
+
+    assert isinstance(artifacts, qmr.ComparisonArtifacts)
+    saved = json.loads(artifacts.files["comparison_manifest"].read_text("utf-8"))
+    assert saved["status"] == "completed"
+    assert (
+        saved["report_metadata"]["comparison_identity"]["package_version"] == "0.14.0"
+    )
+    for name in (
+        "daily_metrics",
+        "fold_metrics",
+        "summary",
+        "daily_deltas",
+        "delta_summary",
+    ):
+        frame = getattr(report, name)
+        assert artifacts.files[name].read_bytes() == frame.to_csv(
+            index=False, na_rep="", lineterminator="\n"
+        ).encode("utf-8")

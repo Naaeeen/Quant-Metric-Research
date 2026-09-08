@@ -13,7 +13,7 @@ def test_stage3_version_has_one_package_source() -> None:
         (project_root / "pyproject.toml").read_text(encoding="utf-8")
     )
 
-    assert qmr.__version__ == IMPLEMENTATION_VERSION == "0.13.0"
+    assert qmr.__version__ == IMPLEMENTATION_VERSION == "0.14.0"
     assert configuration["project"]["dynamic"] == ["version"]
     assert configuration["tool"]["setuptools"]["dynamic"]["version"] == {
         "attr": "quant_metric_research._version.__version__"
@@ -32,3 +32,10 @@ def test_stage3_workflow_is_available_from_package_root() -> None:
 def test_feature_bundle_comparison_is_available_from_package_root() -> None:
     assert qmr.FeatureBundleComparison is not None
     assert callable(qmr.compare_feature_bundles)
+
+
+def test_comparison_artifact_writer_is_available_from_package_root() -> None:
+    assert qmr.ComparisonArtifacts is not None
+    assert callable(qmr.write_feature_bundle_comparison)
+    assert "ComparisonArtifacts" in qmr.__all__
+    assert "write_feature_bundle_comparison" in qmr.__all__
