@@ -431,6 +431,120 @@ Stage 2, inner tuning and Stage 3 use the same spread convention: fixed
 Reordering or renaming equal-score stocks cannot change the reported spread.
 This convention describes a statistic, not a tradeable portfolio.
 
+## Development-only feature-bundle comparison
+
+Version 0.13 adds an opt-in Python report over two caller-owned `BenchmarkRun`
+objects. It does not load artifact directories, fit models, choose a family,
+write to a registry or evaluate a final test. Benchmark artifacts remain schema 6;
+this separate report has its own comparison definition version.
+
+Supply development results from the **same enriched panel**, with complete
+configurations differing only in `feature_columns`: `legacy10_v1` and
+`legacy10_plus_price3_v1` from `FEATURE_BUNDLES`. Independently building a ten-column
+panel and a thirteen-column panel does not satisfy the full-panel identity check.
+Run any empirical development through the existing declared research workflow;
+this report does not replace preflight, registration or retained exposure history.
+
+Given those already-produced objects:
+
+~~~python
+from quant_metric_research import compare_feature_bundles
+
+comparison = compare_feature_bundles(
+    legacy_development_run,
+    candidate_development_run,
+    model_family="ridge",  # Explicitly choose the same family, not its best result.
+)
+comparison.summary
+comparison.delta_summary
+~~~
+
+The three report roles are:
+
+| Role | Saved scores used |
+| --- | --- |
+| `legacy_equal_rank` | Original-bundle `equal_weight_rank` |
+| `legacy_model` | Original bundle's explicitly requested model family |
+| `candidate_model` | Extended bundle's same model family |
+
+The equal-rank baseline uses fold-selected, training-oriented original features;
+screening can retain fewer than ten. Candidate feature widths, selected-feature
+order and tuned candidate IDs may legitimately differ. The comparison preserves
+saved scores rather than recomputing orientation, normalization or rankings after
+filtering outcomes. Spearman's internal ranking remains part of Rank IC.
+
+### Consistency checks and limits
+
+Both inputs must declare development mode, artifact schema `"6"` and schedule
+definition `"1"`. Scope checks also inspect acceptance/data-gate metadata before
+accessing prediction frames, so a relabeled manifest cannot override an explicit
+final-evaluation marker. Unknown schemas, final/mixed phases and contradictory
+scope evidence fail rather than being silently filtered.
+
+Producer source/package/implementation, recorded runtime, full-panel identity,
+dataset versions, configuration and temporal boundaries must match between the
+two inputs. Run and model-input fingerprints can differ. Producer identity need
+not equal the current report implementation's identity; both are recorded
+separately. This does not authenticate supplied objects or validate all prior
+research outside the report.
+
+The exact saved development schedule and complete fold assignments must agree.
+Each selected arm's dates must equal the schedule inside its assigned evaluation
+window. Extra dates, dates in the wrong fold, duplicates and between-fold
+prediction rows fail. Scheduled dates between folds remain in the report's
+denominator without invented predictions. Fit and maximum training-label dates
+must match the fold evidence and precede evaluation.
+
+All three arms must have identical security-date/fold keys, row IDs, targets and
+realized returns, including each outcome's independent missingness pattern.
+Outcome equality is checked before float64 conversion can hide distinct values.
+Supported integer/decimal-string/Decimal representations keep their exact value;
+floating scalars keep their actual binary value. Consequently, a decimal string
+such as `"0.1"` is conservatively distinct from the binary float `0.1`; unsupported
+exact representations fail clearly. This equality check does not change the
+existing evaluator's float arithmetic or saved-score semantics.
+Selected-feature/count/zero-observed evidence is checked internally, without
+requiring equal widths across bundles. Other saved model arms are not part of
+this structural audit. Prediction IDs must appear in their fold assignments and
+every evaluation-role ID must be retained with a present target. Same-fold
+training or temporally incompatible excluded IDs cannot be scored. Scored
+`missing_label` and `locked_test_overlap` assignments require both outcomes to be
+missing; `missing_target` requires only the target to be missing. Realized return
+and score availability otherwise remain independent. Contradictory masks are
+rejected, never repaired or filtered. Assignments do not carry date/symbol values
+for jointly omitted excluded rows, so their completeness cannot be independently
+reconstructed without the
+original panel. Matching metadata is conditional evidence, not a substitute for
+that panel or a history-authentication mechanism.
+
+### Descriptive outputs
+
+`daily_metrics`, `fold_metrics` and `summary` retain per-arm descriptive results
+on `native` and `common` populations. Common means **one three-arm finite-score
+intersection**, not two separately chosen pairwise populations. The candidate's
+score availability therefore also affects which stocks appear in the legacy
+arms' common metrics. Keep native score coverage visible alongside common
+results. Target and realized-return masks remain independent of each other and
+of score coverage.
+
+`daily_deltas` contains `evaluation_scope`, `contrast`, `as_of_date`,
+`rank_ic_delta` and `spread_delta`, reindexed onto the full saved schedule.
+The two fixed contrasts are `candidate_model_minus_legacy_model` and
+`candidate_model_minus_legacy_equal_rank`. A daily difference exists only when
+both corresponding arm metrics are finite. `delta_summary` reports
+`scheduled_date_count`, `paired_rank_ic_date_count`,
+`paired_rank_ic_date_coverage`, `mean_paired_rank_ic_delta`, and corresponding
+`paired_spread_*` fields. It averages paired daily differences, not independently
+averaged arm summaries. No pairs means unavailable, not zero improvement.
+
+Tables are returned through defensive-copy access; `metadata` is recursively
+immutable. The report exports no p-values, t-statistics, q-values, winner or
+acceptance gate. Any internal calculations in the reused evaluator do not turn
+the descriptive contrasts into significance tests. Development comparisons are
+still model-selection work, not fresh holdout evidence. Positive deltas are not
+net portfolio returns or proof of tradability. No data provenance, complete
+history, authenticity, hosted Colab execution or Stage 4 eligibility is certified.
+
 ## Reading the decision
 
 First verify the manifest and data gate, then audit fold exclusions and coverage.
