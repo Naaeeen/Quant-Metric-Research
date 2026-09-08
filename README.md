@@ -20,8 +20,11 @@ Version 0.11.0 hardened statistical inference against missing scheduled dates.
 Stage 2 and Stage 3 now report why a p-value is unavailable instead of compressing
 gaps or shortening the requested HAC lag. Scores and descriptive metrics keep
 their existing meanings. See the [inference contract](docs/stage3-benchmark.md#scheduled-inference).
-The existing Colab notebook remains pinned to its separately verified earlier
-source; it does not automatically adopt this methodology change.
+The [Colab walkthrough](examples/README.md#colab-development-walkthrough) now
+explicitly pins the verified 0.13 source, including these schedule safeguards.
+Its fixed ten-metric Ridge experiment is unchanged; new factors and comparisons
+are not automatically invoked. Complete refreshed-notebook and hosted Colab/Drive
+execution remain distinct from local installation and synthetic compatibility checks.
 
 Version 0.10.0 added explicit panel enrichment and two immutable candidate feature
 schemas. Existing rows, labels and legacy metric settings remain unchanged;

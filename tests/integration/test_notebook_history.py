@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import sqlite3
 from contextlib import closing
@@ -7,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from quant_metric_research import ExperimentRegistry
+from quant_metric_research import ExperimentRegistry, __version__
 from quant_metric_research import _notebook_history_io as history_io
 from quant_metric_research import notebook_history as history
 
@@ -30,16 +31,17 @@ def manifest():
     }
 
 
-def add_run(path, status="running"):
+def add_run(path, status="running", *, recorded_manifest=None):
+    plan = manifest() if recorded_manifest is None else recorded_manifest
     registry = ExperimentRegistry(path)
     run_id = registry.start_development(
-        study_id="fixture", hypothesis="Synthetic software test", configuration={}
+        study_id="fixture",
+        hypothesis="Synthetic software test",
+        configuration=plan["configuration"],
     )
-    registry.record_development_plan(run_id, manifest=manifest())
+    registry.record_development_plan(run_id, manifest=plan)
     if status == "completed":
-        registry.complete_development(
-            run_id, manifest=manifest(), frozen_family="ridge"
-        )
+        registry.complete_development(run_id, manifest=plan, frozen_family="ridge")
     elif status == "failed":
         registry.fail_run(run_id, error_type="ValueError")
     return run_id
@@ -75,11 +77,15 @@ def seeded(tmp_path):
     return registry, destination, archive
 
 
-def mock_demo(monkeypatch, *, error=None):
+def mock_demo(monkeypatch, *, error=None, recorded_manifest=None):
     def run(*, archive_dir, output_dir, registry_path):
         output_dir.mkdir()
         (output_dir / "partial.txt").write_text("current output")
-        run_id = add_run(registry_path, "completed" if error is None else "running")
+        run_id = add_run(
+            registry_path,
+            "completed" if error is None else "running",
+            recorded_manifest=recorded_manifest,
+        )
         if error is not None:
             raise error
         return {"status": "complete", "development_run_id": run_id}
@@ -456,85 +462,130 @@ def test_file_copy_is_exclusive_and_detects_corruption(tmp_path, monkeypatch):
     assert destination.read_bytes() == b"preserve"
 
 
+def _declared_legacy_history(tmp_path, monkeypatch):
+    """Make synthetic legacy declarations, not an execution of the 0.8 runtime."""
+    plan = {**manifest(), "package_version": "0.8.0", "source_fingerprint": "0" * 64}
+    registry, directory, archive = (
+        tmp_path / name for name in ("canonical.sqlite3", "history", "archive")
+    )
+    completed = add_run(registry, "completed", recorded_manifest=plan)
+    add_run(registry, "failed", recorded_manifest=plan)
+    add_run(registry, "running", recorded_manifest=plan)
+    ExperimentRegistry(registry).reserve_final(
+        development_run_id=completed, manifest=plan, frozen_family="ridge"
+    )
+    archive.mkdir()
+    (archive / "original.bin").write_bytes(b"synthetic archive\x00\xff")
+    history.seed_notebook_history(
+        registry_path=registry,
+        history_dir=directory,
+        evidence_dirs={"archive": archive},
+    )
+    declared = {
+        **history._declared_identity(),
+        "package_version": "0.8.0",
+        "source_fingerprint": "0" * 64,
+    }
+    with monkeypatch.context() as prior:
+        prior.setattr(history, "_declared_identity", lambda: declared)
+        mock_demo(prior, recorded_manifest=plan)
+        execute((registry, directory, archive), tmp_path, "prior-work")
+    return (registry, directory, archive), declared
+
+
 def test_real_synthetic_public_demo_workflow_uses_closed_checkpoint(
-    seeded,
     tmp_path,
     monkeypatch,
+    capsys,
+    synthetic_notebook_demo,
+    notebook_summary_sources,
+    snapshot_notebook_paths,
 ):
-    from types import SimpleNamespace
-
-    import numpy as np
-    import pandas as pd
-
-    from quant_metric_research import BenchmarkConfig, PanelConfig, public_demo
-
-    rng = np.random.default_rng(42)
-    dates = pd.bdate_range("2013-01-02", periods=75)
-    symbols = tuple(f"SAMPLE_{index}" for index in range(8))
-    prices = pd.concat(
-        [
-            pd.DataFrame(
-                {
-                    "date": dates,
-                    "symbol": symbol,
-                    "adjusted_close": 100
-                    * np.exp(np.cumsum(rng.normal(0.001, 0.012, len(dates)))),
-                }
-            )
-            for symbol in (*symbols, "BENCH")
-        ],
-        ignore_index=True,
-    )
-    features = ("trailing_return", "annualized_volatility", "max_drawdown")
-    panel = PanelConfig(
-        dataset_version="synthetic-history-test-v1",
-        universe_id="SYNTHETIC_COHORT",
-        benchmark_symbol="BENCH",
-        lookback_sessions=10,
-        min_observations=8,
-        target_horizon_sessions=2,
-        entry_lag_sessions=1,
-        feature_columns=features,
-    )
-    benchmark = BenchmarkConfig.from_mapping(
-        {
-            "feature_columns": features,
-            "model_families": ["ridge"],
-            "ridge_alphas": [1.0],
-            "min_cross_section": 8,
-            "quantiles": 2,
-            "hac_lags": 1,
-            "split": {
-                "final_test_date_count": 6,
-                "outer_n_splits": 2,
-                "outer_test_date_count": 6,
-                "outer_min_train_date_count": 18,
-                "inner_n_splits": 1,
-                "inner_validation_date_count": 4,
-                "inner_min_train_date_count": 8,
-            },
-        }
-    )
-    sample = SimpleNamespace(
-        prices=prices,
-        symbols=symbols,
-        profile={"synthetic_software_fixture": True},
-        missing_prices=pd.DataFrame(columns=["date", "symbol", "reason"]),
-    )
-    monkeypatch.setattr(
-        public_demo, "_prepare_sample", lambda path: (sample, {"synthetic": True})
-    )
-    monkeypatch.setattr(public_demo, "public_demo_configs", lambda: (panel, benchmark))
+    seeded, old_identity = _declared_legacy_history(tmp_path, monkeypatch)
+    canonical, directory, archive = seeded
+    old_paths = (*directory.iterdir(), canonical, archive)
+    old_files = snapshot_notebook_paths(*old_paths)
+    previous = raw_rows(tmp_path / "prior-work/registry.sqlite3")
+    assert {row[1:3] for row in previous["runs"]} == {
+        ("development", "completed"),
+        ("development", "failed"),
+        ("development", "running"),
+        ("final", "running"),
+    }
     checkpoint = execute(seeded, tmp_path)
     assert checkpoint["status"] == "completed"
-    report = json.loads((tmp_path / "work/demo/public_demo_report.json").read_text())
+    assert checkpoint["generation"] == "000002"
+    assert snapshot_notebook_paths(*old_paths) == old_files
+    current = raw_rows(tmp_path / "work/registry.sqlite3")
+    for table in ("runs", "exposures"):
+        assert set(previous[table]) <= set(current[table])
+        assert len(current[table]) == len(previous[table]) + 1
+    (new_run,) = set(current["runs"]) - set(previous["runs"])
+    new_id = new_run[0]
+    assert new_run[1:3] == ("development", "completed")
+    old_start = json.loads((directory / "000001/start.json").read_text())
+    new_start = json.loads((directory / "000002/start.json").read_text())
+    assert old_start["declared_identity"] == old_identity
+    assert new_start["declared_identity"]["package_version"] == __version__
+    assert (
+        new_start["declared_identity"]["source_fingerprint"]
+        != old_identity["source_fingerprint"]
+    )
+    work = tmp_path / "work"
+    report = json.loads((work / "demo/public_demo_report.json").read_text())
     assert report["final_outcomes_evaluated"] is False
-    copied = seeded[1] / "000001/evidence/demo/public_demo_report.json"
+    assert report["development_run_id"] == new_id
+    copied = directory / "000002/evidence/demo/public_demo_report.json"
     assert json.loads(copied.read_text()) == report
-    rows = ExperimentRegistry(tmp_path / "work/registry.sqlite3").list_runs()
-    assert len(rows) == 3
-    assert all(row["kind"] == "development" for row in rows)
-    assert rows[-1]["status"] == "completed"
+    benchmark = json.loads(
+        (work / "demo/research/development/benchmark_manifest.json").read_text()
+    )
+    assert benchmark["artifact_schema_version"] == "6"
+    schedule = benchmark["evaluation_schedule"]
+    assert schedule["definition_version"] == "1"
+    assert set(schedule["dates_by_phase"]) == {"development"}
+    assert schedule["lag_unit"] == "scheduled_observations"
+    assert all(
+        row["scheduled_date_count"] == len(schedule["dates_by_phase"]["development"])
+        for row in report["development_summary"]
+    )
+    projection = (
+        "model",
+        "date_count",
+        "mean_rank_ic",
+        "mean_rank_ic_coverage",
+        "mean_spread",
+    )
+    expected = [
+        {key: row[key] for key in projection}
+        for row in report["development_summary"]
+        if row["evaluation_scope"] == "common"
+        and row["model"] in {"ridge", "equal_weight_rank"}
+    ]
+    assert {row["model"] for row in expected} == {"ridge", "equal_weight_rank"}
+    with (work / "demo/research/development/fold_summary.csv").open(
+        newline="", encoding="utf-8"
+    ) as stream:
+        folds = [
+            row
+            for row in csv.DictReader(stream)
+            if row["model"] in {"ridge", "equal_weight_rank"}
+            and row["evaluation_scope"] == "common"
+        ]
+    assert len(folds) == 4
+    capsys.readouterr()
+    for source in notebook_summary_sources:
+        namespace = {"WORK_DIR": work, "json": json}
+        exec(source, namespace)
+        assert namespace["selected"] == expected
+        assert namespace["folds"] == folds
+        output = capsys.readouterr().out
+        assert (
+            "Final outcomes not evaluated; provenance unverified; Stage 4 ineligible."
+            in output
+        )
+        assert all(symbol not in output for symbol in synthetic_notebook_demo.symbols)
+        assert "row_id" not in output
 
 
 @pytest.mark.parametrize(
