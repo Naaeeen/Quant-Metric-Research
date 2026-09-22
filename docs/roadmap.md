@@ -268,7 +268,7 @@ baseline, interpret the comparison and resume the same research history.
 | 1 | Direction audit and revised working plan | Complete: independent findings reconciled; sources and priorities recorded. |
 | 2 | Correct target/return separation in inner tuning | Complete: failing regressions reproduced and fixed; rank-target training reports return-unit spreads. |
 | 3 | Executable target/model ablation | Software complete: registered synthetic development runs, fixed features/folds, runtime and coverage reports. Market-data comparison remains open. |
-| 4 | Data qualification and empirical ablations | Calendar and endpoint software checks complete. Next: verify the real-data calendar, rebuild inputs, complete declared target and 10/13-feature studies, and document a qualified larger-data choice. |
+| 4 | Data qualification and empirical ablations | Calendar/endpoint software checks and the archive's session comparison complete. Next: rebuild inputs, complete declared target and 10/13-feature studies, and document a qualified larger-data choice. |
 | 5 | Development economic diagnostics and negative controls | Open: tested holdings/cost accounting and a frozen final-evaluation procedure. |
 | 6 | Stronger challenger and larger Colab study | Open: fair tuning budget, measured resources, independent review and reproducible run. |
 
@@ -277,8 +277,8 @@ that depend on them. Their priority is not a reason to delay unrelated model
 unit tests or the synthetic experiment workflow.
 
 The next bounded market-data run retains the existing 30-stock demonstration,
-original ten features and final-period boundaries. Verify the independently
-generated US-equity calendar, then compare raw-return and rank targets with the
+original ten features and final-period boundaries. Rebuild inputs using the
+checked US-equity calendar, then compare raw-return and rank targets with the
 existing Ridge and boosting settings, without an adaptive search. Use the latest
 complete three-record history: the older original registry has only two records.
 Keep this target-only comparison separate from the later 10/13-feature study.

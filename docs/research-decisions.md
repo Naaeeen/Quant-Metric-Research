@@ -1104,3 +1104,41 @@ The latest checkpoint and live registry contain three matching development
 records, whereas the older original registry has two. Continue the latest
 lineage. No additional market-data training or final evaluation was performed
 for this release; historical universe and source-rights gaps remain unchanged.
+
+### Archive calendar qualification, September 22, 2026
+
+The complete in-scope date sets in both pinned archive files match XNYS from
+`exchange_calendars==4.13.2`: **1,258 sessions** over 2012-01-03 through
+2016-12-30, with no missing, extra or duplicate dates. There are 250 sessions in
+2012 and 252 in each subsequent year. Both Sandy closure dates are absent.
+An independent second calculation reproduced the ordered declaration and both
+date-set comparisons. The four archived file hashes still match their manifest.
+
+The calendar was generated in an isolated environment with explicit bounds:
+
+~~~python
+import exchange_calendars
+
+exchange = exchange_calendars.get_calendar(
+    "XNYS", start="2012-01-03", end="2016-12-30"
+)
+sessions = exchange.sessions_in_range("2012-01-03", "2016-12-30")
+~~~
+
+Its declaration uses source `https://github.com/gerrymanoim/exchange_calendars`
+and version `4.13.2:XNYS`. The canonical calendar fingerprint is
+`45de2bd427aaa02ce5cbbe1b388564d80eaa7b143b67300c7935e4ca31ec83ba`.
+The [pinned XNYS implementation](https://github.com/gerrymanoim/exchange_calendars/blob/4.13.2/exchange_calendars/exchange_calendar_xnys.py)
+includes irregular closures as well as regular holidays and early closes.
+
+Projected reads of the latest checkpoint's normalized inputs also passed:
+38,276 price keys contain no duplicates or null keys, the benchmark retains all
+1,258 sessions, and all 1,008 unique decision dates belong to the declaration.
+These checks read date/symbol columns and hash file bytes; they do not calculate
+returns, fit models or write experiment records. Scripts, runtime versions,
+the declaration and the two reports are retained locally under
+`artifacts/calendar-qualification-20260922-001/`.
+
+This establishes agreement with the pinned community calendar, not per-security
+price completeness or independently certified historical provenance. The next
+step is the corrected-panel target comparison using the latest registry lineage.
