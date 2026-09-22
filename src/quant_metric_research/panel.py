@@ -11,6 +11,7 @@ from .contracts import (
     validate_prices,
 )
 from .features import compute_price_metrics
+from .session_calendar import ExpectedSessionCalendar, compare_session_calendar
 
 
 def _active_symbols(
@@ -61,10 +62,34 @@ def build_point_in_time_panel(
     *,
     as_of_dates: list[pd.Timestamp] | tuple[pd.Timestamp, ...],
     config: PanelConfig,
+    expected_calendar: ExpectedSessionCalendar | None = None,
 ) -> pd.DataFrame:
     validated_prices = validate_prices(prices)
     validated_memberships = validate_memberships(memberships)
     normalized_dates = validate_as_of_dates(as_of_dates)
+
+    calendar_metadata = {}
+    if expected_calendar is not None:
+        if not isinstance(expected_calendar, ExpectedSessionCalendar):
+            raise DataContractError(
+                "expected_calendar must be an ExpectedSessionCalendar."
+            )
+        check = compare_session_calendar(
+            validated_prices,
+            as_of_dates=normalized_dates,
+            config=config,
+            expected_calendar=expected_calendar,
+        )
+        if check["status"] != "matched":
+            raise DataContractError(
+                "Declared session calendar does not match the benchmark or decision "
+                "dates. Use audit_inputs with the same calendar to inspect the gaps."
+            )
+        calendar_metadata = {
+            "session_calendar_sha256": expected_calendar.fingerprint,
+            "session_calendar_source": expected_calendar.source,
+            "session_calendar_version": expected_calendar.version,
+        }
 
     benchmark_prices = validated_prices.loc[
         validated_prices["symbol"] == config.benchmark_symbol
@@ -73,7 +98,9 @@ def build_point_in_time_panel(
         raise DataContractError("Benchmark price history is required.")
 
     benchmark_calendar = pd.DatetimeIndex(
-        benchmark_prices["date"].sort_values().unique()
+        expected_calendar.sessions
+        if expected_calendar is not None
+        else benchmark_prices["date"].sort_values().unique()
     )
     if any(date not in benchmark_calendar for date in normalized_dates):
         raise ValueError("All as_of_dates must be present in the benchmark calendar.")
@@ -164,6 +191,7 @@ def build_point_in_time_panel(
                     "annual_risk_free_rate": (config.annual_risk_free_rate),
                     "as_of_date": as_of_date,
                     "symbol": symbol,
+                    **calendar_metadata,
                     "feature_available_at": as_of_date,
                     "feature_window_start": pd.Timestamp(window_dates[0]),
                     "feature_window_end": as_of_date,

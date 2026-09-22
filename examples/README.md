@@ -463,7 +463,12 @@ defaults; it does not choose an appropriate study or compute budget for you.
 python examples/target_ablation.py --panel artifacts/prepared/metric_panel.parquet --config artifacts/plans/target-ablation.json --registry artifacts/research-registry.sqlite3 --output-dir artifacts/target-ablation-001 --study-id target-ablation-v1 --hypothesis "Compare raw-return and within-date rank targets using fixed original-ten features, Ridge and histogram boosting."
 ~~~
 
-Run from a verified 0.15 source checkout and its installed virtual environment.
+For a new empirical comparison, rebuild the panel on 0.16 with a
+[declared session calendar](../docs/data-contract.md#declared-session-calendar)
+and the corrected trailing-return endpoints. Freeze that same panel for both
+target arms; do not overwrite a previous experiment's inputs or results.
+
+Run from a verified 0.16 source checkout and its installed virtual environment.
 For Colab, use a separate runtime with that checkout and the existing private
 history copied to local VM storage. The usual notebook pins 0.13 and cannot run
 this example unchanged; do not use its bootstrap to install the older source.

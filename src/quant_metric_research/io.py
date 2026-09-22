@@ -64,7 +64,19 @@ def write_research_run(
     if panel_format not in {"csv", "parquet"}:
         raise ValueError("panel_format must be csv or parquet.")
     destination = Path(output_dir)
-    destination.mkdir(parents=True, exist_ok=True)
+    destination.mkdir(parents=True, exist_ok=False)
+
+    if run.session_calendar is not None:
+        (destination / "session_calendar.json").write_text(
+            json.dumps(
+                run.session_calendar.to_mapping(),
+                indent=2,
+                sort_keys=True,
+                allow_nan=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
     _write_frame(
         run.panel,

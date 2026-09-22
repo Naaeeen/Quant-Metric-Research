@@ -16,12 +16,18 @@ from .benchmark import run_stage3_benchmark
 from .benchmark_config import BenchmarkConfig
 from .benchmark_io import BenchmarkArtifacts, write_benchmark_run
 from .config import PanelConfig
-from .contracts import validate_as_of_dates, validate_memberships, validate_prices
+from .contracts import (
+    DataContractError,
+    validate_as_of_dates,
+    validate_memberships,
+    validate_prices,
+)
 from .experiment_registry import ExperimentRegistry
 from .input_audit import audit_inputs
 from .intake import _local_path
 from .panel import build_point_in_time_panel
 from .preflight import preflight_benchmark
+from .session_calendar import ExpectedSessionCalendar
 
 _RETURN_COLUMNS = {"forward_return", "forward_excess_return"}
 
@@ -77,6 +83,7 @@ def _snapshot_inputs(
     panel_config: PanelConfig,
     benchmark_config: BenchmarkConfig,
     evidence: dict[str, Any],
+    expected_calendar: ExpectedSessionCalendar | None = None,
 ) -> dict[str, str]:
     prices.to_parquet(destination / "prices.parquet", index=False)
     memberships.to_parquet(destination / "memberships.parquet", index=False)
@@ -89,6 +96,11 @@ def _snapshot_inputs(
         ("source_evidence.json", evidence),
     ):
         _write_json(value, destination / name)
+    calendar_paths = []
+    if expected_calendar is not None:
+        calendar_path = destination / "expected_calendar.json"
+        _write_json(expected_calendar.to_mapping(), calendar_path)
+        calendar_paths = [calendar_path]
     return _fingerprints(
         [
             destination / name
@@ -100,7 +112,8 @@ def _snapshot_inputs(
                 "benchmark_config.json",
                 "source_evidence.json",
             )
-        ],
+        ]
+        + calendar_paths,
         destination,
     )
 
@@ -112,11 +125,22 @@ def _prepare_panel(
     dates: tuple[pd.Timestamp, ...],
     panel_config: PanelConfig,
     benchmark_config: BenchmarkConfig,
+    expected_calendar: ExpectedSessionCalendar | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    audit = audit_inputs(prices, memberships, as_of_dates=dates, config=panel_config)
+    audit = audit_inputs(
+        prices,
+        memberships,
+        as_of_dates=dates,
+        config=panel_config,
+        expected_calendar=expected_calendar,
+    )
     _write_json(audit, destination / "input_audit.json")
     panel = build_point_in_time_panel(
-        prices, memberships, as_of_dates=dates, config=panel_config
+        prices,
+        memberships,
+        as_of_dates=dates,
+        config=panel_config,
+        expected_calendar=expected_calendar,
     )
     panel.to_parquet(destination / "metric_panel.parquet", index=False)
     panel_snapshot = _fingerprints([destination / "metric_panel.parquet"], destination)
@@ -188,6 +212,7 @@ def _report(
     artifacts: BenchmarkArtifacts,
     registry: ExperimentRegistry,
     run_id: str,
+    expected_calendar: ExpectedSessionCalendar | None = None,
 ) -> dict[str, Any]:
     manifest, acceptance, record, summary = _verified_results(
         artifacts, registry, run_id
@@ -208,6 +233,14 @@ def _report(
             "registry_record.json",
         )
     ] + list(artifacts.files.values())
+    calendar_metadata = (
+        {
+            "expected_calendar": expected_calendar.to_mapping(),
+            "expected_calendar_fingerprint": expected_calendar.fingerprint,
+        }
+        if expected_calendar is not None
+        else {}
+    )
     return {
         "schema_version": 1,
         "package_version": __version__,
@@ -244,6 +277,7 @@ def _report(
             },
         },
         "input_fingerprints": fingerprints,
+        **calendar_metadata,
         "output_fingerprints": _fingerprints(output_paths, destination),
         "panel_fingerprint": manifest["panel_fingerprint"],
         "source_fingerprint": manifest["source_fingerprint"],
@@ -268,6 +302,7 @@ def run_development_workflow(
     study_id: str,
     hypothesis: str,
     source_evidence: dict[str, Any],
+    expected_calendar: ExpectedSessionCalendar | None = None,
 ) -> dict[str, Any]:
     """Snapshot inputs, preflight, and register development without opening final.
 
@@ -275,6 +310,9 @@ def run_development_workflow(
     related studies. Only development_report.json marks workflow completion.
     Partial evidence and registry exposure survive failure; retry in a new output
     directory with the same registry. Inputs and source claims are copied.
+    An optional declared calendar is snapshotted and checked by the input audit
+    and panel builder before feature calculation or registry writes. Its supplied
+    source metadata does not establish independently verified provenance.
     """
     raw_registry = str(registry_path)
     if (
@@ -297,6 +335,10 @@ def run_development_workflow(
             "The durable registry must be outside the run output directory."
         )
     evidence = _validate_request(panel_config, benchmark_config, source_evidence)
+    if expected_calendar is not None and not isinstance(
+        expected_calendar, ExpectedSessionCalendar
+    ):
+        raise DataContractError("expected_calendar must be an ExpectedSessionCalendar.")
     destination.mkdir(parents=True, exist_ok=False)
     try:
         normalized_prices = validate_prices(prices.copy(deep=True))
@@ -310,6 +352,7 @@ def run_development_workflow(
             panel_config,
             benchmark_config,
             evidence,
+            expected_calendar,
         )
         panel, panel_snapshot = _prepare_panel(
             destination,
@@ -318,6 +361,7 @@ def run_development_workflow(
             dates,
             panel_config,
             benchmark_config,
+            expected_calendar,
         )
         fingerprints = {**fingerprints, **panel_snapshot}
         _verify_snapshots(destination, fingerprints)
@@ -342,6 +386,7 @@ def run_development_workflow(
             artifacts,
             registry,
             str(result.manifest["experiment"]["run_id"]),
+            expected_calendar,
         )
         _verify_snapshots(destination, fingerprints)
         pending = destination / "development_report.pending.json"

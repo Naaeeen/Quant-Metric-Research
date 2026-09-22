@@ -11,13 +11,14 @@ from .benchmark_io import write_benchmark_run
 from .config import PanelConfig
 from .experiment_registry import ExperimentRegistry
 from .input_audit import audit_inputs
-from .intake import import_yahoo_files
+from .intake import _json_object, _local_file, import_yahoo_files
 from .io import read_as_of_dates, read_json_object, read_table, write_research_run
 from .notebook_history import run_checkpointed_public_demo, seed_notebook_history
 from .pipeline import run_research
 from .preflight import preflight_benchmark
 from .public_archive import fetch_public_archive
 from .public_demo import run_public_demo
+from .session_calendar import ExpectedSessionCalendar
 from .validation import WalkForwardMetricConfig
 
 
@@ -85,6 +86,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     for option in ("prices", "memberships", "as-of-dates", "config"):
         audit_parser.add_argument(f"--{option}", required=True)
+    audit_parser.add_argument(
+        "--calendar", help="Local JSON expected-session declaration."
+    )
 
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("--prices", required=True)
@@ -93,6 +97,9 @@ def _build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--config", required=True)
     run_parser.add_argument("--train-end", required=True)
     run_parser.add_argument("--output-dir", required=True)
+    run_parser.add_argument(
+        "--calendar", help="Require a matching expected-session calendar."
+    )
     run_parser.add_argument(
         "--min-cross-section",
         type=_positive_integer,
@@ -225,12 +232,21 @@ def _validate_cli_args(
         parser.error("All three walk-forward arguments must be provided together.")
 
 
+def _expected_calendar(path: str | None) -> ExpectedSessionCalendar | None:
+    if path is None:
+        return None
+    return ExpectedSessionCalendar.from_mapping(
+        _json_object(_local_file(path).read_bytes())
+    )
+
+
 def _audit_command(args: argparse.Namespace) -> int:
     report = audit_inputs(
         read_table(Path(args.prices)),
         read_table(Path(args.memberships)),
         as_of_dates=read_as_of_dates(Path(args.as_of_dates)),
         config=PanelConfig(**read_json_object(Path(args.config))),
+        expected_calendar=_expected_calendar(args.calendar),
     )
     print(json.dumps(report, allow_nan=False, indent=2, sort_keys=True))
     return 0  # Report generated; not a research-readiness or provenance approval.
@@ -249,6 +265,9 @@ def _import_command(args: argparse.Namespace) -> int:
 
 
 def _run_command(args: argparse.Namespace) -> int:
+    destination = Path(args.output_dir)
+    if destination.exists() or destination.is_symlink():
+        raise FileExistsError(f"Output directory already exists: {destination}")
     prices = read_table(Path(args.prices))
     memberships = read_table(Path(args.memberships))
     as_of_dates = read_as_of_dates(Path(args.as_of_dates))
@@ -268,6 +287,7 @@ def _run_command(args: argparse.Namespace) -> int:
         run_pca=bool(args.with_pca),
         pca_variance_to_keep=args.pca_variance_to_keep,
         walk_forward_config=_walk_forward_config(args),
+        expected_calendar=_expected_calendar(args.calendar),
     )
 
     write_research_run(

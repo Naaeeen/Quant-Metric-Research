@@ -40,8 +40,21 @@ def compute_price_metrics(
     benchmark_prices: pd.Series,
     config: PanelConfig,
 ) -> dict[str, float | bool | str]:
+    """Compute legacy metrics from a supplied calendar-aligned price window.
+
+    Trailing return requires both original stock-window endpoints. Endpoint
+    diagnostics report nonmissing converted prices even with insufficient
+    history. Eligibility describes the paired-return minimum, not whether
+    every metric is defined. Inputs are not modified.
+    """
     stock = pd.to_numeric(stock_prices, errors="coerce")
     benchmark = pd.to_numeric(benchmark_prices, errors="coerce")
+    endpoint_availability = {
+        "window_start_price_available": bool(
+            not stock.empty and pd.notna(stock.iloc[0])
+        ),
+        "decision_price_available": bool(not stock.empty and pd.notna(stock.iloc[-1])),
+    }
     stock_returns = stock.pct_change(fill_method=None)
     benchmark_returns = benchmark.pct_change(fill_method=None)
     paired = pd.concat(
@@ -53,11 +66,10 @@ def compute_price_metrics(
     ).dropna()
     observation_count = int(paired.shape[0])
     if observation_count < config.min_observations:
-        return _empty_metrics(
-            config,
-            observation_count,
-            "insufficient_history",
-        )
+        return {
+            **_empty_metrics(config, observation_count, "insufficient_history"),
+            **endpoint_availability,
+        }
 
     clean_stock = stock.dropna()
     stock_series = paired["stock"]
@@ -103,7 +115,11 @@ def compute_price_metrics(
     drawdowns = clean_stock / rolling_peak - 1.0
 
     all_metrics: dict[str, float] = {
-        "trailing_return": float(clean_stock.iloc[-1] / clean_stock.iloc[0] - 1.0),
+        "trailing_return": (
+            float(stock.iloc[-1] / stock.iloc[0] - 1.0)
+            if all(endpoint_availability.values())
+            else float("nan")
+        ),
         "annualized_volatility": (
             float(stock_std * sqrt(config.annualization_sessions))
             if stock_std > numerical_floor
@@ -140,6 +156,7 @@ def compute_price_metrics(
             "observation_count": observation_count,
             "eligible": True,
             "feature_status": "ok",
+            **endpoint_availability,
         }
     )
     return selected

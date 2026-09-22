@@ -29,6 +29,59 @@ Boolean, temporal and complex prices are rejected before numeric conversion;
 valid real-number strings are supported. Duplicate DataFrame columns and
 duplicate raw CSV/CSV.GZ headers are rejected before parser renaming can hide them.
 
+## Declared session calendar
+
+Version 0.16 accepts an `ExpectedSessionCalendar` through the optional
+`expected_calendar` argument on `audit_inputs`, `build_point_in_time_panel`,
+`build_factor_panel`, `run_research` and `run_development_workflow`.
+For new empirical studies, supply sessions from a source independent of the
+observed price dates. Deriving the declaration from those same dates cannot
+detect a session missing from every series.
+
+The declaration has exactly five fields. This tiny invented example shows the
+JSON shape; a study needs its full history and label-tail coverage:
+
+~~~json
+{
+  "sessions": ["2025-01-02", "2025-01-03", "2025-01-06"],
+  "coverage_start": "2025-01-02",
+  "coverage_end": "2025-01-06",
+  "source": "invented-example",
+  "version": "1"
+}
+~~~
+
+Sessions must be nonempty, unique, strictly increasing, normalized daily dates.
+Coverage bounds are inclusive and may themselves be closed days. `source` and
+`version` identify the supplied calendar; retain the provider or generator
+version and its supporting evidence. The SHA-256 identity covers all five fields.
+The declaration records a claim, not independent certification.
+
+The audit lists missing benchmark sessions, dates absent from every price
+series, unexpected benchmark sessions, benchmark dates outside the declared
+bounds, and requested decision dates outside the calendar. It compares the full
+declared interval, including its first and last sessions. It also reports short
+lookback history and an insufficient label tail without changing either window.
+
+Panel construction requires an exact benchmark/calendar match and rejects a
+mismatch before computing metrics or labels. Both legacy metrics and added
+price factors then use those same sessions. Individual stocks may still have
+missing observations; their rows and missingness remain visible. Warm-up and
+immature-tail rows retain the existing minimum-history and label rules.
+No dates or prices are filled, snapped or inferred.
+
+Both `qmr audit-inputs` and `qmr run` accept `--calendar` with a local JSON path.
+The audit produces diagnostics even on mismatch; `run` refuses calculation.
+Without this option, the existing benchmark-derived behavior is unchanged and
+cannot detect dates missing from all supplied series.
+
+The panel stores `session_calendar_sha256`, `session_calendar_source` and
+`session_calendar_version`. `qmr run` saves the full declaration as
+`session_calendar.json`. The registered development workflow instead snapshots
+`expected_calendar.json`, includes its byte hash with the input fingerprints,
+and checks those snapshots before registration and before reporting completion.
+Its report also includes the full declaration and semantic calendar fingerprint.
+
 ## Opt-in fixed-window price factors
 
 The version 0.9 calculator is separate from the ten legacy metrics and does not
@@ -118,7 +171,8 @@ calculator, which excludes future numerical values before validating prices.
 New factor arithmetic still uses original price scalars on a date/symbol-
 normalized copy, avoiding global numeric conversion before window selection.
 Missing sessions are not filled or compressed, and no factors are ranked,
-oriented, imputed, normalized or selected here. The supplied benchmark observation
+oriented, imputed, normalized or selected here. With `expected_calendar`, both
+builders use its declared sessions. Otherwise the supplied benchmark observation
 dates define the calendar; they are not independently verified exchange sessions.
 
 `FEATURE_BUNDLES` declares two frozen candidate schemas:
@@ -152,12 +206,12 @@ as an explicitly labelled demo and cannot support an unbiased historical claim.
 
 ## Raw-input audit before building a panel
 
-The Python API is `audit_inputs(prices, memberships, *, as_of_dates, config)`,
-where `config` is a `PanelConfig`. The equivalent CLI accepts the same input
-tables and configuration as Stage 1:
+The Python API is `audit_inputs(prices, memberships, *, as_of_dates, config,
+expected_calendar=None)`, where `config` is a `PanelConfig`. The CLI accepts the
+same input tables and configuration as Stage 1. With a declared calendar:
 
 ~~~text
-qmr audit-inputs --prices data/prices.parquet --memberships data/memberships.parquet --as-of-dates data/as_of_dates.csv --config config.json
+qmr audit-inputs --prices data/prices.parquet --memberships data/memberships.parquet --as-of-dates data/as_of_dates.csv --config config.json --calendar data/session_calendar.json
 ~~~
 
 The command prints strict JSON to standard output; it has no `--output-dir`
@@ -169,20 +223,27 @@ The report contains:
 
 - coverage by requested decision date and active security, including members
   with no prices and missing decision-date prices;
-- counts of members with enough adjacent historical price pairs within the
-  configured lookback, compared with `min_observations`; these check possible
+- counts of members with enough stock/benchmark adjacent historical price pairs
+  within the configured lookback, compared with `min_observations`; these check possible
   observations without calculating returns or proving a metric will be defined;
 - scheduled label dates and stock entry/exit price presence, including an
   insufficient benchmark-calendar tail; no target, IC, or model is computed;
-- benchmark-derived calendar bounds and off-calendar price-row counts;
+- calendar bounds and off-calendar price-row counts;
 - SHA-256 fingerprints of normalized required price/membership columns and the
   request, including configuration and sorted decision dates; the report also
   records the configuration, package version and pandas version.
 
-Price rows outside the supplied benchmark calendar do not contribute to
-coverage. This calendar is not independently checked against an exchange
-calendar, so a missing benchmark session can also distort adjacency and label
-offsets. Future price presence is inspected, and hashing reads price values:
+With a declared calendar, report schema version 2 includes `calendar_check`
+and its full declaration/fingerprint. Coverage uses declared positions even
+when the benchmark is missing. Decisions outside the declaration have no
+coverage rows and set `coverage_status` to `decision_dates_outside_calendar`.
+Otherwise `coverage_status` is `complete`, meaning all requested dates were
+covered by the calculation, not that all prices are present. Without a
+declaration the existing schema version 1 and benchmark-derived calendar apply.
+
+Price rows outside the selected calendar do not contribute to coverage.
+An unchecked benchmark-derived calendar can distort adjacency and label offsets.
+Future price presence is inspected, and hashing reads price values:
 this is not a sealed holdout or permission to choose dates after inspecting
 outcome availability. The hashes exclude extra columns and original file bytes;
 retain separately permitted raw snapshots, acquisition times and adapter versions.
@@ -236,6 +297,17 @@ existing application: trailing return, Sharpe, Sortino, volatility, maximum
 drawdown, beta, CAPM alpha, information ratio, benchmark correlation, and
 historical VaR. Efficient frontier output is excluded because it is a
 portfolio-level optimization result, not a stable per-security feature.
+
+Legacy `trailing_return` requires prices at the original first and last positions
+of the supplied window. If either is missing, the return is null; an older price
+is not substituted. `window_start_price_available` and `decision_price_available`
+record those endpoints even when history is insufficient. Interior gaps still
+remove adjacent return pairs; the other nine metric formulas are unchanged.
+`feature_eligible` and `feature_status: ok` mean the paired-observation minimum
+was met, not that every metric is defined or a current trade is possible.
+
+`qmr run` and `write_research_run` require a new output directory. They do not
+replace existing results or leave an earlier calendar beside a new panel.
 
 ## Missingness
 

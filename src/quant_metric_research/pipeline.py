@@ -9,6 +9,7 @@ from .contracts import DataContractError, validate_as_of_dates
 from .panel import build_point_in_time_panel
 from .reduction import PCABaseline, fit_pca_baseline
 from .screening import MetricScreenResult, fit_metric_screen
+from .session_calendar import ExpectedSessionCalendar
 from .validation import (
     WalkForwardMetricConfig,
     WalkForwardMetricResult,
@@ -23,6 +24,7 @@ class ResearchRun:
     pca: PCABaseline | None
     pca_scores: pd.DataFrame | None
     walk_forward: WalkForwardMetricResult | None
+    session_calendar: ExpectedSessionCalendar | None = None
 
 
 def run_research(
@@ -40,6 +42,7 @@ def run_research(
     run_pca: bool = False,
     pca_variance_to_keep: float = 0.95,
     walk_forward_config: WalkForwardMetricConfig | None = None,
+    expected_calendar: ExpectedSessionCalendar | None = None,
 ) -> ResearchRun:
     try:
         cutoff = validate_as_of_dates((train_end_date,))[0]
@@ -53,6 +56,7 @@ def run_research(
         memberships,
         as_of_dates=as_of_dates,
         config=config,
+        expected_calendar=expected_calendar,
     )
     # Keep contemporaneous features for quality, redundancy, and PCA while
     # screening only outcomes known by this end-of-day training cutoff.
@@ -102,4 +106,5 @@ def run_research(
         pca=pca,
         pca_scores=pca_scores,
         walk_forward=walk_forward,
+        session_calendar=expected_calendar,
     )

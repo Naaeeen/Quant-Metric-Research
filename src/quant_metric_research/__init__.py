@@ -24,6 +24,7 @@ from .price_factor_catalog import PRICE_FACTOR_CATALOG, PriceFactorSpec
 from .price_factors import PriceFactorResult, PriceFactorValue, compute_price_factors
 from .reduction import PCABaseline, fit_pca_baseline
 from .screening import MetricScreenResult, fit_metric_screen
+from .session_calendar import ExpectedSessionCalendar
 from .splits import PurgedWalkForwardSplit, build_purged_walk_forward_splits
 from .validation import (
     WalkForwardMetricConfig,
@@ -39,6 +40,7 @@ __all__ = [
     "ComparisonArtifacts",
     "DataContractError",
     "ExperimentRegistry",
+    "ExpectedSessionCalendar",
     "FEATURE_BUNDLES",
     "FeatureBundleComparison",
     "FeatureBundleSpec",
