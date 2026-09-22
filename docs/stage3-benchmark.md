@@ -11,7 +11,9 @@ empirical alpha result. Until the historical provider, point-in-time universe,
 stable identifiers, corporate actions, and delisting returns are independently
 verified, full runs have `claim_scope: benchmark_engine_only`, development
 runs have `claim_scope: development_only`, and both remain
-ineligible for Stage 4.
+ineligible for promotion beyond development. Portfolio and cost diagnostics can
+be developed on development periods; freeze them with the model before final
+evaluation. See the [roadmap](roadmap.md#6-evaluate-trading-assumptions-during-development).
 
 ## What the engine compares
 

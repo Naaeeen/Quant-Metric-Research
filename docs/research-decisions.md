@@ -883,3 +883,132 @@ no additional model pair or empirical study is introduced. Independent review,
 0.14 API/command checks and source/wheel builds passed. Linux results are recorded
 separately on the release pull request. No hosted Colab or remote-durability claim
 is added by these software checks.
+
+## September 22, 2026 direction review
+
+### Decision
+
+Keep the stock-ranking engine. Redirect the next milestones toward completed
+target, feature and model experiments, a stronger dataset, and development-time
+economic diagnostics. A rebuild is not justified by this review.
+
+Two GPT-6 assessments examined the method independently: one started without
+conversation history; the other received the current implementation and known
+results. A third reviewed data/model alternatives, and a fourth reviewed writing.
+The assessments agreed on the main priorities. Their agreement is a review
+input; the evidence below is the basis for the changes.
+
+The completed public study used 30 alphabetically selected stocks from a
+retrospective 2017 membership list. Its 189 development dates gave mean Rank IC
+of -0.04767 for Ridge and -0.03701 for equal-weight ranks. This rejects an
+improvement claim for that run, not Ridge or ML in general. The three additional
+price factors, HGB and PCA are implemented but have not yet established an
+improvement on market data.
+
+### Findings and actions
+
+| Area | Finding | Action |
+| --- | --- | --- |
+| Research direction | Stock-date ranking, chronological evaluation and transparent baselines match the question. | Retain the architecture and test new hypotheses through it. |
+| Engineering balance | Several releases improved evidence storage without completing new model comparisons. | Prioritize an executable ablation over another report wrapper. |
+| Data | A small retrospective survivor cohort cannot settle the broader modeling question. | Keep it as a development demo; qualify a broader named-stock dataset separately. |
+| Target | Squared-error fitting on raw returns is a legitimate baseline, but may emphasize extreme-return dates. | Compare it with within-date rank targets under identical folds and search budgets. |
+| Target reporting | Inner tuning calculates its spread from the training target rather than the separately configured realized return. | Fix the units and independent missingness masks before a rank-target experiment. |
+| Calendar | Benchmark observations define sessions; a date absent from every series disappears. | Add independent calendar comparison before conclusions that depend on session offsets. |
+| Feature freshness | Legacy trailing return drops missing endpoints and can report an older endpoint as an eligible window. | Specify endpoint/freshness behavior and add a regression before changing the legacy metric contract. |
+| Validation | Purging, fold-local fitting, contemporaneous scoring universes and common/native reports address real failure modes. | Retain them and add target-transformation and negative-control tests. |
+| Economics | The earlier roadmap postponed all portfolio work until after final evaluation. | Develop and freeze holdings, costs and risk rules before opening the final test. |
+| Compute | Current models fit a CPU workflow, but historical whole-notebook time is not model-only training time. | Measure preprocessing, training and evaluation separately before scaling. |
+| Writing | README mixes release history, instructions and repeated interpretation limits. | Lead with purpose, results and runnable paths; keep detailed contracts at their point of use. |
+
+The target-reporting bug is diagnostic: candidate selection uses mean Rank IC,
+not the incorrectly reported spread. A synthetic check with rank targets
+[0.25, 0.5, 0.75, 1.0], ascending scores and returns [0.01, 0.02, 0.03, 0.04]
+reported 0.5 instead of the correct two-bucket return spread of 0.02.
+
+Subtracting one benchmark return from every stock on a date preserves that
+date's ordering. It does not neutralize beta or sector exposures. Raw excess
+returns and their within-date ranks therefore offer a clean training-target
+comparison while the evaluation can stay in raw-return units.
+
+### Immediate implementation plan
+
+1. Publish the direction review, comprehensive roadmap and shorter README.
+   Keep behavioral changes in a separate commit.
+2. Correct inner-tuning spreads. Test distinct target/return columns, their
+   independent missingness, same-column compatibility, unchanged predictions
+   and real rank-target training.
+3. Add a small target-ablation example using the existing panel validator,
+   preflight, registry, benchmark and evaluator. Run raw-return and rank-target
+   arms, each with Ridge and HGB, over the same original-ten feature panel.
+   Save each ordinary benchmark bundle and report a five-arm common/native
+   comparison with one retained equal-rank baseline.
+4. Require a common label-end date within each decision-date cross-section
+   before computing rank targets. With heterogeneous maturity, an immature
+   peer's outcome could otherwise influence a retained training rank.
+5. Record explicit configs, input/script identity and elapsed time before and
+   around the two runs. Use existing history, preserve partial results, and
+   leave the final block untouched. Compare saved, already-masked outcomes;
+   joining full panel outcomes back would undo the development boundary.
+6. Review, test and publish the workflow. Then declare its market-data run
+   separately, after checking the source and feature-freshness assumptions.
+
+The example compares training targets, not feature bundles. Its report does
+not use the existing feature-bundle writer, whose contract requires matching
+target configurations. Longer-term work and completion criteria are in the
+[roadmap](roadmap.md).
+
+### Data and model choices
+
+Named-stock research remains the main track. Numerai is a useful separate
+large-scale benchmark because it supplies financial cross-sections and
+engineered features. Its IDs change across eras, and its targets and CORR
+scoring have their own definitions. An adapter must preserve those meanings;
+it must not invent ticker histories, trading dates or portfolio returns.
+Current documentation identifies v5.3 and explicit Ender-20/Ender-60 targets;
+the generic target alias means Ender-60 in that version.
+
+Qlib provides reference workflows and factor definitions, but its current
+README says the official dataset is temporarily disabled. A community download
+is a new data-source decision, not a verified substitute. Alpha158 also needs
+inputs beyond this archive's adjusted closes. SEC filings can later enrich
+features if accession, filing availability, revisions and security mapping are
+handled explicitly.
+
+Exercise Ridge and HGB before adding another library. LightGBM regression is
+the next tree challenger. LambdaRank requires date groups, integer relevance
+and a declared gain mapping; CatBoost ranking has different group-weight
+semantics. Neither is a drop-in replacement for the current row-weighted loss.
+
+For larger-data neural work, compare a small MLP or TabM under a matched
+temporal protocol. TabPFN is a separate pretrained comparator with checkpoint
+access and licensing requirements. Generic tabular benchmark results motivate
+candidates, not expected equity returns.
+
+### Primary sources checked
+
+| Source | What informs this plan |
+| --- | --- |
+| [Qlib LightGBM workflow](https://github.com/microsoft/qlib/blob/main/examples/benchmarks/LightGBM/workflow_config_lightgbm_Alpha158.yaml) | Separate train/validation/test periods, MSE regression, and specified portfolio/cost analysis alongside signal reports. |
+| [Qlib label processors](https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/handler.py) | Cross-sectional label normalization is a concrete alternative to raw-return fitting. |
+| [Qlib data preparation](https://github.com/microsoft/qlib#data-preparation) | Current download availability differs from older instructions. |
+| [Qlib factor loader](https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/loader.py) | Factor definitions require declared price/volume inputs and windows. |
+| [Gu, Kelly and Xiu](https://dachxiu.chicagobooth.edu/download/ML_BKP.pdf) | Chronological estimation, tuning and testing; nonlinear models studied on a much broader asset-pricing dataset. |
+| [scikit-learn common pitfalls](https://scikit-learn.org/stable/common_pitfalls.html) | Fit preprocessing on training data only. |
+| [Nested model selection](https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html) | Separate tuning from evaluation; this repository uses time-based, not the example's classification, folds. |
+| [Histogram gradient boosting](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingRegressor.html) | Current estimator behavior, weighting and early-stopping controls. |
+| [Numerai data](https://docs.numer.ai/numerai-tournament/data) | Versioned eras, changing IDs, feature subsets and explicit target horizons. |
+| [Numerai CORR](https://docs.numer.ai/numerai-tournament/scoring/correlation-corr) | The official metric transforms predictions and targets; it is not Spearman Rank IC. |
+| [SEC APIs](https://www.sec.gov/search-filings/edgar-application-programming-interfaces) | Filing-level facts and frames have different availability/revision semantics. |
+| [LightGBM ranker](https://lightgbm.readthedocs.io/en/stable/pythonapi/lightgbm.LGBMRanker.html) and [parameters](https://lightgbm.readthedocs.io/en/stable/Parameters.html) | Query groups, integer relevance, gain mappings and deterministic CPU settings. |
+| [CatBoost ranking objectives](https://catboost.ai/docs/en/concepts/loss-functions-ranking) | Group and object weights differ across ranking losses. |
+| [Revisiting tabular deep learning](https://arxiv.org/abs/2106.11959) | Matched evaluation protocols and strong simple neural baselines; no universal winner. |
+| [Tree models on tabular data](https://arxiv.org/abs/2207.08815) | Trees are an important baseline under constrained tuning budgets. |
+| [TabReD](https://arxiv.org/abs/2406.19380) | Temporal rather than random splits can change relative model rankings. |
+| [TabM](https://arxiv.org/abs/2410.24210) | A parameter-efficient MLP ensemble candidate for a later larger-data experiment. |
+| [TabPFN repository](https://github.com/PriorLabs/TabPFN) | Current checkpoint defaults, access and model-weight licensing need explicit review. |
+| [Colab FAQ](https://research.google.com/colaboratory/faq.html) | Resources and runtime duration vary; measure and checkpoint bounded runs. |
+| [Google writing guide](https://developers.google.com/style/tone) and [code review guide](https://google.github.io/eng-practices/review/reviewer/looking-for.html) | Direct prose, useful comments and review for unnecessary complexity. |
+
+These are published methods and interfaces. They describe what can be adopted
+and tested here, not the private production practices of trading firms.

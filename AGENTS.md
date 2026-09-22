@@ -12,7 +12,23 @@
   primary papers, official documentation, or upstream source. Record material
   choices and sources in the existing research-decisions documentation.
 - Prefer a falsifiable baseline and a focused correction to extra complexity.
-  Do not silently expand the universe, target, dataset, costs, or publication scope.
+  Reconsider data, targets, features, and models when evidence supports a change.
+  Record the reason and update the experiment plan before running the revised
+  study. Preserve prior results and outcome exposure; changed assumptions require
+  a new declaration. Keep spending and publication within the authorized scope.
+
+## Writing
+
+- Write documentation, comments, commit messages, and pull requests in English.
+- Lead with the purpose, result, or action the reader needs. Use concrete verbs,
+  familiar words, and short paragraphs.
+- Explain non-obvious decisions and edge cases in comments. Public docstrings
+  should describe behavior, inputs, outputs, and relevant failure conditions.
+- State research limits where they affect interpretation or operation, and link
+  to the detailed contract. Consolidate repeated disclaimers while preserving
+  assumptions, uncertainty, and validation requirements.
+- Keep release history in the existing research documentation. Introductions
+  and quick starts should describe the current project and how to use it.
 
 ## Research invariants
 
