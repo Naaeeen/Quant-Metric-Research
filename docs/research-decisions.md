@@ -1266,3 +1266,126 @@ history-informed reviews found no prerequisite implementation blocker.
 After the run, apply these rules before choosing further modeling work. Keep
 the separate ten/thirteen-feature study, larger-data qualification and economic
 accounting on the roadmap regardless of whether this target change helps.
+
+### Corrected-panel target study results
+
+The declared study completed on September 22. Raw-return histogram boosting
+met the continuation criteria against equal-weight ranks. Neither rank-target
+transformation met its criteria. Ridge remained below the baseline in aggregate.
+The results below are development findings from the fixed retrospective cohort.
+
+The rebuilt panel contains 30,240 rows over 1,008 decision dates and 30 stocks.
+Its SHA-256 is
+`de2062b1d80ffe503bc69106b838f36d172b9444e450123e03551810442432f5`.
+Both saved preflights equal the preparation records. Both model runs have the
+same source, panel, runtime and evaluation schedule; configurations differ only
+in the training target. Snapshot hashes match the declaration.
+
+All five arms have 5,670 finite scores: 30 stocks on each of 189 development
+dates. Native and five-arm common results coincide. Every contrast has 189
+paired IC dates and 189 paired spread dates, with 63 of each in every fold.
+There are no zero-observed-input rows in these evaluation predictions.
+
+The spread is the mean top-minus-bottom three-bucket **20-session outcome**,
+shown in percentage points. It is not a daily portfolio return and includes
+neither trading costs nor a holdings simulation.
+
+| Arm | Mean Rank IC | Mean spread (pp) | Dates with tied scores |
+| --- | ---: | ---: | ---: |
+| Equal-weight ranks | -0.03701 | -0.5446 | 183 |
+| Raw-return Ridge | -0.05001 | -0.4572 | 0 |
+| Rank-target Ridge | -0.05764 | -0.8061 | 0 |
+| Raw-return histogram boosting | 0.01506 | 0.3501 | 38 |
+| Rank-target histogram boosting | -0.01270 | 0.1158 | 13 |
+
+Each contrast below is candidate minus reference on paired dates. The fold
+count reports positive mean IC differences, not the candidate's absolute IC.
+
+| Contrast | Mean IC change | Mean spread change (pp) | Positive IC folds | Decision |
+| --- | ---: | ---: | ---: | --- |
+| Rank Ridge minus raw Ridge | -0.00763 | -0.3489 | 1/3 | not_supported |
+| Rank boosting minus raw boosting | -0.02775 | -0.2343 | 2/3 | not_supported |
+| Raw Ridge minus equal-rank | -0.01301 | 0.0874 | 2/3 | not_supported |
+| Raw boosting minus equal-rank | 0.05207 | 0.8947 | 2/3 | promising |
+| Rank Ridge minus equal-rank | -0.02063 | -0.2615 | 1/3 | not_supported |
+| Rank boosting minus equal-rank | 0.02431 | 0.6604 | 1/3 | not_supported |
+
+The rank-target boosting arm illustrates why an improved aggregate difference
+is insufficient: its absolute IC remains negative and it beats equal-rank IC
+in only one fold. Raw-return boosting meets the declared rule, but its positive
+average also conceals a weak middle period:
+
+| Development fold | Equal-rank IC | Raw Ridge IC | Rank Ridge IC | Raw boosting IC | Rank boosting IC |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2015-11-02 to 2016-02-02 | 0.03615 | 0.08550 | 0.07106 | 0.11924 | 0.12894 |
+| 2016-02-03 to 2016-05-03 | -0.13397 | -0.24722 | -0.21473 | -0.15548 | -0.14241 |
+| 2016-05-04 to 2016-08-02 | -0.01320 | 0.01168 | -0.02924 | 0.08141 | -0.02462 |
+
+Raw boosting's corresponding spread means are 1.3975, -1.1264 and 0.7792 pp.
+Its paired spread improvement over equal-rank is positive in each fold. This
+short, overlapping sample and retrospective membership do not establish a
+stable or tradable signal. No significance claim is attached to the declared
+continuation threshold.
+
+All outer screens retain the same six feature names: benchmark correlation,
+trailing return, annualized volatility, max drawdown, beta and historical 5%
+VaR. Their order changes in the third fold; raw and rank arms agree exactly
+within folds. The equal-rank baseline averages training-oriented ranks of those
+six retained features. The declaration's "original-ten" refers to its candidate
+bundle, not an unscreened average of all ten metrics. The implemented screened
+baseline was fixed before this study; these results do not test an all-ten average.
+
+Feature availability is lower before the evaluation interval. Across 27,720
+pre-final development rows, trailing-return coverage is 97.381%; the other nine
+features have 98.290% coverage. There are 726 missing window-start endpoints,
+222 missing decision-price endpoints and 474 zero-input rows. These are retained
+and reported, not removed to improve the evaluation coverage figures above.
+
+#### Runtime, history and verification
+
+Preparation took 93.12 seconds. The raw and rank runs took 571.43 and 575.96
+seconds respectively, each including both families and nested validation.
+The full ablation process took 1,185.61 seconds (19.76 minutes), including
+loading, preflight and output generation, within its two-hour ceiling.
+The actual training interpreter's observed peak working set was 508,157,952
+bytes (484.62 MiB), below 4 GiB; observed CPU time was 1,166.19 seconds.
+
+The initial execution observer measured the Windows virtualenv launcher rather
+than its training child. Its memory/CPU numbers are not used. A separate
+observer attached to the verified child PID and sampled the OS lifetime peak
+every second, including memory used before attachment. The final subsecond
+interval can be missed. Both original records and the correction are retained.
+Independent synthetic profiling ran concurrently, so these timings describe
+this run, not an isolated comparison of model speed.
+
+The runtime was Windows, Python 3.14.3, package 0.16.0, NumPy 2.5.3,
+pandas 3.0.5, SciPy 1.18.1 and scikit-learn 1.9.0, with one training thread.
+Training used source revision `1b36ecd265a1b091a3d1159686f5dc5d4ea2d5d7`.
+This was a local run, not hosted Colab verification.
+
+The registry retains every field of all three prior runs/exposures unchanged,
+including the interrupted record. It adds two completed development runs:
+
+- Raw target: `99de0c72-8a1f-4d88-b9fb-e223f9c04e59`.
+- Rank target: `8caeb19e-49b7-4cc2-b626-44586779ca68`.
+
+The after-study backup and live registry match at five runs/exposures, with
+zero final runs or exposures. Final-period boundaries remain unchanged and
+final numerical outcomes were not used in this comparison. An independent
+audit reproduced the registry and manifest identity checks.
+
+The paired postprocessor passed 18 synthetic tests before use. Independent
+calculations from saved development metrics reproduced all six decisions.
+Local evidence is under `artifacts/target-ablation-20260922-001/`: preparation
+and preflight records, immutable input snapshots, both runs, all native/common
+metrics, resource observations, before/after history and `paired-report-001/`.
+Only aggregate findings are published; inputs and row-level outputs stay local.
+
+#### Next decision
+
+Retain raw-return boosting for further controlled tests; do not adopt rank
+targets or promote a model from this result. Complete the separate 10/13-factor
+comparison, negative controls, economic accounting and broader-data
+qualification. Before another screening-heavy run, test whether reducing
+small-table overhead can preserve exact selections while improving runtime.
+The broader goal and final-evaluation requirements remain unchanged.

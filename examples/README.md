@@ -489,8 +489,10 @@ stay missing and their feature rows remain available for scoring. An existing
 The output contains input snapshots, a pretraining declaration, both preflights,
 standard `raw/` and `rank/` benchmark bundles, and target-run timing files.
 `comparison_predictions.parquet`, `daily_metrics.csv`, `fold_metrics.csv`, and
-`summary.csv` compare five arms: the original-ten equal-weight baseline retained
-once, plus the four learned models. Matching baseline scores, selected features,
+`summary.csv` compare five arms: the screened original-bundle equal-weight
+baseline retained once, plus the four learned models. The baseline averages
+training-oriented ranks of the fold-selected subset, not necessarily all ten
+candidate metrics. Matching baseline scores, selected features,
 scoring rows, folds, schedules and masked raw outcomes are checked first. Reports
 show each arm's native coverage and one common population across all five arms.
 IC and spreads use the already-masked raw excess returns; a spread of `0.01`

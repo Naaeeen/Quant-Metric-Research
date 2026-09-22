@@ -105,11 +105,15 @@ development feature-bundle comparisons. The CPU Colab walkthrough pins 0.13;
 the current package is 0.16, with a separate executable target-ablation example,
 declared-calendar checks and corrected trailing-return endpoints.
 
-The only completed market-data study used 30 alphabetically selected stocks
-from a retrospective 2017 constituent snapshot, with 2012-2016 prices.
-Development mean Rank IC was -0.04767 for Ridge and -0.03701 for equal-weight
-ranks. The result does not favor Ridge. The added three-factor bundle and the
-other model families still need a declared market-data comparison.
+Completed market-data studies use 30 alphabetically selected stocks from a
+retrospective 2017 constituent snapshot, with 2012-2016 prices. The corrected
+target comparison found mean Rank IC of 0.01506 for raw-return histogram
+boosting, -0.05001 for raw-return Ridge and -0.03701 for equal-weight ranks.
+Only raw-return boosting met the declared continuation criteria against the
+baseline. Neither rank-target transformation met its criteria. Boosting's
+second-fold IC was negative; this is a development lead, not a stable signal.
+The separate three-factor addition and qualified broader study remain open.
+See the [full comparison](research-decisions.md#corrected-panel-target-study-results).
 
 Keep the panel, temporal validation, baseline and experiment-history design.
 Shift effort from additional report wrappers to data qualification and
@@ -120,9 +124,9 @@ Track implementation and research evidence separately:
 
 | Evidence level | Current position | Next evidence needed |
 | --- | --- | --- |
-| Implemented and tested | Target/return separation, target-ablation workflow, declared-calendar checks and corrected trailing-return endpoints. | Completed experiments using those corrections. |
+| Implemented and tested | Target/return separation, target ablation, declared-calendar checks and corrected trailing-return endpoints; corrected target experiment completed. | Separate factor comparison and equivalent screening-speed improvements. |
 | Data checked | Archive session dates match pinned XNYS; normalized date keys were checked. | Per-security completeness and qualified historical membership, provenance and rights. |
-| Market-data evaluated | The earlier small Ridge study did not beat equal-weight ranks. | Corrected target comparison, separate factor comparison and a qualified broader study. |
+| Market-data evaluated | Corrected raw-return boosting met continuation criteria; Ridge and rank transformations did not. All five arms covered the 189 development dates. | Factor comparison, independent negative controls, economics and a qualified broader study. |
 | Environment reproduced | The walkthrough pins 0.13; current package capabilities are 0.16. Local and Linux checks have their own records. | A coherent updated notebook and fresh hosted Colab execution. |
 
 For each milestone, retain its hypothesis, prerequisite, deliverable,
@@ -382,8 +386,8 @@ baseline, interpret the comparison and resume the same research history.
 | --- | --- | --- |
 | 1 | Direction audit and revised working plan | Complete: independent findings reconciled; sources and priorities recorded. |
 | 2 | Correct target/return separation in inner tuning | Complete: failing regressions reproduced and fixed; rank-target training reports return-unit spreads. |
-| 3 | Executable target/model ablation | Software complete: registered synthetic development runs, fixed features/folds, runtime and coverage reports. Market-data comparison remains open. |
-| 4 | Data qualification and empirical ablations | Calendar/endpoint software checks and the archive's session comparison complete. Next: rebuild inputs, complete declared target and 10/13-feature studies, and document a qualified larger-data choice. |
+| 3 | Executable target/model ablation | Complete for the declared small development study: both targets, Ridge/boosting, all six paired comparisons, independent review and measured resources. |
+| 4 | Data qualification and empirical ablations | Calendar/endpoint checks, input rebuild and target study complete. Next: separate 10/13-feature study and a qualified larger-data choice. |
 | 5 | Development economic diagnostics and negative controls | Open: tested holdings/cost accounting and a frozen final-evaluation procedure. |
 | 6 | Stronger challenger and larger Colab study | Open: fair tuning budget, measured resources, independent review and reproducible run. |
 
@@ -391,14 +395,20 @@ Calendar and feature-freshness corrections belong before market-data conclusions
 that depend on them. Their priority is not a reason to delay unrelated model
 unit tests or the synthetic experiment workflow.
 
-The next bounded market-data run retains the existing 30-stock demonstration,
-original ten features and final-period boundaries. Rebuild inputs using the
-checked US-equity calendar, then compare raw-return and rank targets with the
-existing Ridge and boosting settings, without an adaptive search. Use the latest
-complete three-record history: the older original registry has only two records.
-Keep this target-only comparison separate from the later 10/13-feature study.
-The archive's retrospective membership still limits interpretation; the larger,
-historically qualified dataset remains a separate deliverable.
+The target-only study is complete and the canonical history now contains five
+development records, including the original interrupted run. Preserve this
+lineage; the three-record pre-study backup and older two-record registry are
+historical evidence, not restart points.
+
+Next, measure and test a screening-speed improvement before repeating expensive
+screening in the separate 10/13-feature study. Preserve pairwise missingness,
+Spearman arithmetic and feature-selection decisions. An invented-data profile
+identified repeated small-table operations as a concrete cost; it does not
+establish a production speedup. Declare the factor comparison before fitting,
+retaining fixed baselines and the original feature bundle. Keep raw-return
+boosting as a candidate for further tests, not an approved portfolio model.
+Qualify broader data and develop economic checks in parallel. Historical
+membership and source rights remain unresolved for the current archive.
 
 The longer-term stages remain open until their completion checks are met.
 New sources or measured results can change this order; preserve the decision
@@ -406,10 +416,9 @@ and evidence rather than silently replacing the previous study.
 
 ## Dependencies and progress checks
 
-- **Corrected demonstration:** require the checked calendar, rebuilt endpoints,
-  complete three-record history and unchanged declared final-period boundaries before
-  the fixed target comparison. Declare exact settings, paired-date contrasts,
-  coverage requirements, useful-effect thresholds and a stopping budget first.
+- **Corrected demonstration:** the target study passed its input, schedule,
+  history and resource checks. Continue the resulting five-record history,
+  unchanged final-period boundaries and explicit declarations for later studies.
 - **Parallel development:** run the separate factor study while qualifying
   larger data and building economic accounting and negative controls. Shared
   datasets, schedules and registries must remain consistent across the work.
