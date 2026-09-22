@@ -1650,3 +1650,28 @@ five-record history equality without decoding final outcomes. The preparation
 report records input hashes, not its start-time package/script identity. Bind the
 reviewed package and preparation-script hashes in the execution declaration; keep
 that post-preparation verification distinct from a contemporaneous capture.
+
+### Full-lifecycle goal and completion checks
+
+The user requested improvement across the entire project, including choices
+of data, target, scale and model. The roadmap retains nine required workstreams
+and six handoff deliverables. An independent scope review found that several
+workstream completion rules were weaker than that overall contract. They now
+require a qualified broader-data source, executed negative controls and period
+sensitivity checks, fresh hosted Colab execution, and tested label-free scoring,
+monitoring, retraining and rollback. These are requirements, not completed work.
+
+The review also adds training/scoring feature parity and measured learning
+curves to the plan. Cross-workstream reviews occur after input qualification,
+after the first pilot, after each study and before environment/client handoff.
+They can change the next hypothesis or priority; they do not change the declared
+10/13-feature experiment, its thresholds or its finite training budget.
+
+Google's [ML Test Score paper](https://research.google.com/pubs/archive/45742.pdf)
+motivates checks of feature costs, training/scoring consistency, reproducibility,
+staleness and recovery beyond a model-quality score. Qlib's
+[workflow documentation](https://qlib.readthedocs.io/en/stable/component/workflow.html)
+and [online-serving design](https://qlib.readthedocs.io/en/latest/component/online.html)
+provide references for separating recorded experiments from later model updates
+and prediction routines. We use these ideas for an offline research handoff;
+they neither validate this project's signal nor require a live-trading service.
