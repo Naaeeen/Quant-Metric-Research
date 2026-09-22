@@ -1180,3 +1180,89 @@ corrected target study, separate factor study, qualified larger-data comparison
 and reproducible handoff, with economic checks developed alongside the models.
 This documentation change performs no training, final evaluation or registry
 operation.
+
+## September 22, 2026 corrected-panel target study declaration
+
+Study `mendeley30-targets-20260922-001` tests whether learning within-date
+percentile returns improves development ranking relative to learning return
+magnitudes. It uses the existing 30-stock retrospective demonstration, not a
+newly qualified investment universe. This declaration precedes model fitting.
+
+### Fixed design
+
+- Rebuild the original ten metrics from checkpoint `000001` inputs using 0.16
+  and the independently checked XNYS declaration. Preserve 252-session lookback,
+  126 minimum paired observations, zero annual risk-free rate, 252 annualization
+  sessions, one-session entry delay and a 20-session holding horizon.
+- Compare raw forward excess returns with average percentile ranks among
+  observed outcomes on each date. Retain missing labels and every feature row;
+  require a shared label maturity within each cross-section. Raw returns remain
+  the economic evaluation outcome.
+- Use Ridge with alpha 1 and histogram boosting with learning rate 0.05,
+  seven leaves, L2 penalty 1, 200 iterations, minimum leaf size 20 and seed 42.
+  Disable boosting early stopping and PCA. Each family has one parameter choice.
+- Keep cross-sectional feature ranks, fold-local screening at 0.8 coverage and
+  0.9 redundancy, date-balanced model loss, and the original-ten equal-rank
+  baseline. Require 20 stocks for a daily metric; use three return buckets.
+- Use three outer 63-date folds with at least 252 training dates and two inner
+  42-date folds with at least 126 training dates. Purge by actual label maturity.
+  Retain HAC lag 19 for existing diagnostics; decisions below are descriptive.
+- Keep final decisions at 2016-09-01 through 2016-11-30, with maximum final label
+  date 2016-12-30. Assert both preflights have identical outer/inner schedules
+  and training-label maxima before fitting. Save the exact schedules and all
+  configuration fields with input, source and calendar hashes.
+- Continue the latest three-record registry, retaining the interrupted record.
+  Save before/after SQLite backups and prove that every prior row is unchanged.
+  Add development records only; do not invoke final evaluation.
+
+The existing example runs raw then rank targets, each with both model families:
+36 supervised fits across inner training and outer refits. Use one CPU thread.
+The execution ceiling is two wall-clock hours from launching the ablation
+process, including loading, preflight, fitting and output writing, and 4 GiB
+peak process working set. Input preparation is timed separately. These are
+limits, not runtime estimates. Preserve partial evidence after an interruption;
+do not retry automatically or expand the search in response to scores.
+
+### Declared comparisons and decisions
+
+Report all six contrasts on the saved five-arm common population: rank minus
+raw within each family, and each of the four learned arms minus equal-rank.
+Also retain native coverage and all individual arm summaries.
+
+A contrast needs at least 180 of 189 scheduled dates with finite paired IC
+and 180 with finite paired raw-return spreads. Each fold must have at least
+60 of its 63 dates for each measure. Keep the original schedule and missing
+dates; calculate IC and spread differences on their respective paired dates.
+
+For a target transformation to merit further investigation, require mean paired
+IC improvement of at least 0.01, positive mean IC improvement in at least two
+of three folds, and nonnegative mean paired spread improvement. A learned-arm
+comparison against equal-rank additionally requires positive absolute IC and
+spread for the candidate on the same paired dates. These are project-specific
+continuation thresholds, not significance or economic-materiality claims.
+
+Classify coverage failure as `inconclusive`; with sufficient coverage classify
+all conditions passing as `promising`, otherwise `not_supported`. Unfinished
+computations are `incomplete`. A promising rank transformation may still leave
+both models ineffective; report that distinction. Selecting later work from
+these development contrasts does not make the selected result unbiased.
+
+Report feature/endpoint coverage, zero-input scoring rows, ties, fold effects,
+paired-date counts and runtime. Keep final-period numerical outcomes out of
+inspection and selection. The local input snapshots contain full panel data;
+they are private research files, not a physically sealed holdout.
+
+### Research basis and next decision
+
+[Qlib's cross-sectional rank processor](https://github.com/microsoft/qlib/blob/main/qlib/data/dataset/processor.py)
+provides a concrete rank-normalization reference; this study uses percentiles
+without Qlib's subsequent centering and rescaling.
+[Scikit-learn's nested-validation guidance](https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html)
+supports keeping selection separate from evaluation. The current
+[boosting API](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingRegressor.html)
+confirms why early stopping is explicitly disabled here. Fresh and
+history-informed reviews found no prerequisite implementation blocker.
+
+After the run, apply these rules before choosing further modeling work. Keep
+the separate ten/thirteen-feature study, larger-data qualification and economic
+accounting on the roadmap regardless of whether this target change helps.
