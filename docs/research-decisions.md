@@ -2014,6 +2014,9 @@ complete, every scheduled decision has at least 95% finite-score coverage, HGB's
 net return is positive, its terminal-return advantage is at least 0.01, and its
 signed maximum drawdown is no worse than MA63's minus 0.02. These are project
 screening choices, not calibrated significance or investor suitability tests.
+Treat differences within 1e-12 of numerical thresholds as equality: inclusive
+conditions accept equality, while strictly positive conditions do not. This
+arithmetic tolerance was fixed on synthetic boundary tests before outcomes.
 
 Also require that no single period is necessary for a positive advantage.
 Partition paired daily dollar P&L differences by the original three 63-session
