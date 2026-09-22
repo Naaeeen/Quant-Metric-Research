@@ -22,7 +22,7 @@ The repository builds price-derived stock-date panels, screens metrics and
 trains Ridge, histogram gradient boosting and optional Ridge+PCA on nested,
 purged time splits. It records experiments, scores, coverage, uncertainty and
 development feature-bundle comparisons. The CPU Colab walkthrough pins 0.13;
-the current package is 0.14.
+the current package is 0.15, with a separate executable target-ablation example.
 
 The only completed market-data study used 30 alphabetically selected stocks
 from a retrospective 2017 constituent snapshot, with 2012-2016 prices.
@@ -88,9 +88,10 @@ universe, baseline, development/final periods and acceptance criteria.
 - Evaluate a broader, longer named-stock source against the
   [provider checklist](data-contract.md#human-provider-evidence-gate).
   More market periods matter as well as more stock-date rows.
-- Consider Numerai as a separate large-scale ML benchmark, using its actual
-  eras, target definition and scoring. Its obfuscated IDs cannot support
-  ticker-level portfolio turnover.
+- Use Numerai's published methods as a reference, not an approved data source.
+  Its current terms restrict data use to tournament participation. Defer data
+  adoption until the intended use and permissions are established; do not
+  substitute obfuscated IDs for named-stock portfolio histories.
 - Use Qlib as an implementation reference. Recheck data availability and rights
   before adopting a download: the official dataset was disabled at this review.
 - Add filing-derived fundamentals only with historical availability and
@@ -261,14 +262,14 @@ baseline, interpret the comparison and resume the same research history.
 
 ## Next milestones
 
-| Order | Deliverable | Completion check |
+| Order | Deliverable | Status and completion check |
 | --- | --- | --- |
-| 1 | Direction audit and revised working plan | Independent findings reconciled; sources and priorities recorded. |
-| 2 | Correct target/return separation in inner tuning | Regression fails before the fix; rank-target integration reports return-unit spreads. |
-| 3 | Executable target/model ablation | Registered development runs, unchanged final block, fixed features/folds and runtime/coverage report. |
-| 4 | Feature-bundle experiment and data qualification | Existing 10/13-feature comparison completed; larger-data choice documented. |
-| 5 | Development economic diagnostics and negative controls | Tested holdings/cost accounting and a frozen final-evaluation procedure. |
-| 6 | Stronger challenger and larger Colab study | Fair tuning budget, measured resources, independent review and reproducible run. |
+| 1 | Direction audit and revised working plan | Complete: independent findings reconciled; sources and priorities recorded. |
+| 2 | Correct target/return separation in inner tuning | Complete: failing regressions reproduced and fixed; rank-target training reports return-unit spreads. |
+| 3 | Executable target/model ablation | Software complete: registered synthetic development runs, fixed features/folds, runtime and coverage reports. Market-data comparison remains open. |
+| 4 | Data qualification and empirical ablations | Next: resolve calendar/freshness assumptions, complete declared target and 10/13-feature studies, and document a qualified larger-data choice. |
+| 5 | Development economic diagnostics and negative controls | Open: tested holdings/cost accounting and a frozen final-evaluation procedure. |
+| 6 | Stronger challenger and larger Colab study | Open: fair tuning budget, measured resources, independent review and reproducible run. |
 
 Calendar and feature-freshness corrections belong before market-data conclusions
 that depend on them. Their priority is not a reason to delay unrelated model

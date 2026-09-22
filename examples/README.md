@@ -418,3 +418,83 @@ The registry helps prevent accidental reuse within this local registry. It is
 not a physically sealed holdout or protection against intentional bypass by
 deleting/copying a registry or inspecting source data. A real-data experiment
 still needs audited provider policies and an independently frozen research plan.
+
+## Target ablation
+
+`target_ablation.py` runs the next target-only experiment on a supplied panel.
+It fits Ridge and histogram gradient boosting twice: once to raw forward excess
+returns and once to within-date percentile ranks. Both runs use the original ten
+features, identical search settings and temporal splits, and the same existing
+research registry. The final period remains reserved.
+
+Use a new study hypothesis that declares this two-target comparison, a frozen
+panel, and a JSON `BenchmarkConfig`. Its `feature_columns` must equal the original
+ten names in `DEFAULT_FEATURE_COLUMNS`; `model_families` must be
+`["ridge", "hist_gradient_boosting"]`, `primary_baseline` must be
+`"equal_weight_rank"`, and both `target_column` and `realized_return_column` must
+be `"forward_excess_return"`. Set `include_pca_model` to `false`. The script
+requires explicit feature transforms, coverage/redundancy thresholds, quantiles,
+HAC lag, seed, all Ridge/boosting grids and training settings, and every nested
+split setting. A config exported through `BenchmarkConfig.to_mapping()` contains
+these fields. Choose the schedule and search budget before running; the example
+does not adapt them to observed performance.
+
+Start from your declared JSON config (the [benchmark guide](../docs/stage3-benchmark.md#configuration)
+shows its structure), then export the expanded settings:
+
+~~~python
+import json
+from pathlib import Path
+from quant_metric_research import BenchmarkConfig
+
+settings = json.loads(Path("benchmark-config.json").read_text(encoding="utf-8"))
+config = BenchmarkConfig.from_mapping(settings)
+destination = Path("artifacts/plans/target-ablation.json")
+destination.parent.mkdir(parents=True, exist_ok=True)
+with destination.open("x", encoding="utf-8") as stream:
+    json.dump(config.to_mapping(), stream, indent=2, allow_nan=False)
+~~~
+
+Review the expanded settings before training, especially the target fields,
+families, iteration counts, grids and split lengths. The export fills library
+defaults; it does not choose an appropriate study or compute budget for you.
+
+~~~text
+python examples/target_ablation.py --panel artifacts/prepared/metric_panel.parquet --config artifacts/plans/target-ablation.json --registry artifacts/research-registry.sqlite3 --output-dir artifacts/target-ablation-001 --study-id target-ablation-v1 --hypothesis "Compare raw-return and within-date rank targets using fixed original-ten features, Ridge and histogram boosting."
+~~~
+
+Run from a verified 0.15 source checkout and its installed virtual environment.
+For Colab, use a separate runtime with that checkout and the existing private
+history copied to local VM storage. The usual notebook pins 0.13 and cannot run
+this example unchanged; do not use its bootstrap to install the older source.
+The registry must already contain prior research records;
+an empty history is refused. Preserve the same registry for later attempts. This
+is a separate example; it does not change the existing Colab notebook or its
+source pin. Training uses one CPU thread, with elapsed time measured separately
+for each target run, including both model families and their nested tuning.
+
+The input panel must have `as_of_date`, `symbol`, `label_end_date`, the ten feature
+columns, and raw `forward_excess_return`. Observed labels within a decision date
+must share one maturity date, as in the Stage 1 fixed-horizon panel. This prevents
+an immature peer's outcome entering another stock's rank label. Ranks are
+regenerated from observed raw outcomes, including average ties; missing outcomes
+stay missing and their feature rows remain available for scoring. An existing
+`forward_excess_rank` column is replaced by this declared calculation.
+
+The output contains input snapshots, a pretraining declaration, both preflights,
+standard `raw/` and `rank/` benchmark bundles, and target-run timing files.
+`comparison_predictions.parquet`, `daily_metrics.csv`, `fold_metrics.csv`, and
+`summary.csv` compare five arms: the original-ten equal-weight baseline retained
+once, plus the four learned models. Matching baseline scores, selected features,
+scoring rows, folds, schedules and masked raw outcomes are checked first. Reports
+show each arm's native coverage and one common population across all five arms.
+IC and spreads use the already-masked raw excess returns; a spread of `0.01`
+means one percentage point over the declared horizon, not a daily portfolio
+return. The combined summary is descriptive and omits inference and winner
+selection; the underlying benchmark bundles retain their usual diagnostics.
+
+Only `completion.json` marks a completed comparison. Failures retain partial
+files, completed arms and recorded failed training attempts; retry with a fresh
+output directory and the same registry. This experiment changes the target only.
+Feature-bundle comparisons should be separately declared so their effects remain
+distinguishable.

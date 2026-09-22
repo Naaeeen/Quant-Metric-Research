@@ -36,6 +36,12 @@ ranking scores, not calibrated expected-return forecasts. The main metrics are
 per-date Spearman Rank IC and the raw realized-return spread between top and
 bottom score buckets.
 
+To compare return and rank training targets, use the
+[target-ablation example](../examples/README.md#target-ablation). It retains raw
+excess returns for economic evaluation. Inner-tuning spreads also use
+`realized_return_column`, independently of the learning target and its missing
+values; tuning still selects candidates by Rank IC.
+
 ## Validation design
 
 The final contiguous configured block before the immature tail is locked before

@@ -960,13 +960,21 @@ target configurations. Longer-term work and completion criteria are in the
 
 ### Data and model choices
 
-Named-stock research remains the main track. Numerai is a useful separate
-large-scale benchmark because it supplies financial cross-sections and
-engineered features. Its IDs change across eras, and its targets and CORR
-scoring have their own definitions. An adapter must preserve those meanings;
-it must not invent ticker histories, trading dates or portfolio returns.
+Named-stock research remains the main track. Numerai provides useful published
+methods, but its data is not yet qualified for this project's use. Its IDs change
+across eras, and its targets and CORR scoring have their own definitions. Any
+future adapter would need to preserve those meanings; it must not invent ticker
+histories, trading dates or portfolio returns.
 Current documentation identifies v5.3 and explicit Ender-20/Ender-60 targets;
 the generic target alias means Ender-60 in that version.
+
+A follow-up check changed the initial data recommendation. The
+[terms dated August 31, 2026](https://crypto.numer.ai/terms), section 4.2, limit
+data use to tournament participation, prohibit redistribution and impose
+conditions on service-provider access. Public API access is not permission for
+an unrelated research benchmark. Defer adoption until the intended use and
+permissions are established. No dataset download, account creation, submission
+or cloud upload was performed during this review.
 
 Qlib provides reference workflows and factor definitions, but its current
 README says the official dataset is temporarily disabled. A community download
@@ -998,6 +1006,7 @@ candidates, not expected equity returns.
 | [Nested model selection](https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html) | Separate tuning from evaluation; this repository uses time-based, not the example's classification, folds. |
 | [Histogram gradient boosting](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingRegressor.html) | Current estimator behavior, weighting and early-stopping controls. |
 | [Numerai data](https://docs.numer.ai/numerai-tournament/data) | Versioned eras, changing IDs, feature subsets and explicit target horizons. |
+| [Numerai terms](https://crypto.numer.ai/terms) | Section 4.2 changes the data recommendation: tournament-limited use is not a general research-data license. |
 | [Numerai CORR](https://docs.numer.ai/numerai-tournament/scoring/correlation-corr) | The official metric transforms predictions and targets; it is not Spearman Rank IC. |
 | [SEC APIs](https://www.sec.gov/search-filings/edgar-application-programming-interfaces) | Filing-level facts and frames have different availability/revision semantics. |
 | [LightGBM ranker](https://lightgbm.readthedocs.io/en/stable/pythonapi/lightgbm.LGBMRanker.html) and [parameters](https://lightgbm.readthedocs.io/en/stable/Parameters.html) | Query groups, integer relevance, gain mappings and deterministic CPU settings. |
@@ -1012,3 +1021,32 @@ candidates, not expected equity returns.
 
 These are published methods and interfaces. They describe what can be adopted
 and tested here, not the private production practices of trading firms.
+
+### Version 0.15 implementation and verification
+
+Inner tuning now calculates spreads from the configured realized-return column,
+independently of target missingness. Candidate selection still uses Rank IC.
+Ten regression cases cover separate and shared columns, missing outcomes,
+column-name collisions, unchanged inputs, and genuine rank-target training.
+Scaling realized returns by ten scales the reported spreads by ten without
+changing predictions or selected candidates.
+
+The target-ablation example trains Ridge and histogram boosting against raw
+returns and within-date ranks. It retains the original-ten equal-rank baseline,
+existing research history, identical folds and already-masked raw outcomes.
+The five-arm report includes native and common coverage; elapsed time is measured
+per target run, including both learners and nested tuning. Input snapshots,
+declarations, standard run bundles and partial failures remain available.
+
+Twelve integration cases exercise the real training workflow, target maturity,
+future-outcome perturbations, common coverage, input changes, reruns and failure
+recovery. These runs use synthetic fixtures. The next market-data study remains
+separate from software verification, with calendar and freshness checks first.
+
+Final frozen local verification: **1,530 tests passed** in 255 seconds with
+**90.47% aggregate coverage including branch tracking**. The executable example
+also passed its separate coverage run at **91.30%**. Lint and formatting checks,
+dependency consistency and vulnerability audit, command checks, independent
+review, and source/wheel builds passed. Linux CI is recorded on the pull request.
+The existing Colab notebook stays pinned to 0.13; hosted execution of the new
+example and predictive improvement have not been demonstrated.

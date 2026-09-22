@@ -20,9 +20,12 @@ found that Ridge did not improve aggregate ranking performance over equal-weight
 ranks. See the [observed result](docs/research-decisions.md#observed-development-result-2026-09-08)
 for the evidence and experiment settings.
 
-Version 0.14.0 saves an existing feature-bundle comparison as five CSV tables and
-a completion manifest. The [comparison guide](docs/stage3-benchmark.md#saving-a-comparison)
-describes the output and failure handling. The Colab walkthrough remains pinned
+Version 0.15.0 adds a [target-ablation example](examples/README.md#target-ablation)
+that compares raw-return and rank-target training with Ridge and histogram
+boosting. Inner tuning now reports spreads in realized-return units for either
+target. Existing feature-bundle reports can also be
+[saved as CSV tables](docs/stage3-benchmark.md#saving-a-comparison).
+The Colab walkthrough remains pinned
 to the separately verified 0.13 source; its fixed ten-metric Ridge experiment is
 unchanged. Local notebook checks and hosted Colab execution have separate
 [verification records](examples/README.md#verification-status).
@@ -67,6 +70,7 @@ is refused. Use a fresh output directory for each run.
 | Import authorized local Yahoo-format exports | [Offline intake](examples/README.md#offline-yahoo-format-intake) |
 | Supply normalized prices and dated memberships | [Data contract](docs/data-contract.md) |
 | Compare models or feature bundles | [Stage 3 benchmark](docs/stage3-benchmark.md) |
+| Compare raw-return and rank training targets | [Target ablation](examples/README.md#target-ablation) |
 
 The Colab workflow requires a private seed containing the existing canonical
 registry, archive, and prior-run evidence. Keep the live SQLite database on local
