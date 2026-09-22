@@ -1389,3 +1389,89 @@ comparison, negative controls, economic accounting and broader-data
 qualification. Before another screening-heavy run, test whether reducing
 small-table overhead can preserve exact selections while improving runtime.
 The broader goal and final-evaluation requirements remain unchanged.
+
+### Screening allocation optimization plan
+
+An independent invented-data profile identified repeated pairwise table
+operations as the next measured optimization target. On 600 dates, 30 stocks
+and ten features, profiled redundancy took 92.44 seconds, daily IC 26.42 seconds
+and IC summary/HAC 0.20 seconds. These include profiler overhead and concurrent
+work; they are not estimates of the full training runtime.
+
+Keep the scalar Spearman calculation and replace per-pair table slicing and
+missing-row removal with date-local arrays and availability masks. Preserve
+pair-specific reranking, ties, original-dtype uniqueness checks, pair/date order,
+clipping and aggregation. Public input validation and caller-owned data stay
+unchanged. No values may be reused across training folds.
+
+A private prototype matched 40 oracle cases and two downstream screen cases.
+One unprofiled 120-date, 30-stock, ten-feature comparison took 8.71 seconds for
+the existing implementation and 2.20 seconds for the prototype. Validate the
+integrated implementation with a failing allocation-count regression, exact
+output/selection checks, independent review and the full suite. Then compare
+three fresh-process runs per implementation on the same synthetic fixture,
+alternating order, recording wall/CPU time and whole-process peak memory.
+
+A direct replacement with `DataFrame.corr` was rejected. The five-value pair
+`[0,1,2,3,4]` and `[0,1,2,4,3]` produces `0.8999999999999998` through the existing
+scalar path but `0.9` through the matrix path in the tested runtime. That changes
+selection at the configured threshold. Mathematical agreement alone is not
+enough for a behavior-preserving optimization.
+
+[Pandas documents pairwise complete observations and index alignment](https://pandas.pydata.org/docs/reference/api/pandas.Series.corr.html).
+The two arrays here come from the same ordered rows, after their shared mask.
+[SciPy documents the scalar Spearman calculation and constant-input behavior](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html).
+Tests must preserve the current conversion and threshold behavior, including
+large integers and nullable inputs, instead of accepting a numerical tolerance
+that changes selected features.
+
+This change does not rerun the market study or change its conclusion. The
+package/source identity changes with the implementation, so saved study
+identities remain attached to their original revision. Keep the notebook pin
+unchanged until its separate reproducibility milestone.
+
+### Screening allocation optimization results
+
+Version 0.16.1 uses date-local value arrays and availability masks instead of
+allocating a two-column table for every pair/date. It preserves scalar SciPy
+arithmetic and pair-major aggregation. Extension-backed columns keep exact
+object values until after pairwise filtering and raw uniqueness checks.
+
+The allocation regression first failed with 18 per-pair `DataFrame.dropna`
+calls; 40 other cases passed. Independent review then found that nullable
+large integers with missing values could convert to float before uniqueness.
+Two new signed/unsigned regressions reproduced the mismatch in warning
+behavior, and object extraction corrected it. The resulting 73 focused tests
+passed. Independent checks also reproduced exact results on 80 randomized
+panels and warning behavior for NumPy, nullable and Arrow-backed integer cases.
+
+The planned fresh-process measurement used one thread, three alternating runs
+per implementation, and 120 dates x 30 stocks x ten tied/missing numeric features.
+Every pairwise output matched exactly across all six runs.
+
+| Implementation | Wall seconds, all runs | Median wall seconds | Maximum process peak (MiB) |
+| --- | --- | ---: | ---: |
+| Before, revision `fb60080` | 9.177, 8.826, 8.708 | 8.826 | 180.79 |
+| Array screening | 1.607, 1.610, 1.605 | 1.607 | 179.70 |
+
+The median wall-time ratio is 5.49. Timing includes date-local conversion and
+redundancy calculation, but excludes imports and fixture setup. Memory is the
+OS lifetime peak of the actual child interpreter, including imports and inputs,
+not incremental allocation by the function. Local machine activity was not
+isolated. This is a synthetic component comparison, not a measured reduction
+in total training time or a claim about larger datasets.
+
+Measurement used Windows, Python 3.14.3, NumPy 2.5.3, pandas 3.0.5 and SciPy
+1.18.1. The integrated redundancy source hash is
+`0aa070bdea206f795d67e61bd3c4cdfac88c23d40be5437936e9f18789e32698`.
+The private measurement script, individual outputs, timings and process peaks
+are retained in `artifacts/screening-validation-20260922-001/`. No empirical
+inputs, predictions, experiment records or final outcomes changed.
+
+Release checks passed locally: 1,615 tests in 269.49 seconds with 90.90%
+aggregate coverage and branch tracking, lint/format, dependency consistency,
+dependency vulnerability audit, source/wheel builds and the installed command.
+The editable project is excluded from the dependency audit. The built wheel
+contains the measured redundancy source. The first full run caught a stale
+version assertion; it was updated to 0.16.1 before the successful full rerun.
+Independent review approved the code, regression cases and measurement claims.

@@ -22,8 +22,10 @@ the study's criteria. Results vary across periods and come from a retrospective
 30-stock sample. See the [complete results](docs/research-decisions.md#corrected-panel-target-study-results)
 for all comparisons, coverage and measured resources.
 
-Version 0.16.0 adds a [declared session calendar](docs/data-contract.md#declared-session-calendar)
-that checks for missing market dates before feature calculation or training.
+Version 0.16.1 reduces pairwise screening overhead, with exact regression checks
+and a [measured component comparison](docs/research-decisions.md#screening-allocation-optimization-results).
+A [declared session calendar](docs/data-contract.md#declared-session-calendar)
+checks for missing market dates before feature calculation or training.
 Trailing return now requires the original window endpoints; missing prices no
 longer move those endpoints. The [target-ablation example](examples/README.md#target-ablation)
 compares raw-return and rank-target training with Ridge and histogram boosting.

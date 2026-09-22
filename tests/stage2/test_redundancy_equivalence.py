@@ -6,8 +6,10 @@ import numpy as np
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
+from scipy.stats import ConstantInputWarning
 
 from quant_metric_research import redundancy
+from quant_metric_research.screening import fit_metric_screen
 
 
 def _reference_redundancy(
@@ -218,4 +220,128 @@ def test_nullable_dtypes_match_reference_without_input_mutation():
         _reference_redundancy(panel, **kwargs),
         check_exact=True,
     )
+    assert_frame_equal(panel, before, check_exact=True)
+
+
+@pytest.mark.parametrize("kind", ["declared", "equal", "below", "above"])
+def test_scalar_boundary_and_downstream_selection_are_exact(monkeypatch, kind):
+    panel = pd.DataFrame(
+        {
+            "as_of_date": np.repeat(pd.bdate_range("2024-01-02", periods=4), 5),
+            "symbol": [f"S{i}" for i in range(5)] * 4,
+            "a": [0, 1, 2, 3, 4] * 4,
+            "b": [0, 1, 2, 4, 3] * 4,
+            "target": [0, 1, 2, 3, 4] * 4,
+        }
+    )
+    before = panel.copy(deep=True)
+    kwargs = {"feature_columns": ("a", "b"), "min_cross_section": 3}
+    expected_pairs = _reference_redundancy(panel, **kwargs)
+    actual_pairs = redundancy.compute_feature_redundancy(panel, **kwargs)
+    assert_frame_equal(actual_pairs, expected_pairs, check_exact=True)
+    value = expected_pairs.iloc[0]["mean_abs_spearman"]
+    # Matrix Spearman returns 0.9 and would change this screening decision.
+    assert value < 0.9
+    threshold = {
+        "declared": 0.9,
+        "equal": value,
+        "below": np.nextafter(value, -np.inf),
+        "above": np.nextafter(value, np.inf),
+    }[kind]
+    kwargs.update(
+        target_column="target",
+        train_end_date="2024-01-05",
+        minimum_coverage=0.8,
+        redundancy_threshold=threshold,
+        hac_lags=1,
+        quantiles=2,
+        include_quantile_spreads=False,
+    )
+    actual = fit_metric_screen(panel, **kwargs)
+    monkeypatch.setattr(
+        "quant_metric_research.screening.compute_feature_redundancy",
+        _reference_redundancy,
+    )
+    expected = fit_metric_screen(panel, **kwargs)
+    assert actual.selected_features == expected.selected_features
+    assert actual.dropped_features == expected.dropped_features
+    assert ("b" in actual.selected_features) == (kind in {"declared", "above"})
+    for name in ("quality", "daily_rank_ic", "ic_summary", "redundancy"):
+        assert_frame_equal(
+            getattr(actual, name), getattr(expected, name), check_exact=True
+        )
+    assert_frame_equal(panel, before, check_exact=True)
+
+
+def test_asymmetric_missingness_reranks_ties_within_complete_pairs():
+    panel = pd.DataFrame(
+        {
+            "as_of_date": ["2024-01-02"] * 6,
+            "a": [1, 1, 2, 3, 4, 5],
+            "b": [3, None, 1, 1, 2, None],
+            "c": [None, 2, 2, 1, 3, 4],
+        }
+    )
+    kwargs = {"feature_columns": ("c", "a", "b"), "min_cross_section": 3}
+    assert_frame_equal(
+        redundancy.compute_feature_redundancy(panel, **kwargs),
+        _reference_redundancy(panel, **kwargs),
+        check_exact=True,
+    )
+    paired = panel[["a", "b"]].dropna()
+    wrong = panel[["a", "b"]].rank().dropna()
+    assert paired.a.corr(paired.b, method="spearman") != wrong.a.corr(wrong.b)
+
+
+def test_raw_uniqueness_precedes_float_precision_collapse():
+    panel = pd.DataFrame(
+        {"as_of_date": ["2024-01-02"] * 2, "a": [2**53, 2**53 + 1], "b": [1, 2]}
+    )
+    before = panel.copy(deep=True)
+    kwargs = {"feature_columns": ("a", "b"), "min_cross_section": 2}
+    # Raw values vary, so Spearman runs and warns after its float conversion.
+    # Testing float uniqueness first would silently skip this call.
+    with pytest.warns(ConstantInputWarning):
+        expected = _reference_redundancy(panel, **kwargs)
+    with pytest.warns(ConstantInputWarning):
+        actual = redundancy.compute_feature_redundancy(panel, **kwargs)
+    assert_frame_equal(actual, expected, check_exact=True)
+    assert actual.iloc[0]["date_count"] == 0
+    assert_frame_equal(panel, before, check_exact=True)
+
+
+def test_pairwise_complete_cases_do_not_allocate_dataframes(monkeypatch):
+    panel = _mixed_panel()
+    kwargs = {"feature_columns": ("a", "b", "c", "d"), "min_cross_section": 3}
+    expected = _reference_redundancy(panel, **kwargs)
+    calls = []
+    original = pd.DataFrame.dropna
+
+    def observed_dropna(frame, *args, **kwargs):
+        calls.append(frame.shape)
+        return original(frame, *args, **kwargs)
+
+    monkeypatch.setattr(pd.DataFrame, "dropna", observed_dropna)
+    actual = redundancy.compute_feature_redundancy(panel, **kwargs)
+    assert_frame_equal(actual, expected, check_exact=True)
+    assert calls == [], "Pair/date completeness must use arrays, not DataFrame.dropna."
+
+
+@pytest.mark.parametrize("dtype", ["Int64", "UInt64"])
+def test_nullable_large_integer_uniqueness_survives_missingness(dtype):
+    panel = pd.DataFrame(
+        {
+            "as_of_date": ["2024-01-02"] * 3,
+            "a": pd.Series([2**53, 2**53 + 1, pd.NA], dtype=dtype),
+            "b": [1, 2, 3],
+        }
+    )
+    before = panel.copy(deep=True)
+    kwargs = {"feature_columns": ("a", "b"), "min_cross_section": 2}
+    with pytest.warns(ConstantInputWarning):
+        expected = _reference_redundancy(panel, **kwargs)
+    with pytest.warns(ConstantInputWarning):
+        actual = redundancy.compute_feature_redundancy(panel, **kwargs)
+    assert_frame_equal(actual, expected, check_exact=True)
+    assert actual.iloc[0]["date_count"] == 0
     assert_frame_equal(panel, before, check_exact=True)

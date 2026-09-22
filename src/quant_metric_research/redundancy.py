@@ -4,6 +4,7 @@ from itertools import combinations
 
 import numpy as np
 import pandas as pd
+from scipy.stats import spearmanr
 
 REDUNDANCY_COLUMNS = (
     "left",
@@ -44,29 +45,50 @@ def compute_feature_redundancy(
     # Convert each date once, not the whole panel: numeric precision can depend on
     # the date-local dtype. Keep pair-major accumulation to avoid storing every
     # pair's correlations at once as the feature count grows.
-    numeric_groups = tuple(
-        (
+    numeric_groups: list[dict[str, tuple[np.ndarray, np.ndarray]]] = []
+    for _, group in normalized.groupby(as_of_date_column, sort=True) if pairs else ():
+        numeric = (
             group.loc[:, list(dict.fromkeys(feature_columns))]
             .apply(pd.to_numeric, errors="coerce")
             .replace([np.inf, -np.inf], np.nan)
         )
-        for _, group in (
-            normalized.groupby(as_of_date_column, sort=True) if pairs else ()
+        numeric_groups.append(
+            {
+                # Nullable integer extraction otherwise promotes missing values
+                # to float, collapsing distinct large integers before filtering.
+                name: (
+                    numeric[name].to_numpy(
+                        dtype=object
+                        if isinstance(
+                            numeric[name].dtype, pd.api.extensions.ExtensionDtype
+                        )
+                        else None
+                    ),
+                    numeric[name].notna().to_numpy(),
+                )
+                for name in numeric.columns
+            }
         )
-    )
     rows: list[dict[str, object]] = []
     for left, right in pairs:
         correlations: list[float] = []
         for numeric in numeric_groups:
-            paired = numeric.loc[:, [left, right]].dropna()
-            if paired.shape[0] < min_cross_section:
+            left_values, left_present = numeric[left]
+            right_values, right_present = numeric[right]
+            present = left_present & right_present
+            if present.sum() < min_cross_section:
                 continue
-            if paired[left].nunique() <= 1 or paired[right].nunique() <= 1:
+            paired_left, paired_right = left_values[present], right_values[present]
+            # Check raw uniqueness first: float conversion can collapse distinct
+            # large integers. Convert only pairs that reached scalar correlation.
+            if len(pd.unique(paired_left)) <= 1 or len(pd.unique(paired_right)) <= 1:
                 continue
-            correlation = paired[left].corr(
-                paired[right],
-                method="spearman",
-            )
+            # Keep the Series.corr SciPy arithmetic: matrix correlation can move
+            # values across an exact redundancy threshold such as 0.9.
+            correlation = spearmanr(
+                np.asarray(paired_left, dtype=float),
+                np.asarray(paired_right, dtype=float),
+            )[0]
             if pd.notna(correlation):
                 correlations.append(float(correlation))
 
