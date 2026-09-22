@@ -405,8 +405,10 @@ The array-screening implementation preserves exact synthetic outputs and
 selection boundaries. Three fresh-process component comparisons measured a
 5.49x median speed ratio on 120 dates, 30 stocks and ten features. This does not
 measure a whole-study speedup or establish hosted Colab performance.
-Next, declare the separate 10/13-feature comparison before fitting,
-retaining fixed baselines and the original feature bundle. Keep raw-return
+The separate [10/13-feature study](research-decisions.md#september-22-2026-feature-bundle-study-declaration)
+is declared before fitting, with HGB primary, Ridge secondary and fixed paired
+continuation criteria. Verify the prepared-panel example, then run it with the
+same enriched inputs, source/runtime and five-record history. Keep raw-return
 boosting as a candidate for further tests, not an approved portfolio model.
 Qualify broader data and develop economic checks in parallel. Historical
 membership and source rights remain unresolved for the current archive.
