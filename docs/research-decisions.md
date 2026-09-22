@@ -1119,9 +1119,7 @@ The calendar was generated in an isolated environment with explicit bounds:
 ~~~python
 import exchange_calendars
 
-exchange = exchange_calendars.get_calendar(
-    "XNYS", start="2012-01-03", end="2016-12-30"
-)
+exchange = exchange_calendars.get_calendar("XNYS", start="2012-01-03", end="2016-12-30")
 sessions = exchange.sessions_in_range("2012-01-03", "2016-12-30")
 ~~~
 
@@ -1142,3 +1140,43 @@ the declaration and the two reports are retained locally under
 This establishes agreement with the pinned community calendar, not per-security
 price completeness or independently certified historical provenance. The next
 step is the corrected-panel target comparison using the latest registry lineage.
+
+## September 22, 2026 comprehensive goal contract
+
+The user requested a more detailed goal covering the whole research system.
+The nine roadmap workstreams already cover that scope. A fresh independent
+review identified the missing pieces as completion criteria, dependencies and
+clear evidence levels, rather than additional model families.
+
+The [expanded goal](roadmap.md#goal) now requires qualified data, completed
+controlled experiments, an independently reviewed conclusion, tested trading
+accounting, reproducible Colab/scoring workflows and a maintainable handoff.
+It separates software verification, market-data findings and hosted execution.
+Conditional methods need a hypothesis and budget; required deliverables remain
+open until their evidence exists. A negative result can resolve a research
+question without supporting portfolio promotion.
+
+The review also added decision-time batch scoring and offline monitoring tests
+to the handoff workstream. A saved model needs reproducible preprocessing and
+must score without future labels. Monitoring should be exercised with stale
+inputs, delayed outcomes and interruptions before operational use.
+
+Primary sources rechecked for this change:
+
+- [Google's Rules of ML](https://developers.google.com/machine-learning/guides/rules-of-ml)
+  separates infrastructure tests from model evaluation and addresses
+  training/serving differences. It informs the scoring-parity requirement.
+- [The ML Test Score](https://research.google/pubs/the-ml-test-score-a-rubric-for-ml-production-readiness-and-technical-debt-reduction/)
+  treats testing and monitoring as work beyond an offline model experiment.
+- [Qlib's published workflow](https://github.com/microsoft/qlib#auto-quant-research-workflow)
+  connects dataset construction, training, signal evaluation and portfolio
+  analysis, including results with and without costs.
+- [Google's writing guide](https://developers.google.com/style/tone)
+  supports direct instructions, concrete wording and short explanations.
+
+These sources inform the project-specific completion contract; they do not
+establish that any candidate will improve this dataset. The order remains the
+corrected target study, separate factor study, qualified larger-data comparison
+and reproducible handoff, with economic checks developed alongside the models.
+This documentation change performs no training, final evaluation or registry
+operation.
