@@ -1675,3 +1675,144 @@ and [online-serving design](https://qlib.readthedocs.io/en/latest/component/onli
 provide references for separating recorded experiments from later model updates
 and prediction routines. We use these ideas for an offline research handoff;
 they neither validate this project's signal nor require a live-trading service.
+
+## Feature-bundle study results
+
+The declared 10/13-feature study is complete. Adding the fixed price-factor
+bundle improved HGB and Ridge on these development periods; both HGB contrasts
+passed the published continuation rules. The study decision is `promising`.
+An important simple-signal diagnostic changes the next priority: the individual
+63-session moving-average-distance signal outperformed both learned combinations.
+The next comparison must test what ML adds beyond that signal, alongside costs
+and period stability, before spending more on model complexity.
+
+### Execution and independent checks
+
+The study used source revision `9a36c761f1eba059419ad3baa63513be2106cd8d`, package
+0.16.1, Python 3.14.3, NumPy 2.5.3, pandas 3.0.5, SciPy 1.18.1 and scikit-learn
+1.9.0. Source, prepared inputs, configuration and script hashes matched before
+and after execution. The input and calendar identities are those recorded in
+the declaration and preparation sections above.
+
+The private Windows observer binds the actual interpreter's PID and creation
+time before releasing it, samples its lifetime peak working set, and merges a
+final self-measurement. Its tests cover budget stops, short allocations between
+polls, failed/abrupt exits, ownership, PID reuse and cleanup. This follows the
+process identity and Windows memory fields in the pinned
+[psutil 7.2.2 documentation](https://raw.githubusercontent.com/giampaolo/psutil/release-7.2.2/docs/index.rst).
+The private execution, observation and decision components passed 85 synthetic
+tests in 14.81 seconds with 84% aggregate branch-tracked coverage. Independent
+review approved each component before fitting. The six public CI jobs passed
+on the frozen source revision.
+
+The run took **745.47 seconds (12.42 minutes)**, with **734.59 CPU seconds** and
+**585.92 MiB** peak working set in the actual training interpreter. The ten-input
+arm took 283.59 seconds to fit; the thirteen-input arm took 393.25 seconds. The
+total also includes imports, loading, preflight, comparisons and writes.
+Preparation took a separate 721.73 seconds. These are Windows measurements,
+not hosted Colab timings or a controlled end-to-end speedup comparison.
+Resource limits were a sampled watchdog, not OS allocation caps; the final
+self-sample excludes its own write and interpreter shutdown.
+
+Completed trial/fold records support the declared 36 supervised fits. Exactly
+two completed development runs were appended:
+
+- Ten inputs: `e23036a0-b528-468a-9b54-e0470f713c8f`.
+- Thirteen inputs: `5f7c9fce-9612-4f88-9812-ef74aca85303`.
+
+Independent review confirmed all five earlier records and exposures are
+unchanged, the after snapshot equals the live seven-record history, and there
+are no final runs. Reserved final boundaries remain unchanged. A separate
+software-equivalence check found the new ten-input development predictions
+byte-identical to the earlier raw-target arm: 56,700 rows across all ten model
+and baseline outputs, SHA-256
+`2d82f7c7d103a3d8ac42cec378b41ad6c8e4154c8a2660abecbbdd98620f4d09`.
+The earlier result was not substituted for the new registered arm.
+
+### Declared comparisons
+
+Each contrast has all 189 paired IC dates and 189 independently paired spread
+dates, including 63 of each in every fold. Native and common daily metrics are
+identical in this study; every evaluation cross-section contains 30 scored
+stocks. Spreads below are mean top-minus-bottom **20-session outcomes**, expressed
+as percentages, not compounded portfolio returns.
+
+| Arm | Mean Rank IC | Mean spread (%) |
+| --- | ---: | ---: |
+| Legacy screened equal-rank | -0.03701 | -0.54459 |
+| Ten-input HGB | 0.01506 | 0.35010 |
+| Thirteen-input HGB | 0.06714 | 1.10735 |
+| Ten-input Ridge | -0.05001 | -0.45717 |
+| Thirteen-input Ridge | 0.06011 | 0.52902 |
+
+| Paired contrast | Mean IC change | Spread change (percentage points) | Positive IC-change folds |
+| --- | ---: | ---: | ---: |
+| Thirteen-input HGB minus ten-input HGB | 0.05208 | 0.75725 | 2/3 |
+| Thirteen-input HGB minus legacy equal-rank | 0.10415 | 1.65194 | 3/3 |
+| Thirteen-input Ridge minus ten-input Ridge | 0.11012 | 0.98619 | 3/3 |
+| Thirteen-input Ridge minus legacy equal-rank | 0.09711 | 1.07361 | 2/3 |
+
+All four contrasts pass their descriptive continuation calculations; only the
+two HGB contrasts determine the primary decision. The expanded HGB fold ICs are
+0.11777, -0.04571 and 0.12935. Fold 2 improves substantially but still has negative
+absolute IC and spread; fold 1 slightly underperforms the ten-input HGB. The
+expanded Ridge also remains negative in fold 2. The gains are not uniform.
+
+Legacy outer screens retain six features. Expanded screens retain nine in all
+three folds: all three additions plus volatility, Sortino, maximum drawdown,
+benchmark correlation, beta and historical VaR. Trailing return leaves the
+selection and Sortino enters. The result therefore measures the entire bundle
+through the declared screening procedure, not each new factor's isolated effect.
+
+### Simple signals and the next decision
+
+The existing individual-signal reports give `metric:ma_distance_63s` mean IC
+**0.17806** and mean spread **2.47420%**, both above the expanded HGB. Its direction
+is learned from each training fold. `metric:return_21s` also has higher IC
+(0.07445), but lower spread (0.78526%). Both cover all 189 evaluation dates.
+The training-selected `best_metric` is benchmark correlation, with negative
+IC; it is distinct from the individual signal that looks best after evaluation.
+
+These diagnostics leave the frozen `promising` decision intact, but do not
+establish that combining factors beats all simple alternatives. Declare a
+separate simple-factor/ML comparison before further evaluation. Retain the
+expanded HGB and Ridge, the legacy baseline and the moving-average-distance
+signal as research candidates; do not select a new winner from this table.
+The immediate implementation priority is a tested development holdings/cost
+ledger and negative controls. Broader data qualification and a fresh Colab run
+remain required. The current retrospective cohort and repeatedly used periods
+support a development lead, not independent confirmation or net-profit evidence.
+
+Private evidence is under `artifacts/feature-ablation-20260922-001/`: `study/`
+contains both runs and comparisons, `analysis/` the frozen decision and paired
+tables, and `execution/` the identity declaration, resources and after snapshot.
+Only aggregate findings are published; input prices, predictions and private
+history remain outside Git.
+
+### Broader-data and economic follow-up
+
+A fresh source-code review confirms that Open Source Asset Pricing's public
+[signal packaging](https://raw.githubusercontent.com/OpenSourceAP/CrossSection/master/Shipping/Code/1_pack_signals.r)
+joins characteristics on `permno` and `yyyymm`, excluding several CRSP-derived
+fields. Its separate
+[CRSP retrieval](https://raw.githubusercontent.com/OpenSourceAP/CrossSection/master/Portfolios/Code/10_DownloadCRSP.R)
+uses authenticated WRDS access for individual returns, delisting returns and
+dated ticker/eligibility records. The public characteristics alone therefore
+do not close the broader named-stock data gate. An authorized CRSP-equivalent
+export would enable a separately declared monthly study; it is not an automatic
+substitute for the existing 20-session experiment.
+
+For economics, implement one development-only, fractional adjusted-price-unit
+ledger. Fix target weights at decision time and execute at a declared later
+close; value actual holdings daily and charge costs from cash. Preserve unused
+allocations when new purchases lack prices, and stop with retained holdings
+when a held asset cannot be valued. Use the same rules for each candidate and
+baseline. Include entry/exit costs and drift-aware two-way traded notional.
+Adjusted units are return exposures, not broker shares or a verified fill model.
+
+This design draws on [Qlib's separation of strategy and daily accounting](https://qlib.readthedocs.io/en/latest/component/strategy.html),
+[QuantConnect's fee-aware sizing and reduction-first orders](https://www.quantconnect.com/docs/v2/writing-algorithms/trading-and-orders/position-sizing),
+and its [distinction between adjusted prices and dividend cash credits](https://www.quantconnect.com/docs/v2/writing-algorithms/securities/asset-classes/us-equity/corporate-actions).
+Verify delayed entry, cash-funded fees, drift, ties, missing valuations and
+dividend non-duplication on hand-worked fixtures before a separately declared
+market-data cost comparison. No portfolio results have been computed yet.
