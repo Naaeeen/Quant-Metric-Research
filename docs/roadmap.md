@@ -110,9 +110,11 @@ The repository builds price-derived stock-date panels, screens metrics and
 trains Ridge, histogram gradient boosting and optional Ridge+PCA on nested,
 purged time splits. It records experiments, scores, coverage, uncertainty and
 development feature-bundle comparisons. The CPU Colab walkthrough pins 0.13;
-the current package is 0.16.1, with executable target- and feature-ablation examples,
-declared-calendar checks, corrected trailing-return endpoints and faster pairwise
-screening with exact-equivalence tests.
+the current package is 0.17.0, with target/feature ablations and development
+holdings accounting. The synthetic portfolio example trains Ridge and carries
+cash and holdings across two outer folds; empirical economic validation remains
+open. Declared-calendar checks, corrected trailing-return endpoints and exact
+screening equivalence checks remain part of the workflow.
 
 Completed market-data studies use 30 alphabetically selected stocks from a
 retrospective 2017 constituent snapshot, with 2012-2016 prices. The corrected
@@ -137,10 +139,10 @@ Track implementation and research evidence separately:
 
 | Evidence level | Current position | Next evidence needed |
 | --- | --- | --- |
-| Implemented and tested | Target/return separation, both ablation workflows, calendar/endpoint corrections and exact-preserving array screening. | Development holdings/cost accounting, negative controls and larger-scale profiling. |
+| Implemented and tested | Target/return separation, both ablation workflows, calendar/endpoint corrections, exact-preserving screening and a synthetic holdings/cost workflow. | Declared market-data economic evaluation, negative controls and larger-scale profiling. |
 | Data checked | Archive session dates match pinned XNYS; normalized date keys were checked. | Per-security completeness and qualified historical membership, provenance and rights. |
 | Market-data evaluated | Target and factor studies completed; expanded raw-return HGB passed its declared factor-study criteria, but a simple factor scored higher. All feature-study contrasts covered 189 dates. | Declared simple-factor/ML comparison, independent negative controls, economics and a qualified broader study. |
-| Environment reproduced | The walkthrough pins 0.13; current package capabilities are 0.16.1. Local and Linux checks have their own records. | A coherent updated notebook and fresh hosted Colab execution. |
+| Environment reproduced | The walkthrough pins 0.13; current package capabilities are 0.17.0. Local and Linux checks have their own records. | A coherent updated notebook and fresh hosted Colab execution. |
 
 For each milestone, retain its hypothesis, prerequisite, deliverable,
 verification method, acceptance rule, evidence path and current status in the
@@ -425,7 +427,7 @@ and rollback exercise with named review ownership.
 | 2 | Correct target/return separation in inner tuning | Complete: failing regressions reproduced and fixed; rank-target training reports return-unit spreads. |
 | 3 | Executable target/model ablation | Complete for the declared small development study: both targets, Ridge/boosting, all six paired comparisons, independent review and measured resources. |
 | 4 | Data qualification and empirical ablations | Calendar/endpoint checks and both declared ablations complete. The feature study passed its continuation criteria and independent audits; qualified broader data remains open. |
-| 5 | Development economic diagnostics and negative controls | Open: tested holdings/cost accounting and a frozen final-evaluation procedure. |
+| 5 | Development economic diagnostics and negative controls | Holdings/cost accounting and a trained synthetic example implemented. Open: declared market-data accounting comparison, executed negative controls and a frozen final-evaluation procedure. |
 | 6 | Stronger challenger and larger Colab study | Open: fair tuning budget, measured resources, independent review and reproducible run. |
 
 Calendar and feature-freshness corrections belong before market-data conclusions

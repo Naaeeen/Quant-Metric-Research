@@ -1,5 +1,33 @@
 # Examples
 
+## Synthetic holdings and cost workflow
+
+Train a small Ridge model on invented adjusted prices, then compare Ridge and
+screened equal-rank accounts with zero and five-basis-point one-way costs:
+
+~~~text
+python examples/synthetic_portfolio.py --output-dir artifacts/synthetic-portfolio-001
+~~~
+
+Use a fresh directory. The example has 64 invented weekday sessions, eight
+stocks and a benchmark, three price-derived inputs, two outer development folds
+and one inner validation fold per outer fold. Training uses one CPU thread and
+one Ridge alpha. Each account rebalances every three decision sessions, enters
+at the next close and liquidates before the reserved final period.
+
+The output contains invented inputs, calendar/configuration, preflight, one
+registered development benchmark and four account directories. Each account
+saves daily ledger, positions, trades, targets, rejections and coverage as CSV,
+plus a summary and manifest. `completion.json` is written only after all four
+accounts finish. Failures retain their evidence and cannot reuse the directory.
+This synthetic registry is isolated from market-data research history.
+
+The example tests real training and multi-fold accounting, not predictive
+usefulness. It makes no network requests and performs no final evaluation.
+Read the [accounting contract](../docs/stage3-benchmark.md#development-holdings-and-cost-accounting)
+before supplying an existing development run. The hosted Colab notebook below
+has not yet been updated to include this workflow.
+
 ## Opt-in factor panel on invented observations
 
 Version 0.10.0 can append explicitly selected factors to the existing panel:

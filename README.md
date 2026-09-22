@@ -4,7 +4,7 @@ Build equity metric panels, screen individual signals, and compare stock-ranking
 models on purged walk-forward folds. The research question is whether combining
 historical metrics improves rankings on unseen dates.
 
-The pipeline has three stages:
+The pipeline has four parts:
 
 1. Build a dated stock panel from adjusted-close prices, universe membership,
    trailing metrics, and forward targets.
@@ -12,28 +12,22 @@ The pipeline has three stages:
    metrics. Optional walk-forward and PCA comparisons test the selected metrics.
 3. Compare individual metrics and equal-weight ranks with Ridge, histogram
    gradient boosting, and optional Ridge+PCA using nested purged folds.
+4. Evaluate saved development rankings with a cash-funded holdings ledger,
+   delayed execution, drift-aware turnover and explicit costs.
 
 ## Current status
 
-The corrected-panel development comparison is complete. Raw-return histogram
-boosting met the declared continuation criteria against screened equal-weight
-ranks; Ridge did not. Rank-target training did not improve either model family under
-the study's criteria. Results vary across periods and come from a retrospective
-30-stock sample. See the [complete results](docs/research-decisions.md#corrected-panel-target-study-results)
-for all comparisons, coverage and measured resources.
+Both declared development studies are complete. Expanded raw-return histogram
+boosting improved over the original ten inputs, but a simple moving-average
+signal scored higher. The next experiment must test what ML adds beyond that
+signal and whether the result survives costs. These findings come from a
+retrospective 30-stock sample; see the [target comparison](docs/research-decisions.md#corrected-panel-target-study-results)
+and [feature comparison](docs/research-decisions.md#feature-bundle-study-results).
 
-Version 0.16.1 reduces pairwise screening overhead, with exact regression checks
-and a [measured component comparison](docs/research-decisions.md#screening-allocation-optimization-results).
-A [declared session calendar](docs/data-contract.md#declared-session-calendar)
-checks for missing market dates before feature calculation or training.
-Trailing return now requires the original window endpoints; missing prices no
-longer move those endpoints. The [target-ablation example](examples/README.md#target-ablation)
-compares raw-return and rank-target training with Ridge and histogram boosting.
-The separate factor comparison, qualified broader dataset and trading-cost
-evaluation remain open. Final evaluation has not run.
-The [feature-ablation example](examples/README.md#feature-ablation) now runs the
-fixed ten/thirteen-input comparison; its market-data study is declared and the
-enriched inputs are prepared, but the study has not trained yet.
+Version 0.17 adds [development holdings accounting](docs/stage3-benchmark.md#development-holdings-and-cost-accounting)
+and an offline example that trains Ridge on invented prices and evaluates
+continuous accounts across two folds. Qualified broader data, negative controls
+and a declared market-data cost comparison remain open. Final evaluation has not run.
 The Colab walkthrough remains pinned
 to the separately verified 0.13 source; its fixed ten-metric Ridge experiment is
 unchanged. Local notebook checks and hosted Colab execution have separate
@@ -81,6 +75,7 @@ is refused. Use a fresh output directory for each run.
 | Compare models or feature bundles | [Stage 3 benchmark](docs/stage3-benchmark.md) |
 | Compare raw-return and rank training targets | [Target ablation](examples/README.md#target-ablation) |
 | Run the fixed ten/thirteen-feature comparison | [Feature ablation](examples/README.md#feature-ablation) |
+| Train and check a synthetic holdings/cost workflow | [Portfolio example](examples/README.md#synthetic-holdings-and-cost-workflow) |
 
 The Colab workflow requires a private seed containing the existing canonical
 registry, archive, and prior-run evidence. Keep the live SQLite database on local

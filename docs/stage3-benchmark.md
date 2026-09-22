@@ -76,6 +76,82 @@ the fold-local preprocessing guidance in
 and the model-selection/evaluation distinction in
 [scikit-learn's nested-CV example](https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html).
 
+## Development holdings and cost accounting
+
+`evaluate_long_only` turns one saved development arm into a continuous account.
+It accepts a `BenchmarkRun`, normalized adjusted-close prices, an independent
+`ExpectedSessionCalendar` and a `LongOnlyConfig`. Use the same configuration and
+prices for candidate and baseline. The [synthetic example](../examples/README.md#synthetic-holdings-and-cost-workflow)
+trains a model and exercises the complete path without market data.
+
+~~~python
+from quant_metric_research import (
+    LongOnlyConfig, SideCosts, TradingCosts, evaluate_long_only,
+)
+
+config = LongOnlyConfig(
+    valuation_start=valuation_dates[0],
+    valuation_end=valuation_dates[-1],  # mandatory terminal liquidation
+    decision_dates=rebalance_dates,
+    benchmark_symbol="MARKET",
+    top_k=10,
+    execution_lag_sessions=1,
+    initial_cash=100_000.0,
+    costs=TradingCosts(
+        buy=SideCosts(commission=0.0002, spread=0.0003),
+        sell=SideCosts(commission=0.0002, spread=0.0003),
+    ),
+)
+result = evaluate_long_only(
+    development_run, prices, model="ridge", calendar=calendar, config=config,
+)
+~~~
+
+Supply those variables from a declared study, not from this illustrative cost
+assumption. Supported arms are configured model families, `equal_weight_rank`,
+`best_metric` and `metric:<configured feature>`. The adapter checks development
+scope, saved schedules, fold assignments and training-label maturity. It projects
+score/timing/coverage columns before calculation or hashing; targets and realized
+returns are not consumed. Metadata consistency does not authenticate training or
+recover scoring rows omitted upstream.
+
+Decisions occur after close; execution uses the declared calendar's session
+offset, not the number of rebalance dates. Target weights are fixed at decision
+time. Each of the k slots is worth 1/k of post-cost NAV; boundary ties share slot
+mass, and missing scores leave unused slots as cash. Flat scores can yield equal
+allocations. There is one account across folds, daily valuation, zero cash yield,
+and liquidation at the final configured close. Every scheduled entry must occur
+before liquidation, which must precede the saved final-test boundary.
+
+Positions are fractional adjusted-price units, not actual broker shares. Costs
+are additive cash debits on traded mark notional: commission, one-way spread and
+slippage. Do not also shift the marks by those costs or credit dividends already
+included in adjusted prices. We solve post-cost NAV so cash funds both purchases
+and fees, then record reductions before increases. Turnover is buy plus sell
+notional divided by pretrade NAV, including entry and liquidation.
+
+An unpriced new purchase is rejected without replacement or renormalization;
+its slot remains cash. An unpriced held asset stops the account before any trade
+that day. The result then has `status="blocked_missing_valuation"`, retained
+holdings/cash, blocked symbols/date and last valid valuation date. Terminal NAV
+and total return are absent. No price is filled or fabricated. The benchmark
+must have every expected valuation session; explicit null prices are rejected
+under the existing price contract, while absent rows express unavailable marks.
+
+Outputs include daily NAV/cash/gross/net returns, separate costs, positions,
+trades, rejected purchases, decision targets, score coverage and consumed-input
+identities. Daily gross return is the pre-cost change of the actual carried
+holdings. A cost-free counterfactual requires a separate zero-cost run.
+`observed_max_drawdown` is the most negative NAV/previous-peak minus one, including
+initial capital; on a blocked account it describes only the completed prefix.
+
+This is an idealized closing-mark cost-sensitivity model. It assumes fractional
+sizing at the eventual execution mark; it does not establish auction fills,
+liquidity, borrow availability or delisting proceeds. The constructed
+`FF_MARKET_PROXY` is contextual return data, not a tradable ETF. Declare source
+runs, candidate/baseline arms, dates, k, delay, frequency, costs and comparison
+rules before any market-data evaluation. Final evaluation remains separate.
+
 ## Configuration
 
 The config is a JSON object accepted by `BenchmarkConfig.from_mapping`.
