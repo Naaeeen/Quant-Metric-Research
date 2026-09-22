@@ -102,7 +102,7 @@ The repository builds price-derived stock-date panels, screens metrics and
 trains Ridge, histogram gradient boosting and optional Ridge+PCA on nested,
 purged time splits. It records experiments, scores, coverage, uncertainty and
 development feature-bundle comparisons. The CPU Colab walkthrough pins 0.13;
-the current package is 0.16.1, with a separate executable target-ablation example,
+the current package is 0.16.1, with executable target- and feature-ablation examples,
 declared-calendar checks, corrected trailing-return endpoints and faster pairwise
 screening with exact-equivalence tests.
 
@@ -388,7 +388,7 @@ baseline, interpret the comparison and resume the same research history.
 | 1 | Direction audit and revised working plan | Complete: independent findings reconciled; sources and priorities recorded. |
 | 2 | Correct target/return separation in inner tuning | Complete: failing regressions reproduced and fixed; rank-target training reports return-unit spreads. |
 | 3 | Executable target/model ablation | Complete for the declared small development study: both targets, Ridge/boosting, all six paired comparisons, independent review and measured resources. |
-| 4 | Data qualification and empirical ablations | Calendar/endpoint checks, input rebuild and target study complete. Next: separate 10/13-feature study and a qualified larger-data choice. |
+| 4 | Data qualification and empirical ablations | Calendar/endpoint checks and target study complete. The 10/13-feature runner is tested and its enriched inputs prepared; training awaits the verified resource observer and decision analysis. Qualified broader data remains open. |
 | 5 | Development economic diagnostics and negative controls | Open: tested holdings/cost accounting and a frozen final-evaluation procedure. |
 | 6 | Stronger challenger and larger Colab study | Open: fair tuning budget, measured resources, independent review and reproducible run. |
 
@@ -407,8 +407,9 @@ selection boundaries. Three fresh-process component comparisons measured a
 measure a whole-study speedup or establish hosted Colab performance.
 The separate [10/13-feature study](research-decisions.md#september-22-2026-feature-bundle-study-declaration)
 is declared before fitting, with HGB primary, Ridge secondary and fixed paired
-continuation criteria. Verify the prepared-panel example, then run it with the
-same enriched inputs, source/runtime and five-record history. Keep raw-return
+continuation criteria. Its tested example and prepared inputs preserve the
+five-record history. Verify the resource observer and decision analysis, then
+run both bundles with the same enriched inputs and source/runtime. Keep raw-return
 boosting as a candidate for further tests, not an approved portfolio model.
 Qualify broader data and develop economic checks in parallel. Historical
 membership and source rights remain unresolved for the current archive.

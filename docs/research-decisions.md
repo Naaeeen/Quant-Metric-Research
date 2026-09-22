@@ -1605,3 +1605,48 @@ The source review supports the representations and experiment discipline:
 An accompanying consistency review corrected the benchmark guide's old sequence:
 holdings, costs and negative controls belong in development, before freezing final
 evaluation. The nine-workstream goal remains open after this bounded factor study.
+
+### Feature-study implementation and input preparation
+
+The prepared-panel example is implemented without changing the package's model,
+factor or comparison APIs. The package remains 0.16.1; the new example requires
+the source checkout. It normalizes all thirteen candidate columns once, checks
+matching temporal preflight evidence, and runs both bundles through the existing
+development registry and comparison writer. Study-specific continuation decisions
+remain a separate analysis.
+
+The initial test failed because the example did not exist. The completed 21-case
+suite exercises real small synthetic fits, input/configuration identity, preflight
+drift, history retention, failures and direct CLI execution. A comparison-output
+failure after the first report preserves that report and both completed runs.
+Standalone coverage is 87.60% of statements and 86.75% aggregate with branch
+tracking. Subprocess CLI checks run separately from the parent coverage measure.
+The full suite passed 1,636 tests in 304.64 seconds with 90.90% aggregate package
+coverage and branch tracking. Lint/format, dependency consistency, vulnerability
+audit and source/wheel builds passed; the editable project is excluded from the
+dependency audit. Independent review approved the software and declaration.
+
+Private no-training preparation took 721.73 seconds while synthetic verification
+also ran. The 30,240-row enriched panel preserves every original column, dtype and
+row exactly. Both preflights pass with identical temporal evidence and unchanged
+final boundaries. Input and calendar hashes match the prior study; the base
+benchmark configuration is byte-identical. The new panel SHA-256 is
+`35a580f8fce7a191e9eed2a59e2989f5edd821a6988cf4e751fee8e81ef0787e`.
+
+Across 27,720 pre-final rows, new-factor availability is 99.048% for `return_21s`,
+97.179% for skipped-month momentum, and 98.752% for moving-average distance.
+Zero-observed-input rows decrease from 474 under the legacy bundle to 264 under
+the extended bundle. All rows remain present. This is input-coverage evidence,
+not predictive performance; the study's native/common comparisons must retain
+the distinction. Preparation leaves all five existing records/exposures unchanged.
+
+Preparation evidence stays under `artifacts/feature-ablation-20260922-001/`.
+No market-data feature comparison has trained yet. Before fitting, verify the
+actual-interpreter resource observer and the declared-decision analysis, then
+freeze the execution revision. Preserve these prepared inputs rather than
+rebuilding them merely to repeat the preparation timing.
+Independent read-only checks reproduced the data hashes, preflight boundaries and
+five-record history equality without decoding final outcomes. The preparation
+report records input hashes, not its start-time package/script identity. Bind the
+reviewed package and preparation-script hashes in the execution declaration; keep
+that post-preparation verification distinct from a contemporaneous capture.
