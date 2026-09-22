@@ -1950,3 +1950,102 @@ and negative controls, with broader source qualification in parallel. No change
 to the trained candidates or their development/final boundaries follows from
 this plan revision. Source evidence, hosted execution, saved-model scoring and
 offline operations remain open until their separate checks are completed.
+
+## September 22, 2026 development cost-study declaration
+
+Study `mendeley30-costs-20260922-001` asks whether the expanded HGB ranking earns
+an economic advantage over the simple moving-average-distance signal under
+fixed long-only accounting. Reuse saved feature-study predictions; perform zero
+fits. This is further development on examined periods, including a simple signal
+chosen after its earlier results were seen. It is not independent confirmation.
+
+Use the original feature-study runs `e23036a0-b528-468a-9b54-e0470f713c8f`
+(`legacy10_v1`) and `5f7c9fce-9612-4f88-9812-ef74aca85303`
+(`legacy10_plus_price3_v1`). Evaluate these five fixed arms:
+
+1. Original-ten `equal_weight_rank`.
+2. Original-ten `hist_gradient_boosting`.
+3. Expanded `hist_gradient_boosting` (primary candidate).
+4. Expanded `ridge`.
+5. Expanded `metric:ma_distance_63s` (primary reference).
+
+Retain saved training-fold directions, score missingness and the full saved
+decision-time universe. Do not orient signals again, select names by subsequent
+returns or intersect populations using available outcomes. Read only score and
+timing/coverage columns from predictions; no target or realized-return columns.
+
+### Fixed accounts and observations
+
+- Value all 189 independently declared XNYS sessions from 2015-11-02 through
+  2016-08-02. Begin with 100,000 cash and no positions, use zero cash yield, and
+  liquidate at the final close. No prices after that date enter calculation.
+- Use ten equal top-k slots, split boundary ties, retain unused slots as cash,
+  decide after close and execute one declared session later. Carry holdings and
+  cash continuously across folds. A missing new-buy mark leaves cash; a missing
+  held mark produces the existing incomplete-account result, without deletion
+  or a substitute price.
+- Primary rebalance spacing is 20 sessions, anchored at the first date without
+  resetting at folds: November 2, December 1 and December 30, 2015; January 29,
+  February 29, March 29, April 26, May 24, June 22 and July 21, 2016.
+  The fixed sensitivity is every five sessions from the same anchor (38
+  decisions). Keep the shortened final holding interval in both schedules.
+- Simulate 0, 5 and 20 basis points total cost per side, charged once on traded
+  mark notional, including initial purchases and terminal sales. These are
+  uncalibrated scenarios, not estimated fees or fills. Store the total scenario
+  charge in the ledger's commission field, with spread and slippage zero; this
+  field therefore represents the assumed all-in charge in this study.
+- Run all five arms at both frequencies and all three cost rates: exactly 30
+  accounts. Keep separate zero-cost counterfactual accounts; do not treat the
+  carried account's daily gross series as that counterfactual.
+- Report terminal NAV/return, signed maximum drawdown, cumulative traded
+  notional, cash costs, two-way turnover, score coverage, rejected purchases,
+  cash allocation and maximum single-position weight. Show incomplete accounts
+  with their retained state and no terminal-return estimate.
+
+The primary contrast is expanded HGB minus MA63 at 20-session rebalancing and
+5 bps per side. Record the other five frequency/cost contrasts in the same
+fixed matrix, plus all arm summaries. No alternative case replaces the primary.
+The market proxy supplies context only; it is not a tradable benchmark portfolio.
+
+### Decision rule and execution evidence
+
+Call the primary result worth further investigation only if both accounts
+complete, every scheduled decision has at least 95% finite-score coverage, HGB's
+net return is positive, its terminal-return advantage is at least 0.01, and its
+signed maximum drawdown is no worse than MA63's minus 0.02. These are project
+screening choices, not calibrated significance or investor suitability tests.
+
+Also require that no single period is necessary for a positive advantage.
+Partition paired daily dollar P&L differences by the original three 63-session
+valuation-date folds and divide by initial capital. Their sum must reconcile
+to the terminal-return difference, and the sum outside each individual fold
+must remain positive. These are calendar-period contributions of continuous
+accounts, not independent fold portfolios or a refit attribution.
+
+A blocked primary account or insufficient primary coverage makes the result
+inconclusive. Otherwise, unmet continuation conditions mean the primary
+criterion was not met. Report nonpositive return differences and drawdown
+breaches in every sensitivity case as fragility; do not search for a replacement
+setting. Completing this diagnostic does not complete negative controls or
+qualify the retrospective cohort for model promotion.
+
+Commit this declaration before reading portfolio outcomes. Freeze the private
+comparison code, input-file identities, score projection, calendar and runtime
+before execution, and verify them afterward. Use the version 0.17.0 ledger.
+Retain all seven canonical research records and exposures unchanged through
+read-only SQL comparisons against the completed feature-study snapshot. No new
+model run or final exposure is created. Keep the final block starting 2016-09-01
+untouched, and keep prices and row-level artifacts private.
+
+The execution budget is 30 accounts, zero fits, 15 minutes and 2 GiB process peak
+working set, checked between accounts. Record actual elapsed time and observed
+peak memory; preserve partial outputs if a check stops execution. Test projected
+loading, account persistence, contribution arithmetic and the decision rule on
+synthetic fixtures first, then obtain independent review of the private runner.
+
+This protocol uses [Qlib's separation of daily accounting and trading frequency](https://qlib.readthedocs.io/en/latest/component/strategy.html)
+and [QuantConnect's fee-aware sizing](https://www.quantconnect.com/docs/v2/writing-algorithms/trading-and-orders/position-sizing)
+as design references. The ledger uses fractional adjusted-price units and no
+extra dividend cash credits, consistent with the
+[adjusted-price distinction](https://www.quantconnect.com/docs/v2/writing-algorithms/securities/asset-classes/us-equity/corporate-actions).
+None of those sources validates this archive's provenance, cost levels or fills.
