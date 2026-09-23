@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
 
 from ._spreads import fractional_quantile_spread
-from .statistics import benjamini_hochberg, newey_west_mean_tstat
+from .contracts import _daily_dates
+from .scheduled_inference import (
+    HACMeanResult,
+    inference_diagnostics,
+    normalize_expected_dates,
+    scheduled_newey_west_mean,
+)
+from .statistics import benjamini_hochberg
 
 PREDICTION_KEYS = ("phase", "fold", "as_of_date", "symbol", "model")
 
@@ -26,9 +34,9 @@ def _validate_predictions(predictions: pd.DataFrame) -> pd.DataFrame:
     if missing:
         raise ValueError(f"Missing prediction columns: {', '.join(missing)}")
     normalized = predictions.copy(deep=True)
-    normalized["as_of_date"] = pd.to_datetime(normalized["as_of_date"], errors="coerce")
-    if normalized["as_of_date"].isna().any():
-        raise ValueError("Prediction dates contain invalid values.")
+    normalized["as_of_date"] = _daily_dates(
+        normalized["as_of_date"], field="Prediction dates"
+    )
     for column in ("phase", "symbol", "model"):
         normalized[column] = normalized[column].astype("string").str.strip()
         if normalized[column].isna().any() or (normalized[column] == "").any():
@@ -212,7 +220,13 @@ def _summaries(
     daily_metrics: pd.DataFrame,
     *,
     hac_lags: int,
+    expected_dates_by_phase: Mapping[str, pd.DatetimeIndex] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    inference_keys = ["phase", "model", "evaluation_scope", "as_of_date"]
+    if daily_metrics.duplicated(inference_keys, keep=False).any():
+        raise ValueError(
+            "Daily metrics must be unique by phase/model/scope/date across folds."
+        )
     fold_rows: list[dict[str, object]] = []
     fold_keys = ["phase", "fold", "model", "evaluation_scope"]
     for keys, group in daily_metrics.groupby(fold_keys, sort=True, observed=True):
@@ -246,7 +260,28 @@ def _summaries(
     for keys, group in daily_metrics.groupby(summary_keys, sort=True, observed=True):
         valid = pd.to_numeric(group["rank_ic"], errors="coerce").dropna()
         spreads = pd.to_numeric(group["spread"], errors="coerce").dropna()
-        t_stat, p_value = newey_west_mean_tstat(valid, hac_lags)
+        expected_dates = (
+            expected_dates_by_phase.get(str(keys[0]))
+            if expected_dates_by_phase is not None
+            else None
+        )
+        inference = (
+            scheduled_newey_west_mean(
+                group.set_index("as_of_date")["rank_ic"],
+                expected_dates=expected_dates,
+                hac_lags=hac_lags,
+            )
+            if expected_dates is not None
+            else HACMeanResult(
+                status="schedule_unavailable",
+                t_stat=None,
+                p_value=None,
+                scheduled_count=None,
+                observed_count=int(valid.shape[0]),
+                requested_lags=hac_lags,
+                effective_lags=None,
+            )
+        )
         rank_std = float(valid.std(ddof=1)) if valid.shape[0] > 1 else float("nan")
         summary_rows.append(
             {
@@ -274,14 +309,40 @@ def _summaries(
                 "mean_score_coverage": float(group["score_coverage"].mean()),
                 "mean_rank_ic_coverage": float(group["rank_ic_coverage"].mean()),
                 "mean_spread_coverage": float(group["spread_coverage"].mean()),
-                "newey_west_t_stat": t_stat,
-                "p_value": p_value,
+                "newey_west_t_stat": inference.t_stat,
+                "p_value": inference.p_value,
+                **inference_diagnostics(inference),
             }
         )
     summary = pd.DataFrame(summary_rows)
     if not summary.empty:
-        summary["bh_q_value"] = benjamini_hochberg(summary["p_value"])
+        summary.insert(
+            summary.columns.get_loc("p_value") + 1,
+            "bh_q_value",
+            benjamini_hochberg(summary["p_value"]),
+        )
     return pd.DataFrame(fold_rows), summary
+
+
+def _normalize_phase_schedules(
+    schedules: Mapping[str, Sequence] | None,
+) -> dict[str, pd.DatetimeIndex]:
+    if schedules is None:
+        return {}
+    if not isinstance(schedules, Mapping):
+        raise ValueError("expected_dates_by_phase must be a mapping.")
+    if any(
+        not isinstance(phase, str) or not phase or phase != phase.strip()
+        for phase in schedules
+    ):
+        raise ValueError(
+            "expected_dates_by_phase keys must be non-empty normalized phase names."
+        )
+    # Validate absent phases too: an invalid supplied schedule is never omission.
+    return {
+        phase: normalize_expected_dates(expected_dates)
+        for phase, expected_dates in schedules.items()
+    }
 
 
 def evaluate_prediction_frame(
@@ -291,7 +352,9 @@ def evaluate_prediction_frame(
     quantiles: int,
     hac_lags: int,
     primary_models: tuple[str, ...],
+    expected_dates_by_phase: Mapping[str, Sequence] | None = None,
 ) -> PredictionEvaluation:
+    """Evaluate scores; summary inference requires an explicit phase schedule."""
     if (
         isinstance(min_cross_section, bool)
         or not isinstance(min_cross_section, int)
@@ -304,6 +367,7 @@ def evaluate_prediction_frame(
         raise ValueError("quantiles cannot exceed min_cross_section.")
     if isinstance(hac_lags, bool) or not isinstance(hac_lags, int) or hac_lags < 0:
         raise ValueError("hac_lags must be a non-negative integer.")
+    schedules = _normalize_phase_schedules(expected_dates_by_phase)
     normalized = _validate_predictions(predictions)
     primary = tuple(str(model).strip() for model in primary_models)
     if len(set(primary)) != len(primary) or any(not model for model in primary):
@@ -329,7 +393,9 @@ def evaluate_prediction_frame(
         )
         .reset_index(drop=True)
     )
-    fold_metrics, summary = _summaries(daily, hac_lags=hac_lags)
+    fold_metrics, summary = _summaries(
+        daily, hac_lags=hac_lags, expected_dates_by_phase=schedules
+    )
     return PredictionEvaluation(
         daily_metrics=daily,
         fold_metrics=fold_metrics,

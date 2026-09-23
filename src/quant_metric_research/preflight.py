@@ -36,15 +36,17 @@ def _feature_coverage(frame: pd.DataFrame, config: BenchmarkConfig) -> dict[str,
 
 
 def _hac_bounds(date_count: int, requested_lags: int) -> dict[str, Any]:
+    supported = date_count >= 2 and requested_lags <= date_count - 1
     return {
         "requested_lags": requested_lags,
         "eligible_date_count_upper_bound": date_count,
-        "maximum_effective_lags": (
-            min(requested_lags, date_count - 1) if date_count >= 2 else None
-        ),
+        "maximum_supported_lags": date_count - 1 if date_count >= 2 else None,
+        "requested_lags_supported_by_count": supported,
+        "maximum_effective_lags": requested_lags if supported else None,
         "interpretation": (
             "Rank-IC date-count bound from label availability, not an inference "
-            "result; undefined scores or correlations can reduce the actual count."
+            "result; gaps or undefined scores/correlations withhold inference. "
+            "Unsupported requested lags are never automatically reduced."
         ),
     }
 
@@ -118,11 +120,10 @@ def _hac_warnings(
         warnings.append(
             _warning(
                 scope,
-                "hac_lag_truncation",
+                "unsupported_hac_lags",
                 (
                     f"Requested {config.hac_lags} HAC lags exceed the date-count "
-                    "bound; "
-                    f"at most {count - 1} can be used, possibly fewer after evaluation."
+                    "bound; inference is withheld rather than shortening the lag."
                 ),
             )
         )
@@ -425,7 +426,8 @@ def _planned_report(
                 )["maximum_effective_lags"],
                 "interpretation": (
                     "Locked bounds use the schedule only, not evaluated outcomes. "
-                    "Actual valid metric dates and effective lags may be fewer."
+                    "Missing metric dates withhold inference; effective lags "
+                    "equal the request or are unavailable."
                 ),
             },
         },

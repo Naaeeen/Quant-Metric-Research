@@ -1,9 +1,64 @@
 from __future__ import annotations
 
-from math import erf, sqrt
+from collections.abc import Mapping
+from datetime import date, timedelta
+from math import erf, isfinite, sqrt
 
 import numpy as np
 import pandas as pd
+
+from .contracts import DataContractError
+
+
+def _validate_hac_lags(hac_lags: int) -> None:
+    if isinstance(hac_lags, bool) or not isinstance(hac_lags, int) or hac_lags < 0:
+        raise ValueError("hac_lags must be a non-negative integer.")
+
+
+def _numeric_observations(
+    values: pd.Series | list[float], *, allow_nonfinite: bool = False
+) -> pd.Series:
+    """Validate original scalars before float64 conversion; preserve NA positions."""
+    message = "values must contain real numeric observations or actual missing values."
+    if isinstance(values, (str, bytes, Mapping, pd.DataFrame)) or np.isscalar(values):
+        raise DataContractError(message)
+    try:
+        original = (
+            values if isinstance(values, pd.Series) else pd.Series(values, dtype=object)
+        )
+    except (TypeError, ValueError, OverflowError) as error:
+        raise DataContractError(message) from error
+    forbidden = (
+        bool,
+        np.bool_,
+        date,
+        timedelta,
+        np.datetime64,
+        np.timedelta64,
+        complex,
+        np.complexfloating,
+    )
+    normalized = []
+    for value in original:
+        if not pd.api.types.is_scalar(value):
+            raise DataContractError(message)
+        if pd.isna(value):
+            normalized.append(np.nan)
+            continue
+        if isinstance(value, forbidden):
+            raise DataContractError(message)
+        try:
+            number = float(value)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise DataContractError(message) from error
+        if not isfinite(number) and (not allow_nonfinite or isinstance(value, str)):
+            raise DataContractError(message)
+        normalized.append(value)
+    # Keep the legacy float64 constructor path, not pd.to_numeric: decimal and
+    # large integer strings can otherwise acquire subtly different rounding.
+    return pd.Series(
+        normalized, index=original.index, name=original.name, dtype="float64"
+    )
 
 
 def _normal_cdf(value: float) -> float:
@@ -14,34 +69,43 @@ def newey_west_mean_tstat(
     values: pd.Series | list[float],
     hac_lags: int,
 ) -> tuple[float | None, float | None]:
-    if isinstance(hac_lags, bool) or not isinstance(hac_lags, int) or hac_lags < 0:
-        raise ValueError("hac_lags must be a non-negative integer.")
+    """HAC mean inference for an already contiguous ordered sequence.
 
-    series = (
-        pd.Series(values, dtype="float64")
-        .replace(
-            [np.inf, -np.inf],
-            np.nan,
-        )
-        .dropna()
-    )
+    Missing/nonfinite observations and unsupported lags withhold inference;
+    they are never dropped or truncated. Use scheduled_newey_west_mean when
+    expected dates are available. Neither API certifies sampling assumptions.
+    """
+    _validate_hac_lags(hac_lags)
+    series = _numeric_observations(values, allow_nonfinite=True)
     sample_size = int(series.shape[0])
-    if sample_size < 2:
+    if (
+        sample_size < 2
+        or hac_lags > sample_size - 1
+        or not np.isfinite(series.to_numpy()).all()
+    ):
         return None, None
+    return _complete_newey_west_mean(series, hac_lags)
 
-    max_lag = min(hac_lags, sample_size - 1)
-    demeaned = series.to_numpy(dtype=float) - float(series.mean())
-    gamma_zero = float(np.dot(demeaned, demeaned) / sample_size)
-    long_run_variance = gamma_zero
-    for lag in range(1, max_lag + 1):
-        covariance = float(np.dot(demeaned[lag:], demeaned[:-lag]) / sample_size)
-        bartlett_weight = 1.0 - lag / (max_lag + 1)
-        long_run_variance += 2.0 * bartlett_weight * covariance
 
-    standard_error = sqrt(max(long_run_variance, 0.0) / sample_size)
-    if standard_error == 0.0:
+def _complete_newey_west_mean(
+    series: pd.Series, hac_lags: int
+) -> tuple[float | None, float | None]:
+    """Legacy Bartlett arithmetic after complete-input and lag-support checks."""
+    sample_size = len(series)
+    with np.errstate(over="ignore", under="ignore", invalid="ignore", divide="ignore"):
+        mean = float(series.mean())
+        demeaned = series.to_numpy(dtype=float) - mean
+        long_run_variance = float(np.dot(demeaned, demeaned) / sample_size)
+        for lag in range(1, hac_lags + 1):
+            covariance = float(np.dot(demeaned[lag:], demeaned[:-lag]) / sample_size)
+            bartlett_weight = 1.0 - lag / (hac_lags + 1)
+            long_run_variance += 2.0 * bartlett_weight * covariance
+        variance_of_mean = long_run_variance / sample_size
+    if not isfinite(variance_of_mean) or variance_of_mean <= 0.0:
         return None, None
-    t_stat = float(series.mean() / standard_error)
+    t_stat = float(mean / sqrt(variance_of_mean))
+    if not isfinite(t_stat):
+        return None, None
     p_value = float(2.0 * (1.0 - _normal_cdf(abs(t_stat))))
     return t_stat, min(max(p_value, 0.0), 1.0)
 

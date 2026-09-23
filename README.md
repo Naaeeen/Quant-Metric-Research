@@ -3,7 +3,14 @@
 A standalone, leakage-aware research pipeline for testing whether historical
 equity metrics contain stable cross-sectional signal.
 
-Version 0.10.0 adds explicit panel enrichment and two immutable candidate feature
+Version 0.11.0 hardens statistical inference against missing scheduled dates.
+Stage 2 and Stage 3 now report why a p-value is unavailable instead of compressing
+gaps or shortening the requested HAC lag. Scores and descriptive metrics keep
+their existing meanings. See the [inference contract](docs/stage3-benchmark.md#scheduled-inference).
+The existing Colab notebook remains pinned to its separately verified earlier
+source; it does not automatically adopt this methodology change.
+
+Version 0.10.0 added explicit panel enrichment and two immutable candidate feature
 schemas. Existing rows, labels and legacy metric settings remain unchanged;
 new factors are used only when requested. See the
 [panel integration contract](docs/data-contract.md#opt-in-factor-panel-enrichment).
@@ -241,7 +248,7 @@ The benchmark atomically publishes a new, non-overwriting output directory with
 a reproducibility manifest and data gate, fold assignments,
 tuning and screening records, out-of-sample predictions, daily and fold
 metrics, summary comparisons, and the acceptance decision. See
-[the Stage 3 guide](docs/stage3-benchmark.md) for final-run commands, the schema 4
+[the Stage 3 guide](docs/stage3-benchmark.md) for final-run commands, the schema 5
 artifact contract, and registry limitations. A registry status of `completed`
 means calculation completed; verify the artifact bundle was also published.
 

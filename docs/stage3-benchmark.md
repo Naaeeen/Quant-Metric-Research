@@ -134,6 +134,60 @@ illustration, not persuasive statistical evidence for an overlapping 20-session
 signal. Declare a sufficiently informative test period and sensitivity checks;
 no universal date-count threshold guarantees reliable small-sample inference.
 
+## Scheduled inference
+
+Version 0.11 uses a declared decision-observation schedule for mean Rank-IC HAC
+inference and paired locked-test Rank-IC improvement. It does not drop missing
+dates, fill gaps, or shorten an unsupported requested lag. Missing inference is
+distinct from a zero effect or a p-value of one.
+
+Stage 2 screening supplies all unique training-panel dates before per-feature IC
+validity filtering. The generic `summarize_rank_ic` API accepts `expected_dates`;
+without it, descriptive results remain available but inference is
+`schedule_unavailable`. A feature with no valid daily IC remains absent from the
+summary, preserving the existing feature-selection rules.
+
+Stage 3 derives each phase's schedule from the full validated panel inside the
+planned evaluation boundaries, not surviving prediction or outcome rows. Panel
+dates between development folds remain scheduled; absent predictions there
+therefore suppress aggregate inference. Generic `evaluate_prediction_frame`
+calls accept `expected_dates_by_phase`; omitted phases do not receive inferred
+schedules. The final summary and paired acceptance use the same locked schedule.
+Duplicate daily observations across folds are rejected, not averaged.
+
+Schedules must be nonempty, unique, increasing, normalized timezone-naive daily
+dates. Values may arrive unsorted, but cannot include dates outside the schedule.
+After input validation, inference status precedence is:
+
+1. `missing_scheduled_values`: any scheduled value is missing or absent;
+2. `insufficient_observations`: fewer than two complete observations;
+3. `insufficient_lag_support`: requested lags exceed observation count minus one;
+4. `undefined_variance`: a usable finite, positive variance estimate is unavailable;
+5. `ok`: the existing Bartlett-weighted mean-HAC calculation is available.
+
+Summary diagnostics append `inference_status`, `scheduled_date_count`,
+`observed_date_count`, `requested_hac_lags`, `effective_hac_lags`, and
+`hac_lag_unit`. Unknown scheduled counts and unavailable effective lags are null.
+The lag unit is `scheduled_observations`; acceptance prefixes these fields with
+`locked_rank_ic_improvement_`. Unavailable t-statistics/p-values remain missing,
+BH-adjusted values remain missing, and the final p-value gate fails closed.
+Fold means, coverage, scores, selected features and descriptive available-pair
+point estimates retain their prior definitions.
+
+This checks completeness only against the supplied schedule. It cannot discover
+dates omitted from the panel itself or certify an exchange calendar, equal
+sampling intervals in another clock, stationarity, small-sample adequacy or
+freedom from prior model selection. HAC assumes equally spaced consecutive
+observations; a generic weekday index does not prove that assumption.
+[statsmodels HAC documentation](https://www.statsmodels.org/stable/generated/statsmodels.stats.sandwich_covariance.cov_hac.html).
+The low-level `newey_west_mean_tstat` tuple API assumes a contiguous numerical
+sequence and now returns `(None, None)` on missing/nonfinite values or unsupported
+lag support. Use the scheduled API when dates are available.
+
+Old manifests and pinned notebook results are not recomputed or relabeled.
+New code changes source identity normally; any new empirical use must retain
+the existing exposure history rather than treating changed inference as fresh data.
+
 ## Run and outputs
 
 The panel may be CSV, compressed CSV, Parquet, or PQ. Parquet is the default
@@ -158,6 +212,10 @@ This performs no screening, model fitting, Rank IC calculation, or final-outcome
 scoring. `feasible: true` only means the requested split schedules exist; constant
 features, fitting errors, or weak signal can still prevent a successful benchmark.
 Warnings are diagnostics, not universal statistical adequacy rules. The report
+reports `unsupported_hac_lags` when the requested lag exceeds its date-count
+bound. `maximum_supported_lags` describes that bound; `maximum_effective_lags`
+is the requested lag only when supported, otherwise null. Neither field is a
+computed inference result, and no lag is automatically shortened. The report
 contains no per-security rows or final-test performance, but structural checks
 still read the entire panel and use label availability to reserve final dates.
 
@@ -252,7 +310,7 @@ research performed outside this workflow rather than presenting it as unseen.
 
 The output directory contains:
 
-- `benchmark_manifest.json`: artifact schema version 4, `execution_mode`
+- `benchmark_manifest.json`: artifact schema version 5, `execution_mode`
   (`development` or `full`), full validated-panel and
   model-input fingerprints, actual package-source fingerprint, configuration,
   date boundaries including the final label-end envelope, dataset versions,
@@ -292,8 +350,9 @@ Column order is stable:
   count, separate Rank-IC/spread counts and eligible counts, their two coverage
   rates, scoring-universe/scored counts, absolute prediction coverage, and
   tied-score fraction;
-- `fold_summary` and `benchmark_summary`: phase/model/scope aggregation,
-  stability, coverage, and inference fields;
+- `fold_summary`: phase/fold/model/scope descriptive aggregation and coverage;
+- `benchmark_summary`: phase/model/scope aggregation, stability, coverage,
+  scheduled-inference diagnostics and available t-statistics/p-values;
 - `hyperparameter_trials`: outer fold, family/candidate, canonical-JSON
   parameters, validation Rank IC/spread/count, and selection flag;
 - `screening_by_fold`: outer/inner fold, feature, selected/drop reason,
@@ -303,7 +362,8 @@ JSON uses sorted UTF-8 keys, ISO timestamps, and strict finite values. CSV
 parameter cells and prediction feature lists use compact, sorted/canonical JSON
 rather than delimiter-dependent text.
 
-Schema 4 retains the distinction introduced in schema 3 between
+Schema 5 adds scheduled-inference diagnostics and retains the distinction
+introduced in schema 3 between
 `score_coverage` (finite scores / scoring universe) and
 `rank_ic_coverage` (score-target pairs / non-null targets). The former feeds
 the native prediction-coverage acceptance gate. `spread_coverage` independently

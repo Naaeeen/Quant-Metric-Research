@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
 
 from ._spreads import fractional_quantile_spread
-from .statistics import benjamini_hochberg, newey_west_mean_tstat
+from .contracts import _daily_dates
+from .scheduled_inference import (
+    HACMeanResult,
+    inference_diagnostics,
+    normalize_expected_dates,
+    scheduled_newey_west_mean,
+)
+from .statistics import benjamini_hochberg
 
 DAILY_IC_COLUMNS = (
     "as_of_date",
@@ -27,6 +36,12 @@ IC_SUMMARY_COLUMNS = (
     "newey_west_t_stat",
     "p_value",
     "bh_q_value",
+    "inference_status",
+    "scheduled_date_count",
+    "observed_date_count",
+    "requested_hac_lags",
+    "effective_hac_lags",
+    "hac_lag_unit",
 )
 
 
@@ -158,22 +173,92 @@ def compute_quantile_spreads(
     return pd.DataFrame(rows, columns=SPREAD_COLUMNS)
 
 
+def _summary_inputs(
+    daily_rank_ic: pd.DataFrame,
+    *,
+    hac_lags: int,
+    expected_dates: Sequence[object] | None,
+) -> tuple[pd.DataFrame, pd.DatetimeIndex | None]:
+    if not isinstance(daily_rank_ic, pd.DataFrame):
+        raise ValueError("daily_rank_ic must be a pandas DataFrame.")
+    if not daily_rank_ic.columns.is_unique:
+        raise ValueError("Duplicate daily IC columns are not allowed.")
+    if isinstance(hac_lags, bool) or not isinstance(hac_lags, int) or hac_lags < 0:
+        raise ValueError("hac_lags must be a non-negative integer.")
+    schedule = (
+        normalize_expected_dates(expected_dates) if expected_dates is not None else None
+    )
+    required = {"feature", "rank_ic"}
+    if schedule is not None:
+        required.add("as_of_date")
+    missing = sorted(required - set(daily_rank_ic.columns))
+    if missing:
+        raise ValueError(f"Missing daily IC columns: {', '.join(missing)}")
+    if daily_rank_ic["feature"].isna().any():
+        raise ValueError("feature contains null values.")
+    normalized = daily_rank_ic.copy(deep=True)
+    if "as_of_date" in normalized.columns:
+        normalized["as_of_date"] = _daily_dates(
+            normalized["as_of_date"], field="as_of_date"
+        )
+        if normalized.duplicated(["feature", "as_of_date"], keep=False).any():
+            raise ValueError("Daily IC values must be unique by feature/as_of_date.")
+    return normalized, schedule
+
+
+def _summary_inference(
+    group: pd.DataFrame,
+    *,
+    schedule: pd.DatetimeIndex | None,
+    hac_lags: int,
+    observed_count: int,
+) -> HACMeanResult:
+    if schedule is None:
+        return HACMeanResult(
+            status="schedule_unavailable",
+            t_stat=None,
+            p_value=None,
+            scheduled_count=None,
+            observed_count=observed_count,
+            requested_lags=hac_lags,
+            effective_lags=None,
+        )
+    # Keep original scalar inputs so malformed ICs cannot become missing values
+    # through the descriptive summary's permissive numeric conversion.
+    return scheduled_newey_west_mean(
+        group["rank_ic"].set_axis(group["as_of_date"]),
+        expected_dates=schedule,
+        hac_lags=hac_lags,
+    )
+
+
 def summarize_rank_ic(
     daily_rank_ic: pd.DataFrame,
     *,
     hac_lags: int,
+    expected_dates: Sequence[object] | None = None,
 ) -> pd.DataFrame:
-    required = {"feature", "rank_ic"}
-    missing = sorted(required - set(daily_rank_ic.columns))
-    if missing:
-        raise ValueError(f"Missing daily IC columns: {', '.join(missing)}")
+    """Keep sparse IC descriptives; infer only on a complete supplied schedule.
+
+    The schedule is declared observation dates, not a verified exchange calendar.
+    Omitting it preserves descriptive support, including two-column inputs, but
+    does not infer a schedule from surviving feature/date rows.
+    """
+    normalized, schedule = _summary_inputs(
+        daily_rank_ic, hac_lags=hac_lags, expected_dates=expected_dates
+    )
     rows: list[dict[str, object]] = []
-    for feature, group in daily_rank_ic.groupby("feature", sort=True):
+    for feature, group in normalized.groupby("feature", sort=True):
         series = pd.to_numeric(
             group["rank_ic"],
             errors="coerce",
         ).dropna()
-        t_stat, p_value = newey_west_mean_tstat(series, hac_lags)
+        inference = _summary_inference(
+            group,
+            schedule=schedule,
+            hac_lags=hac_lags,
+            observed_count=int(series.replace([np.inf, -np.inf], np.nan).count()),
+        )
         rows.append(
             {
                 "feature": feature,
@@ -183,8 +268,9 @@ def summarize_rank_ic(
                 ),
                 "positive_rate": float((series > 0).mean()),
                 "date_count": int(series.shape[0]),
-                "newey_west_t_stat": t_stat,
-                "p_value": p_value,
+                "newey_west_t_stat": inference.t_stat,
+                "p_value": inference.p_value,
+                **inference_diagnostics(inference),
             }
         )
     summary = pd.DataFrame(rows)

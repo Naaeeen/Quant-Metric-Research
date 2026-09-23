@@ -122,8 +122,21 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
     assert (
         min(result.data_gate["locked_realized_return_coverage_by_date"].values()) == 0.9
     )
-    assert result.manifest["artifact_schema_version"] == "4"
-    assert result.manifest["package_version"] == "0.10.0"
+    assert result.manifest["artifact_schema_version"] == "5"
+    assert result.manifest["package_version"] == "0.11.0"
+    assert set(result.summary["inference_status"]) <= {
+        "ok",
+        "undefined_variance",
+        "missing_scheduled_values",
+    }
+    assert (
+        result.summary.loc[
+            result.summary["phase"].eq("development"), "scheduled_date_count"
+        ]
+        .eq(6)
+        .all()
+    )
+    assert result.acceptance["locked_rank_ic_improvement_scheduled_date_count"] == 3
     assert result.manifest["execution_mode"] == "full"
     assert len(result.manifest["source_fingerprint"]) == 64
     assert result.manifest["fingerprint_scope"] == (
