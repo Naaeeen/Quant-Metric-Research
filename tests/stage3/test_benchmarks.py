@@ -122,8 +122,18 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
     assert (
         min(result.data_gate["locked_realized_return_coverage_by_date"].values()) == 0.9
     )
-    assert result.manifest["artifact_schema_version"] == "5"
-    assert result.manifest["package_version"] == "0.11.0"
+    assert result.manifest["artifact_schema_version"] == "6"
+    assert result.manifest["package_version"] == "0.12.0"
+    persisted = result.manifest["evaluation_schedule"]["dates_by_phase"]
+    assert set(persisted) == {"development", "locked_test"}
+    for phase in persisted:
+        used = tuple(
+            result.predictions.loc[result.predictions["phase"].eq(phase), "as_of_date"]
+            .drop_duplicates()
+            .sort_values()
+            .dt.strftime("%Y-%m-%d")
+        )
+        assert persisted[phase] == used
     assert set(result.summary["inference_status"]) <= {
         "ok",
         "undefined_variance",
@@ -183,6 +193,12 @@ def test_default_run_never_evaluates_or_exports_lockbox(monkeypatch, tmp_path) -
     assert result.acceptance["model_gate_passed"] is False
     assert result.acceptance["stage4_eligible"] is False
     assert result.manifest["execution_mode"] == "development"
+    schedule = result.manifest["evaluation_schedule"]
+    assert set(schedule["dates_by_phase"]) == {"development"}
+    assert all(
+        date < result.manifest["locked_test_start"]
+        for date in schedule["dates_by_phase"]["development"]
+    )
     assert not any("coverage_by_date" in key for key in result.data_gate)
     artifacts = write_benchmark_run(result, tmp_path / "development")
     saved = pd.read_parquet(artifacts.files["oos_predictions"])

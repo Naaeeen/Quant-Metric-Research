@@ -168,7 +168,11 @@ release carries its evidence forward, while factor expansion remains future work
    schedules remain descriptive. This checks supplied-schedule completeness,
    not exchange continuity or dates already absent from the source panel. See the
    [inference contract](stage3-benchmark.md#scheduled-inference).
-7. Predeclare ablations and comparisons with the existing PCA and tree families;
+7. Version 0.12 persists exact planned phase schedules as immutable manifest
+   metadata. Replay must use that sequence, not reconstruct it from surviving
+   predictions. No artifact loader or authentication claim is added. This closes
+   the schedule-evidence gap before development-only cross-bundle reporting.
+8. Predeclare ablations and comparisons with the existing PCA and tree families;
    retain all attempts and exposure history. Additional horizons and later
    portfolio work remain gated by the data and evaluation requirements below.
 

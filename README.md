@@ -3,7 +3,13 @@
 A standalone, leakage-aware research pipeline for testing whether historical
 equity metrics contain stable cross-sectional signal.
 
-Version 0.11.0 hardens statistical inference against missing scheduled dates.
+Version 0.12.0 saves the exact planned evaluation dates in each benchmark manifest.
+Saved results can retain missing-date inference semantics on replay instead of
+guessing a calendar from surviving rows. See the
+[schedule evidence contract](docs/stage3-benchmark.md#stored-evaluation-schedules).
+This is inspectable consistency evidence, not authenticated research history.
+
+Version 0.11.0 hardened statistical inference against missing scheduled dates.
 Stage 2 and Stage 3 now report why a p-value is unavailable instead of compressing
 gaps or shortening the requested HAC lag. Scores and descriptive metrics keep
 their existing meanings. See the [inference contract](docs/stage3-benchmark.md#scheduled-inference).
@@ -248,7 +254,7 @@ The benchmark atomically publishes a new, non-overwriting output directory with
 a reproducibility manifest and data gate, fold assignments,
 tuning and screening records, out-of-sample predictions, daily and fold
 metrics, summary comparisons, and the acceptance decision. See
-[the Stage 3 guide](docs/stage3-benchmark.md) for final-run commands, the schema 5
+[the Stage 3 guide](docs/stage3-benchmark.md) for final-run commands, the schema 6
 artifact contract, and registry limitations. A registry status of `completed`
 means calculation completed; verify the artifact bundle was also published.
 

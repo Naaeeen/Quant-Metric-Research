@@ -683,3 +683,37 @@ calculation with exact results. Repository lint/format, dependency consistency,
 dependency vulnerability audit and source/wheel builds passed. These are software
 checks, not a new alpha experiment or hosted Colab result. Linux CI is recorded
 separately on the release pull request.
+
+## September 2026 schedule-evidence prerequisite
+
+Before comparing feature bundles, inspection found that schema 5 retained HAC
+counts and statuses but not the actual phase schedule. A later report cannot
+recover dates absent from all prediction or metric rows. Version 0.12 therefore
+persists the exact sequence using the same shared derivation as inference,
+instead of immediately adding a comparison runner or an arbitrary artifact loader.
+See the [schedule evidence contract](stage3-benchmark.md#stored-evaluation-schedules).
+
+Nested immutable mappings and ISO-string tuples fit the existing JSON writer and
+registry metadata format. Development contains only its own sequence; full mode
+adds the planned locked sequence. The whole mapping is deliberately not inserted
+into registry identity equality because legitimate development/full mappings
+differ. Existing source, panel, package, configuration, runtime and boundary
+identity continues to constrain the derivation. Exposure guards are unchanged.
+
+The next comparison should explicitly separate original-ten equal ranks,
+original-ten same-family model and candidate-feature same-family model, then
+align keys, outcomes, native/common coverage and exact development schedules.
+Saved metadata supports consistency checks, not authenticated predictions,
+complete outside research history or independence from earlier selection.
+No real-data experiment, historical rewrite, final-outcome evaluation or Colab
+repinning is part of this prerequisite.
+
+The frozen local verification passed 1,256 tests in 197.88 seconds with 90.38%
+aggregate coverage and branch tracking. The shared schedule module and benchmark
+reporting module both have 100% coverage. Synthetic replay tests preserve missing
+scheduled dates through JSON and Parquet, and a synthetic registry lifecycle
+checks that final reservation still precedes final evaluation. Independent review,
+repository lint/format, dependency consistency, dependency vulnerability audit
+and source/wheel builds passed. These are software checks, not a new empirical
+result, provenance certification or hosted Colab run. Linux CI is recorded
+separately on the release pull request.

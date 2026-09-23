@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pandas as pd
 
+from . import benchmark_schedules
 from .baselines import fit_non_ml_baselines, predict_non_ml_baselines
 from .benchmark_config import BenchmarkConfig, NestedSplitConfig
 from .benchmark_data import (
@@ -34,7 +35,6 @@ from .contracts import _daily_dates
 from .scheduled_inference import (
     HACMeanResult,
     inference_diagnostics,
-    normalize_expected_dates,
     scheduled_newey_west_mean,
 )
 from .screening import MetricScreenResult
@@ -42,6 +42,10 @@ from .statistics import _numeric_observations, _validate_hac_lags
 
 if TYPE_CHECKING:
     from .experiment_registry import ExperimentRegistry
+
+
+# Keep the existing private entry point while sharing one pure implementation.
+_phase_schedule = benchmark_schedules.phase_schedule
 
 
 @dataclass(frozen=True)
@@ -373,25 +377,6 @@ def _assignment_frame(
         pd.DataFrame(rows)
         .sort_values(["phase", "fold", "split_id", "row_id"], kind="stable")
         .reset_index(drop=True)
-    )
-
-
-def _phase_schedule(plan: Stage3DataPlan, *, phase: str) -> pd.DatetimeIndex:
-    """Use planned boundaries and panel dates, never surviving prediction rows.
-
-    Dates between development folds remain in the supplied observation clock.
-    This cannot identify dates that were absent from the panel itself.
-    """
-    if phase == "development":
-        start = min(fold.evaluation_start_date for fold in plan.development_folds)
-        end = max(fold.evaluation_end_date for fold in plan.development_folds)
-    elif phase == "locked_test":
-        start, end = plan.locked_test.test_start_date, plan.locked_test.test_end_date
-    else:
-        raise ValueError("Unknown evaluation phase.")
-    dates = plan.panel.frame["as_of_date"]
-    return normalize_expected_dates(
-        dates.loc[dates.between(start, end)].drop_duplicates().sort_values()
     )
 
 
