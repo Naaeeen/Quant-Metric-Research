@@ -186,7 +186,7 @@ def test_real_development_pair_compares_saved_scores_without_fitting(
     legacy, candidate = _development_pair(qmr)
     for run in (legacy, candidate):
         assert run.manifest["artifact_schema_version"] == "6"
-        assert run.manifest["package_version"] == "0.14.0"
+        assert run.manifest["package_version"] == qmr.__version__
         assert run.manifest["execution_mode"] == "development"
         assert run.manifest["experiment"]["registered"] is False
         assert set(run.predictions["phase"]) == {"development"}
@@ -295,7 +295,7 @@ def test_real_development_pair_compares_saved_scores_without_fitting(
     ):
         assert report.metadata[key] is False
     assert report.metadata["model_family"] == "ridge"
-    assert report.metadata["comparison_identity"]["package_version"] == "0.14.0"
+    assert report.metadata["comparison_identity"]["package_version"] == qmr.__version__
     with pytest.raises(TypeError):
         report.metadata["history_verified"] = True
     with pytest.raises(TypeError):
@@ -334,7 +334,8 @@ def test_real_development_pair_compares_saved_scores_without_fitting(
     saved = json.loads(artifacts.files["comparison_manifest"].read_text("utf-8"))
     assert saved["status"] == "completed"
     assert (
-        saved["report_metadata"]["comparison_identity"]["package_version"] == "0.14.0"
+        saved["report_metadata"]["comparison_identity"]["package_version"]
+        == qmr.__version__
     )
     for name in (
         "daily_metrics",

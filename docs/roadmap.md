@@ -1,254 +1,280 @@
 # Research roadmap
 
-## Current boundary
+## Goal
 
-Stages 1 and 2 build the point-in-time panel and screen individual metrics. The
-Stage 3 benchmark engine is also implemented: it trains supervised ranking
-models, evaluates purged development folds, and selects a model family. Opening
-the reserved final test requires completed matching development evidence and a
-durable local outcome-date reservation, not just an opt-in flag. The repository still
-does not claim empirical alpha or
-simulate a portfolio.
+Build a stock-ranking research system that can answer three questions:
+which inputs help, which model combines them best, and whether the resulting
+ranking remains useful after realistic trading constraints.
 
-That boundary is intentional. A model cannot repair survivorship bias,
-look-ahead leakage, unstable identifiers, incorrect corporate actions, or
-missing delisting returns.
+The work covers data, targets, features, models, evaluation, compute, software
+quality and delivery. Success means a reproducible comparison with enough
+evidence to accept or reject a candidate. A larger model or a longer feature
+list is useful only if it improves that comparison.
 
-## Stage 3: supervised cross-sectional benchmark
+This is the working plan following the September 22, 2026 review. Change it
+when code inspection, a measured experiment or a primary source contradicts a
+decision. Record the reason in [research decisions](research-decisions.md).
+Completed release details remain there and in Git history.
 
-Goal: test whether combining metrics produces a more stable unseen-date stock
-ranking than transparent non-ML baselines.
+## Current position
 
-Implemented in the engine:
+The repository builds price-derived stock-date panels, screens metrics and
+trains Ridge, histogram gradient boosting and optional Ridge+PCA on nested,
+purged time splits. It records experiments, scores, coverage, uncertainty and
+development feature-bundle comparisons. The CPU Colab walkthrough pins 0.13;
+the current package is 0.15, with a separate executable target-ablation example.
 
-- individual-metric, best train-only metric, and equal-weight oriented-rank
-  baselines;
-- Ridge and small histogram-gradient-boosting families, plus optional
-  Ridge+PCA as a controlled dimensionality-reduction comparator;
-- fold-local screening, imputation, scaling, rank transforms, PCA, and fitting;
-- inner purged validation inside outer purged development folds;
-- model-family selection from development common-sample Rank IC, with optional
-  explicit final-test evaluation;
-- native-coverage and common-sample Rank IC/spread reports, reproducibility
-  fingerprints, outer/lockbox assignments, tuning records, and explicit
-  acceptance/data gates. Inner tuning windows are reproducible from the input
-  panel and manifest configuration; their screening and trial results are
-  persisted, but their row-level assignments are not a separate artifact.
+The only completed market-data study used 30 alphabetically selected stocks
+from a retrospective 2017 constituent snapshot, with 2012-2016 prices.
+Development mean Rank IC was -0.04767 for Ridge and -0.03701 for equal-weight
+ranks. The result does not favor Ridge. The added three-factor bundle and the
+other model families still need a declared market-data comparison.
 
-The September 2026 audit retained this direction and corrected four hazards:
-future-label filtering before ranking, unconstrained decision timestamps,
-arbitrary tie-bucket selection, and malformed membership-end dates. Coverage
-now distinguishes actual prediction coverage from labeled-pair coverage.
-CI checks a clean install, tests with branch tracking, lint, CLI and packaging.
+Keep the panel, temporal validation, baseline and experiment-history design.
+Shift effort from additional report wrappers to data qualification and
+completed experiments. The full audit and source comparison are recorded in
+[the September 22 review](research-decisions.md#september-22-2026-direction-review).
 
-The next engineering milestone is now implemented in version 0.4:
+## How each stage runs
 
-- no-training preflight reconstructs the purged outer/inner schedules and reports
-  coverage and sample-size warnings without ranking metrics or screening features;
-- a local SQLite registry keeps hypothesis, data/code/config/runtime identity,
-  fixed boundaries, frozen family and run status, including failed attempts;
-- referenced final runs validate identity before development is repeated, then
-  atomically reserve the final outcome envelope before final fitting;
-- all recorded development and final outcome envelopes block a proposed
-  overlapping final test, including failed/interrupted reservations and forward
-  label tails. A renamed study or changed configuration does not reset dates;
-- the offline synthetic CLI example exercises preflight, development, one final
-  evaluation, experiment history and a refused second evaluation.
+1. Review the relevant code, requirements, evidence and current upstream sources.
+   Write the hypothesis, alternatives, costs and completion checks before editing.
+2. Get an independent assessment. For major decisions, compare a fresh-view
+   review with one informed by project history; reconcile disagreements using
+   code, tests and sources.
+3. Implement a small, testable change. For behavior changes, demonstrate a
+   failing regression first, then pass it and review the diff.
+4. Run the declared experiment or verification. Keep failures and unfavorable
+   results. Compare accuracy, stability, coverage and resource use together.
+5. Commit and push a coherent, reviewed milestone in English. Check remote
+   revision and CI. Update this plan before choosing the next milestone.
 
-This guard prevents local workflow accidents, not intentional bypass, earlier
-human inspection or unregistered research. It does not establish empirical alpha.
+Review gates apply to individual milestones, not just releases. Stop expanding
+a method when its benefit disappears, its data assumptions fail, or a simpler
+alternative gives equivalent results.
 
-Version 0.5 adds the raw-input readiness milestone: `qmr audit-inputs` checks
-coverage and future endpoint presence without calculating research outcomes.
-Its normalized-input fingerprints support comparison, not historical
-provenance certification. The same audit cycle tightened daily dates and price
-types, rejected duplicate CSV headers, and excluded immature targets from the
-single-cutoff Stage 2 screen while retaining the original panel.
+## 1. Define the decision and research target
 
-Version 0.6.0 adds `qmr import-yahoo`, an offline adapter for flat, per-symbol
-`Date` and `Adj Close` exports. It stores exact source bytes and SHA-256 hashes,
-normalizes supplied inputs, preserves missing-price evidence, and writes an
-input audit. It does not download data, add a yfinance dependency, reconstruct
-membership or substitute `Close`. The final intake manifest marks completed
-processing; failures retain partial evidence and require a fresh destination.
-Neither a success marker nor `imported_at` verifies provider provenance or the
-original acquisition date. All external data gates remain unverified.
+**Question:** What should the ranking help someone decide?
 
-The selected ASX demonstration cohort and VAS adjusted ETF proxy are documented
-in [the provider decision](research-decisions.md#september-2026-provider-decision-prepare-an-offline-asx-demonstration).
-This specification was chosen before inspecting price outcomes. It accepts
-present-selection bias as a demonstration limitation and does not claim
-historical ASX200 coverage. No real prices were downloaded and no model training
-or final-test evaluation was performed for this intake release.
+- Keep named-stock ranking as the main product. Specify market, eligible stocks,
+  decision timestamp, execution delay, holding period and baseline.
+- Start with the existing 20-session outcome. Compare raw forward excess return
+  with within-date return ranks while keeping realized returns for economics.
+- Treat 5-, 20- and 60-session horizons as separate hypotheses. Label maturity,
+  purging, rebalance frequency and uncertainty assumptions must change together.
+- Distinguish benchmark subtraction from risk neutralization: subtracting the
+  same market return does not change a day's stock order. Sector/beta residual
+  targets require dated exposure inputs.
+- Choose primary and secondary metrics before reading candidate results.
+  Specify both an effect worth pursuing and a result that would reject it.
 
-Version 0.7.0 adds a separate public US archive demonstration to make development
-possible without supplying ASX exports. `qmr fetch-public-sample` acquires the two
-pinned Mendeley V3 files and license records; `qmr public-demo` verifies them,
-audits coverage, builds the daily metric panel, runs preflight and registers a
-fixed Ridge development experiment. It uses the first 30 stock labels
-alphabetically, retains missing histories and constructs `FF_MARKET_PROXY` from
-archived market-factor returns. The declared final block is not evaluated.
-See [the frozen declaration](research-decisions.md#september-2026-public-archive-development-declaration)
-and [the runnable example](../examples/README.md#public-archive-development-demo).
+**Complete when:** one experiment specification fixes the decision, target,
+universe, baseline, development/final periods and acceptance criteria.
 
-This milestone exercises real historical observations under a publisher-declared
-CC BY license; it does not certify underlying third-party rights or historical
-provenance. The retrospective January 2017 constituent snapshot is unsuitable
-for an unbiased-universe claim. Raw data and row-level artifacts remain local
-and ignored. ASX access remains unresolved, and neither a completed development
-run nor favorable statistics can satisfy the independent data-evidence gate.
+## 2. Qualify and scale the data
 
-Remaining before Stage 3 can make an empirical conclusion:
+**Question:** Does the dataset represent the opportunity available at the time?
 
-1. Select and independently audit a versioned historical provider for prices,
-   point-in-time membership, stable identifiers, corporate actions, and
-   delisting returns.
-2. Freeze the universe, decision time, rebalance schedule, target horizon,
-   transaction-price assumption, feature list, evaluation period, acceptance
-   thresholds, experiment ID, and lockbox-reuse policy before inspecting
-   benchmark results.
-3. Build and quality-check the real panel, including missingness by date,
-   security lifecycle coverage, identifier changes, and target maturity.
-4. Run the declared experiment once, inspect the manifest and fold assignment
-   audit, and compare the frozen model with the equal-rank and individual-metric
-   baselines on both common and native samples.
-5. Require the model acceptance gate and independent data-provenance review to
-   pass. If either fails, document the result and revise only through a new
-   declared experiment with a new lockbox.
+- Audit historical membership, security identifiers, listings/delistings,
+  corporate actions, publication times, revisions and permitted use.
+- Compare expected exchange sessions with observed bars. A date missing from
+  every series must not silently shorten feature windows or target horizons.
+- Measure missingness by date, stock and lifecycle; distinguish missing current
+  prices from insufficient warm-up history. Define a freshness policy for
+  legacy metrics whose price endpoints are missing.
+- Retain the pinned archive as an inexpensive development demonstration.
+  More names from its retrospective constituent list do not remove its bias.
+- Evaluate a broader, longer named-stock source against the
+  [provider checklist](data-contract.md#human-provider-evidence-gate).
+  More market periods matter as well as more stock-date rows.
+- Use Numerai's published methods as a reference, not an approved data source.
+  Its current terms restrict data use to tournament participation. Defer data
+  adoption until the intended use and permissions are established; do not
+  substitute obfuscated IDs for named-stock portfolio histories.
+- Use Qlib as an implementation reference. Recheck data availability and rights
+  before adopting a download: the official dataset was disabled at this review.
+- Add filing-derived fundamentals only with historical availability and
+  security mapping. Current restated facts are not historical observations.
 
-The model gate requires strict baseline improvement, minimum native score and
-spread coverage, enough valid Rank-IC and spread lockbox dates, and the
-predeclared HAC threshold on paired daily Rank-IC improvement. It is not allowed
-to pass from a tied one-date result.
+**Complete when:** a versioned source report identifies covered periods,
+verified assumptions, unresolved gaps, row/feature counts, missingness and
+estimated memory. A small sample reproduces the full transformation.
 
-Training is useful here because the experiment tests a combined ranking. The
-model remains a hypothesis to benchmark, not evidence that the ranking is
-tradable. `stage4_eligible` therefore remains false while provenance checks are
-unverified, even if the statistical model gate passes.
+## 3. Test features and representations
 
-## Next engineering sequence: Colab and controlled factor research
+**Question:** Which information helps beyond the existing baseline?
 
-The September 8 review prioritizes portability and reproducibility before more
-model complexity. The declared real-data run is complete; the portability
-release carries its evidence forward. The factor software is implemented below;
-new empirical factor comparisons remain separately declared future work:
+- Compare the existing ten metrics against the ten plus the three implemented
+  price factors. Keep formulas, lookbacks, feature availability and missingness
+  rules explicit.
+- Test quality-only screening against the current supervised redundancy screen;
+  correlated features can still contain useful conditional information.
+- Compare raw features, cross-sectional ranks and train-fitted scaling where
+  appropriate. Measure whether preprocessing choices change coverage.
+- Keep PCA as a compression comparator. Consider supervised reduction such as
+  PLS only as a separate, fold-fitted candidate.
+- Add factor families in small groups: price horizons first, then OHLCV,
+  fundamentals, exposures or sentiment when their required inputs exist.
+- Use held-out ablations and grouped importance to examine contribution;
+  in-sample feature importance does not establish usefulness.
+- Retain simple individual signals and the original-ten equal-rank baseline
+  across feature-bundle comparisons.
 
-1. Preserve the completed real-data run and earlier interrupted attempt.
-   Ridge did not improve aggregate development Rank IC over equal-weight ranks;
-   retain that result without changing the declared model or cohort to improve it.
-2. Remove measured duplicate screening work only behind output-equivalence
-   tests. Keep Stage 2 diagnostics, pairwise missingness, fold-local fitting,
-   label purging, and all out-of-sample evaluation semantics unchanged.
-3. Version 0.8.0 adds a CPU-only Colab walkthrough around the existing library:
-   pinned source, a constrained isolated environment and bounded result displays.
-   Seed the private handoff from the existing canonical registry and archive/
-   prior-run evidence; never silently replace it with a blank history. Keep live
-   SQLite on local VM storage, with append-only evidence checkpoints in
-   user-selected persistent storage. Unresolved interruptions block reuse.
-   Local and Python 3.12 Linux verification are distinct from a hosted Colab run;
-   the walkthrough does not claim hosted execution or offer final evaluation.
-   The earlier 0.8-pin local five-cell run and all three Linux Python versions passed;
-   see the [portability evidence](research-decisions.md#verified-portability-result-2026-09-08).
-4. Define a small factor catalog before computing additional features: formula,
-   required inputs, lookback, availability, adjustment assumptions and missingness
-   rules. Version 0.9 implements the first three opt-in price-only definitions
-   and a pure calculator; it does not merge them into the legacy panel or start
-   a new empirical experiment. See the
-   [factor contract](data-contract.md#opt-in-fixed-window-price-factors).
-   Start with price-only candidates supported by the archive; OHLCV,
-   publication-lagged fundamentals and sentiment require separate source evidence.
-5. Version 0.10 adds opt-in panel enrichment and immutable candidate feature
-   schemas. It preserves the original membership/labels and does not start a
-   comparison. Cross-bundle reporting must align prediction keys, outcomes,
-   scoring universes and an explicitly retained original-ten baseline before
-   making comparative claims; within-run common metrics alone are insufficient.
-6. Version 0.11 hardens scheduled-date inference before cross-bundle significance
-   tests. Stage 2 retains its pre-filter training schedule; Stage 3 uses planned
-   phase boundaries and panel dates. Gaps, unsupported lags and unusable variance
-   withhold inference rather than compressing observations. Generic calls without
-   schedules remain descriptive. This checks supplied-schedule completeness,
-   not exchange continuity or dates already absent from the source panel. See the
-   [inference contract](stage3-benchmark.md#scheduled-inference).
-7. Version 0.12 persists exact planned phase schedules as immutable manifest
-   metadata. Replay must use that sequence, not reconstruct it from surviving
-   predictions. No artifact loader or authentication claim is added. This closes
-   the schedule-evidence gap before development-only cross-bundle reporting.
-8. Version 0.13 adds a development-only, same-family feature-bundle comparison
-   over caller-owned results. It retains the original-bundle equal-rank arm,
-   checks exact schedules, folds, prediction keys and outcomes, and reports one
-   three-way common population alongside native coverage. Paired daily contrasts
-   are descriptive; they do not select a winner or open a final test. This is
-   conditional consistency checking, not authenticated research history.
-9. Explicitly refresh the Colab source pin to the verified 0.13 commit without
-   changing the fixed experiment or rewriting history. Check full notebook/builder
-   parity, declared-old-identity preservation and real synthetic workflow summary
-   compatibility. Retain version-specific execution evidence: the previous full
-   five-cell run does not validate a refreshed notebook or hosted Drive session.
-10. Version 0.14 saves an already computed development comparison as five CSVs
-    plus a last-published completion manifest. Strict descriptive schemas and
-    fresh destinations prevent accidental extra conclusions and overwrite;
-    failures retain evidence. Saving does not re-evaluate, register an experiment,
-    authenticate history or advance the empirical gate. The Colab pin stays 0.13.
-11. Predeclare ablations and comparisons with the existing PCA and tree families;
-    retain all attempts and exposure history. Additional horizons and later
-    portfolio work remain gated by the data and evaluation requirements below.
+**Complete when:** an ablation report isolates each representation change and
+shows foldwise effect, coverage, redundancy and compute cost.
 
-Colab can discard VM files and changes preinstalled libraries over time; its
-[FAQ](https://research.google.com/colaboratory/faq.html) and
-[runtime guidance](https://research.google.com/colaboratory/runtime-version-faq.html)
-motivate environment isolation and explicit persistence. SQLite warns against
-assuming reliable locking/synchronization on
-[network filesystems](https://sqlite.org/useovernet.html), so a mounted Drive
-database is not the intended live-registry design. These safeguards are
-single-user accident prevention, not distributed or tamper-proof governance.
-The [Colab example](../examples/README.md#colab-development-walkthrough) gives
-the private-folder handoff and failure procedure; the
-[checkpoint contract](data-contract.md#notebook-history-checkpoints) defines
-what is verified. File read-back is not a guarantee of remote durability.
+## 4. Compare model and training choices
 
-The modular data/model/evaluation separation follows the public
-[Qlib workflow](https://qlib.readthedocs.io/en/latest/component/workflow.html).
-Its [factor definitions](https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/loader.py)
-are implementation references, not a reason to add unsupported inputs or claim
-that a larger factor set will improve this sample.
+**Question:** Which learner earns its extra complexity?
 
-## Stage 4: portfolio and execution backtest
+- First exercise the implemented Ridge and histogram boosting families.
+  Compare raw-return and rank-target training without simultaneously changing
+  features, dates or sample membership.
+- Add LightGBM regression as the next optional challenger if the existing
+  comparison warrants it. Match tuning effort and record dependency versions.
+- Consider LambdaRank only with date groups, a declared relevance/gain mapping,
+  and a top-k objective. It is not a drop-in replacement for a regressor.
+- Consider CatBoost where it tests a useful alternative; verify group versus
+  row-weight semantics for ranking objectives.
+- On a larger dataset, compare a small MLP or TabM under the same temporal
+  protocol. Run several declared seeds and measure variation as well as mean.
+- Keep pretrained tabular models as a separate comparator. Check checkpoint
+  licenses, access, memory and the distinction from training a model ourselves.
+- Test rolling versus expanding training, retraining frequency, robust losses
+  and simple ensembles one at a time.
+- Bound the parameter search. Tree early stopping must use an inner temporal
+  validation window, never a random split or the outer/final test.
 
-Goal: determine whether signal quality survives implementation.
+**Complete when:** each candidate has identical evaluation dates, a documented
+search budget, reproducible parameters and results against fixed baselines.
+Promote a more expensive model only for a useful, repeatable improvement.
 
-Entry gate: a passed real-data Stage 3 lockbox, verified data policies, and a
-documented independent review. Development results alone cannot enter Stage 4.
+## 5. Strengthen statistical evaluation
 
-- Convert scores into a clearly specified long-only or long-short portfolio.
-- Add sector, size, beta, concentration, liquidity, and position constraints.
-- Model commissions, spread, slippage, market impact, rebalance delay, and
-  turnover.
-- Include delisted securities and unavailable trades rather than silently
-  filtering them.
-- Compare gross versus net return, information ratio, drawdown, capacity, and
-  exposure drift.
-- Stress assumptions and run negative controls, such as shuffled targets and
-  intentionally delayed signals.
+**Question:** Would the conclusion survive a fair unseen-period test?
 
-## Stage 5: repeatable research product
+- Retain label-end purging, nested temporal tuning and fold-local preprocessing.
+  Keep scoring universes independent of future outcome availability.
+- Report daily and foldwise Rank IC, raw-return spreads, prediction coverage,
+  outcome coverage and tied scores on native and common samples.
+- Check market periods, cohort slices and concentration of gains in one fold.
+  Compare methods on paired dates, not unrelated summary means.
+- Choose dependence-aware uncertainty from the outcome horizon and sampling
+  schedule. Report missing scheduled dates; assess longer blocks and sensitivity
+  checks where a short overlapping sample is uninformative.
+- Track all trials, including failed and unfavorable ones. Set a finite
+  development search budget and a rule for moving to genuinely new evaluation
+  data when continued adaptation has exhausted the original test.
+- Add negative controls: within-date outcome permutation, deliberately delayed
+  signals, known-null synthetic data and tests for future-data perturbations.
+- Freeze the entire selected pipeline, including portfolio rules, before final
+  evaluation. Keep final outcomes out of ongoing model selection.
 
-Goal: make every score and report reproducible and reviewable.
+**Complete when:** independent review reproduces the split, target maturity,
+comparison population and selection decision from saved evidence.
 
-- Version datasets, configurations, code, models, and output artifacts.
-- Record feature and label availability timestamps and data-quality incidents.
-- Monitor live coverage, drift, IC decay, turnover, costs, and exposure limits.
-- Define retraining and shutdown rules before live use.
-- Require review before a research score can affect a portfolio.
+## 6. Evaluate trading assumptions during development
 
-The later production gate should also define ownership, incident response,
-data-vendor change control, champion/challenger promotion, and a reproducible
-rollback path.
+**Question:** Is the ranking useful once implemented?
 
-## Final objective
+This work starts alongside model development, before opening the final test.
+The earlier roadmap placed all portfolio work after a passed final holdout;
+that ordering is replaced here.
 
-The practical end product is a reproducible signal engine that converts
-research-grade point-in-time data into a stock ranking, shows why the ranking
-exists, and demonstrates where it does and does not work. After the portfolio
-gate, the same evidence should show whether signal quality survives constraints
-and realistic costs. Its value is faster, reviewable research and better
-decision support—not an automatic guarantee of profit.
+- Begin with a declared long-only selection/rebalance rule and benchmark.
+- Use a chronological holdings ledger with execution delay, cash, drift-aware
+  turnover, entries, exits and explicit handling of unavailable trades.
+- Evaluate commissions, spreads and slippage over a stated cost grid.
+  Add liquidity, size, sector, beta and concentration constraints as inputs allow.
+- Report gross/net returns, drawdown, turnover and exposures from actual
+  period-by-period holdings. Do not compound overlapping 20-session signal
+  spreads as if they were daily portfolio returns.
+- Stress execution delay, rebalance frequency, missing prices and delistings.
+  Compare a simple baseline portfolio using the same assumptions.
+- Keep final model/portfolio evaluation separate from exploratory development
+  simulations. Paper trading and live deployment require additional review.
+
+**Complete when:** a tested development simulator explains every position
+change and reconciles gross return, costs, cash and net return on hand-worked
+fixtures and a declared dataset.
+
+## 7. Make Colab runs practical
+
+**Question:** Can a new environment reproduce the result within its resources?
+
+- Provide separate smoke, development and larger-study configurations.
+  Increase rows, history and features in measured steps.
+- Record preprocessing, training and evaluation time separately, plus memory,
+  hardware, thread count, data shape and model/search settings.
+- Use projected Parquet reads and reuse deterministic preprocessing where
+  equivalence tests show that reuse does not cross fold boundaries.
+- Pin the tested source and constraints. Check a clean CPU environment first;
+  add GPU support only for a model that benefits from it.
+- Keep active SQLite and training files on local VM storage; checkpoint the
+  existing private history to persistent storage between completed units.
+- Test interrupted runs and reruns. Do not create a blank registry to recover
+  from a failed experiment.
+- Execute every notebook cell from a fresh runtime. Record local, Linux CI and
+  hosted Colab verification separately.
+
+**Complete when:** the walkthrough completes from its documented inputs,
+reproduces the declared report and survives a tested interruption without
+losing experiment history.
+
+## 8. Keep the implementation maintainable
+
+**Question:** Can the team understand, test and change it?
+
+- Keep data, model, evaluation and storage responsibilities separate; reuse
+  existing interfaces before adding another abstraction.
+- Test formulas, missingness, dates, leakage and end-to-end CLI/example behavior.
+  Use small fixtures with outcomes a reviewer can calculate.
+- Run lint, tests with at least 80% aggregate coverage including branch tracking,
+  dependency checks/audit and package builds before a code release.
+- Review performance changes against identical outputs and measured runtime.
+- Validate external inputs once at the right boundary. Preserve useful error
+  context and caller-owned data; avoid speculative fallback layers.
+- Write short English docs and comments. Explain non-obvious decisions and
+  operating requirements; keep release history out of the quick start.
+- Review the complete diff for secrets, private data and unintended changes.
+  Keep changes scoped to this repository.
+
+**Complete when:** a clean installation passes the checks, the example works,
+and an independent reviewer can follow the implementation and its evidence.
+
+## 9. Turn the result into a reusable research tool
+
+**Question:** What remains useful after the first experiment?
+
+- Produce comparable experiment summaries with configurations, data versions,
+  fold results, runtime and reasons for accepting or rejecting candidates.
+- Add new factors through a versioned catalog and a standard ablation process.
+- Define retraining, monitoring, champion/challenger review and rollback before
+  any model affects a portfolio.
+- Monitor data coverage, feature drift, ranking stability, realized IC, costs
+  and exposures; distinguish data failure from model deterioration.
+- Make the handoff usable by the client: one reproducible run, readable results
+  and a clear list of remaining data or operational requirements.
+
+**Complete when:** a second researcher can add a candidate, reproduce the
+baseline, interpret the comparison and resume the same research history.
+
+## Next milestones
+
+| Order | Deliverable | Status and completion check |
+| --- | --- | --- |
+| 1 | Direction audit and revised working plan | Complete: independent findings reconciled; sources and priorities recorded. |
+| 2 | Correct target/return separation in inner tuning | Complete: failing regressions reproduced and fixed; rank-target training reports return-unit spreads. |
+| 3 | Executable target/model ablation | Software complete: registered synthetic development runs, fixed features/folds, runtime and coverage reports. Market-data comparison remains open. |
+| 4 | Data qualification and empirical ablations | Next: resolve calendar/freshness assumptions, complete declared target and 10/13-feature studies, and document a qualified larger-data choice. |
+| 5 | Development economic diagnostics and negative controls | Open: tested holdings/cost accounting and a frozen final-evaluation procedure. |
+| 6 | Stronger challenger and larger Colab study | Open: fair tuning budget, measured resources, independent review and reproducible run. |
+
+Calendar and feature-freshness corrections belong before market-data conclusions
+that depend on them. Their priority is not a reason to delay unrelated model
+unit tests or the synthetic experiment workflow.
+
+The longer-term stages remain open until their completion checks are met.
+New sources or measured results can change this order; preserve the decision
+and evidence rather than silently replacing the previous study.

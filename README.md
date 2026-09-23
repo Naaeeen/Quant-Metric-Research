@@ -1,306 +1,145 @@
 # Quant Metric Research
 
-A standalone, leakage-aware research pipeline for testing whether historical
-equity metrics contain stable cross-sectional signal.
+Build equity metric panels, screen individual signals, and compare stock-ranking
+models on purged walk-forward folds. The research question is whether combining
+historical metrics improves rankings on unseen dates.
 
-Version 0.14.0 adds explicit saving of an existing development comparison: five
-CSV tables and a strict JSON completion manifest, with no retraining or metric
-recalculation. The writer requires a fresh local destination and preserves
-partial output on failure. Saved reports remain descriptive, not authenticated
-research or evidence of alpha. See [saving comparison reports](docs/stage3-benchmark.md#saving-a-comparison).
-The Colab source pin remains at the separately verified 0.13 release.
+The pipeline has three stages:
 
-Version 0.13.0 added a development-only comparison of the original metric bundle
-and its three-factor extension. It checks saved experiment consistency and
-compares the same model family with a retained original-bundle equal-rank
-baseline, using native and three-arm common coverage. Results are descriptive,
-not a new significance test or a model-promotion decision. See the
-[feature-bundle comparison](docs/stage3-benchmark.md#development-only-feature-bundle-comparison).
+1. Build a dated stock panel from adjusted-close prices, universe membership,
+   trailing metrics, and forward targets.
+2. Check coverage, measure Rank IC and quantile spreads, and identify redundant
+   metrics. Optional walk-forward and PCA comparisons test the selected metrics.
+3. Compare individual metrics and equal-weight ranks with Ridge, histogram
+   gradient boosting, and optional Ridge+PCA using nested purged folds.
 
-Version 0.12.0 saved the exact planned evaluation dates in each benchmark manifest.
-Saved results can retain missing-date inference semantics on replay instead of
-guessing a calendar from surviving rows. See the
-[schedule evidence contract](docs/stage3-benchmark.md#stored-evaluation-schedules).
-This is inspectable consistency evidence, not authenticated research history.
+## Current status
 
-Version 0.11.0 hardened statistical inference against missing scheduled dates.
-Stage 2 and Stage 3 now report why a p-value is unavailable instead of compressing
-gaps or shortening the requested HAC lag. Scores and descriptive metrics keep
-their existing meanings. See the [inference contract](docs/stage3-benchmark.md#scheduled-inference).
-The [Colab walkthrough](examples/README.md#colab-development-walkthrough) now
-explicitly pins the verified 0.13 source, including these schedule safeguards.
-Its fixed ten-metric Ridge experiment is unchanged; new factors and comparisons
-are not automatically invoked. Complete refreshed-notebook and hosted Colab/Drive
-execution remain distinct from local installation and synthetic compatibility checks.
+The Stage 3 engine is implemented. The recorded public-archive development run
+found that Ridge did not improve aggregate ranking performance over equal-weight
+ranks. See the [observed result](docs/research-decisions.md#observed-development-result-2026-09-08)
+for the evidence and experiment settings.
 
-Version 0.10.0 added explicit panel enrichment and two immutable candidate feature
-schemas. Existing rows, labels and legacy metric settings remain unchanged;
-new factors are used only when requested. See the
-[panel integration contract](docs/data-contract.md#opt-in-factor-panel-enrichment).
-
-Version 0.9.0 added three opt-in, fixed-window price factors with explicit
-calculation windows, missingness reasons and immutable results. They are a
-separate software capability, not automatically added to the existing experiment.
-See the [factor contract](docs/data-contract.md#opt-in-fixed-window-price-factors).
-
-Version 0.8.0 added a CPU-only Colab walkthrough with private, append-only
-checkpoints around the existing public-archive development workflow. It carries
-the original research registry and evidence into the notebook instead of
-starting a blank history. Training and live SQLite remain on local VM storage;
-the notebook does not evaluate the reserved final test.
-
-The version 0.7.0 real-data run completed, but Ridge did not improve the aggregate
-ranking result over equal-weight ranks. The
-[recorded result](docs/research-decisions.md#observed-development-result-2026-09-08)
-remains part of the evidence. Colab portability does not change that conclusion
-or the archive's provenance limitations. The offline Yahoo-format importer
-remains available for separately authorized exports.
-
-The repository now covers three research stages:
-
-1. Build a point-in-time `(as_of_date, symbol)` panel from adjusted-close data,
-   dated universe membership, trailing metrics, and explicit forward targets.
-2. Audit metric quality, measure per-date Rank IC and quantile spreads, identify
-   redundant metrics, optionally validate them on purged walk-forward folds,
-   and optionally compare a train-only PCA baseline.
-3. Benchmark non-ML rank composites against supervised cross-sectional models
-   with nested purged development folds and an explicitly opened final test.
-
-It does not claim to be a complete trading system. Portfolio construction,
-cost-aware backtesting, risk controls, execution, and live monitoring come
-after these research stages.
-
-## Design boundaries
-
-- Historical universe membership is required for research-valid results.
-- Features use only observations at or before `as_of_date`.
-- Targets start after a configurable entry lag and use benchmark trading
-  sessions, not spreadsheet row counts or calendar-day offsets.
-- Missing or immature labels remain visible instead of being silently filled.
-- Screening, imputation, scaling, PCA, and model fitting are fold-local.
-- Training rows are purged whenever their labels overlap an evaluation fold.
-- Model-loss weights give every training date equal total weight, so dates with
-  more listed securities do not dominate the supervised objective. Fold-local
-  imputation, scaling, and PCA remain row-weighted preprocessing steps.
-- Stage 3 defaults to development only. Opening the final test requires
-  `--evaluate-lockbox`, a durable local `--registry`, and a matching completed
-  `--development-run-id`. Recorded outcome-date exposure blocks overlapping
-  final tests within that registry, even after a failed or interrupted run.
-  This guards accidental reuse, not deliberate bypass or prior human inspection.
-- Lockbox dates must meet the configured minimum target cross-section. The
-  model gate also requires native score and spread coverage, enough valid
-  Rank-IC and spread dates, strict improvement over the baseline, and the
-  predeclared paired-improvement inference bound.
-- PCA is an optional compression comparator, not the definition of a useful
-  metric or a required production step.
-
-See [the data contract](docs/data-contract.md) and
-[the research decisions](docs/research-decisions.md) before adding a data
-provider or model. The decisions distinguish the retrospective US archive demo
-from the proposed ASX cohort, whose access and historical provenance remain
-unresolved.
-
-## What “useful” means here
-
-A metric is a research candidate when it has sufficient point-in-time
-coverage, non-trivial cross-sectional variation, and a reasonably stable
-relationship with the forward target. A stronger candidate should also retain
-Rank IC or top-minus-bottom spread on unseen walk-forward dates and should not
-be only a duplicate of a better metric.
-
-That is still not proof of tradable alpha. Costs, turnover, liquidity, risk
-exposures, data provenance, and model-selection bias are separate gates.
+Version 0.15.0 adds a [target-ablation example](examples/README.md#target-ablation)
+that compares raw-return and rank-target training with Ridge and histogram
+boosting. Inner tuning now reports spreads in realized-return units for either
+target. Existing feature-bundle reports can also be
+[saved as CSV tables](docs/stage3-benchmark.md#saving-a-comparison).
+The Colab walkthrough remains pinned
+to the separately verified 0.13 source; its fixed ten-metric Ridge experiment is
+unchanged. Local notebook checks and hosted Colab execution have separate
+[verification records](examples/README.md#verification-status).
 
 ## Install
 
-~~~text
+Use Python 3.11 or later. Create and activate a virtual environment from the
+repository directory, then install the package.
+
+Windows PowerShell:
+
+~~~powershell
 python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
 ~~~
 
-## Inputs
+macOS or Linux:
 
-The Stage 1 CLI accepts CSV, compressed CSV, or Parquet tables:
-
-- prices: date, symbol, adjusted_close;
-- memberships: universe_id, symbol, effective_from, effective_to, source;
-- decision dates: one as_of_date column;
-- config: a JSON object matching PanelConfig.
-
-Example config:
-
-~~~json
-{
-  "dataset_version": "asx-selected-cohort-demo-v1",
-  "universe_id": "ASX_SELECTED_COHORT_DEMO",
-  "benchmark_symbol": "VAS.AX",
-  "lookback_sessions": 252,
-  "min_observations": 126,
-  "target_horizon_sessions": 20,
-  "entry_lag_sessions": 1,
-  "annualization_sessions": 252,
-  "annual_risk_free_rate": 0.0
-}
+~~~sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
 ~~~
 
-The existing application's current constituent file is not historical
-membership data. It can support a demo, but not an unbiased historical claim.
-The selected-cohort config above is for intake preparation. The later research
-commands are templates for an independently reviewed, larger research universe;
-their cross-section and validation settings are not the eight-stock demo's
-experiment specification.
+For a deterministic offline check:
 
-Stage 3 accepts a versioned panel containing `as_of_date`, `symbol`,
-`label_end_date`, the configured feature columns, and the target/realized-return
-columns. See `docs/data-contract.md` before treating any panel as research-grade.
+~~~text
+python examples/synthetic_workflow.py --output-dir artifacts/synthetic-demo-001
+~~~
 
-## Run
+This [synthetic workflow](examples/README.md#offline-synthetic-workflow) trains a
+small Ridge model on invented data and checks that a repeated final evaluation
+is refused. Use a fresh output directory for each run.
 
-For the notebook, start with the
-[Colab walkthrough](examples/README.md#colab-development-walkthrough).
-It requires a privately uploaded seed containing the existing canonical registry,
-archive and prior run evidence. Repository approval does not authorize publishing
-those files. The guide distinguishes local verification from execution on hosted
-Colab; it does not claim a hosted Colab run.
+## Choose a workflow
 
-For the declared public US archive demo, use a repository virtual environment
-and new destinations under the ignored data/artifact directories:
+| Starting point | Guide |
+| --- | --- |
+| Continue the existing experiment in Colab | [Colab walkthrough](examples/README.md#colab-development-walkthrough) |
+| Run the declared public US archive experiment | [Public-archive demo](examples/README.md#public-archive-development-demo) |
+| Import authorized local Yahoo-format exports | [Offline intake](examples/README.md#offline-yahoo-format-intake) |
+| Supply normalized prices and dated memberships | [Data contract](docs/data-contract.md) |
+| Compare models or feature bundles | [Stage 3 benchmark](docs/stage3-benchmark.md) |
+| Compare raw-return and rank training targets | [Target ablation](examples/README.md#target-ablation) |
+
+The Colab workflow requires a private seed containing the existing canonical
+registry, archive, and prior-run evidence. Keep the live SQLite database on local
+VM storage and use the documented checkpoints for persistence. Preserve the
+experiment history when moving environments.
+
+To run the public-archive development demo locally:
 
 ~~~text
 qmr fetch-public-sample --output-dir data/raw/mendeley-v3-001
 qmr public-demo --archive-dir data/raw/mendeley-v3-001 --output-dir artifacts/public-demo-001 --registry artifacts/research-registry.sqlite3
 ~~~
 
-The first command downloads two versioned CSVs and their source/license records,
-verifying pinned sizes and SHA-256 hashes. The second verifies the saved files,
-retains the first 30 stock labels alphabetically, and runs coverage checks,
-panel construction, no-training preflight and registered Ridge development.
-It writes `public_demo_report.json` only on completion. See
-[the public-archive example](examples/README.md#public-archive-development-demo)
-for outputs, fixed settings and failure recovery.
+The download verifies pinned file sizes and hashes. The demo retains the first
+30 stock labels alphabetically, audits coverage, builds the panel, checks the
+evaluation schedule, and runs registered Ridge development. Its final output is
+`public_demo_report.json`. The guide lists fixed settings and recovery steps.
 
-This cohort is drawn from a January 2017 constituent snapshot, so it carries
-survivorship bias. `FF_MARKET_PROXY` is a constructed research return index.
-The publisher's CC BY 4.0 declaration does not independently establish underlying
-third-party rights. Keep raw files and row-level results local; development
-statistics cannot establish alpha or Stage 4 eligibility.
-
-For authorized, local Yahoo-format exports, start with the version 0.6.0 intake:
-
-~~~text
-qmr import-yahoo --exports data/raw/exports.json --memberships data/raw/memberships.csv --as-of-dates data/raw/as_of_dates.csv --config data/raw/panel_config.json --output-dir artifacts/yahoo-intake-001
-~~~
-
-`exports.json` maps each ticker to a local `.csv`, `.csv.gz`, `.parquet`, or
-`.pq` file; relative paths are resolved from that JSON file's parent directory.
-Each file must contain one flat table with explicit `Date` and `Adj Close`
-columns. Dates must be timezone-naive daily dates at midnight. The importer
-rejects MultiIndex exports and never substitutes `Close` or imputes prices.
-Supply dated memberships and decision dates separately: the importer does not
-reconstruct them from tickers. The configured benchmark needs usable prices.
-
-The intake stores exact source bytes and SHA-256 hashes, normalized prices,
-memberships, decision dates and configuration, `missing_prices.csv`, and
-`input_audit.json`. `intake_manifest.json` is the final success marker. Missing
-adjusted-close observations and members without usable prices remain visible
-in the gap and coverage reports. A successful import confirms processing;
-all provenance checks and Stage 4 eligibility remain false. `imported_at` is
-the local import time, not evidence of when the provider data was acquired.
-
-The output directory must not already exist. Failures after its creation retain
-partial artifacts and `intake_failure.json`; inspect them and rerun with a fresh
-directory. Do not treat a directory without `intake_manifest.json` as a completed
-intake. See [the offline import example](examples/README.md#offline-yahoo-format-intake)
-for the export mapping and missing-value rules.
-
-For already normalized inputs, the version 0.5 audit is also available:
-
-~~~text
-qmr audit-inputs --prices data/prices.parquet --memberships data/memberships.parquet --as-of-dates data/as_of_dates.csv --config config.json
-~~~
-
-This prints JSON coverage by date and security: active historical members,
-adjacent historical price pairs, missing decision prices, and future label
-endpoint availability. It does not calculate returns, screen metrics, train a
-model, or write artifacts. Exit code 0 means the report was generated, **not**
-that the data is approved. Invalid contracts fail; coverage gaps remain warnings.
-Daily inputs must be normalized timezone-naive dates; ambiguous prices and
-duplicate CSV column names are rejected instead of silently repaired.
-
-Fingerprints identify normalized required columns and the request, not raw file
-bytes or provider provenance. Future price presence is inspected, so this is
-not a sealed holdout. The benchmark calendar is inferred from supplied prices,
-not independently verified. All external-evidence checks stay unverified and
-Stage 4 stays ineligible. Complete the human evidence checklist in
-[the data contract](docs/data-contract.md) before an empirical experiment;
-keep licensed input data and reports out of public commits.
-
-Once that intake review is complete, build the panel and run Stage 2:
-
-~~~text
-qmr run --prices data/prices.parquet --memberships data/memberships.parquet --as-of-dates data/as_of_dates.csv --config config.json --train-end 2024-12-31 --output-dir artifacts/run-001 --min-cross-section 50 --hac-lags 19 --walk-forward-splits 5 --walk-forward-test-date-count 20 --walk-forward-min-train-date-count 252 --with-pca
-~~~
-
-hac-lags must match the overlap implied by the target horizon and sampling
-frequency; 19 is only an example for a heavily overlapping 20-session target.
-
-This run writes the metric panel, coverage report, daily and summary Rank IC,
-quantile spreads, redundancy pairs, selected/dropped metrics, optional
-walk-forward reports, and optional PCA scores/loadings.
-
-The single-cutoff screen uses only labels matured by the end of `--train-end`.
-The returned panel still contains all supplied outcomes, and optional
-walk-forward evaluation uses its own purged folds over the supplied panel.
-Do not use `qmr run` as a no-outcome intake check.
-
-For Stage 3, check structural feasibility before training, then record the
-hypothesis and run development without scoring final-test outcomes:
+For your own inputs, the [data contract](docs/data-contract.md) specifies prices,
+historical memberships, decision dates, and configuration. Review the provider
+evidence and coverage before building a panel. For a prepared Stage 3 panel,
+check the schedule and register development:
 
 ~~~text
 qmr preflight --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json
 qmr benchmark --panel artifacts/run-001/metric_panel.parquet --config benchmark-config.json --output-dir artifacts/benchmark-001 --registry artifacts/research-registry.sqlite3 --study-id metrics-v1 --hypothesis "Combined metrics improve unseen-date ranking over equal-weight ranks."
 ~~~
 
-Version 0.4 adds preflight, registered evidence, referenced final evaluation,
-and `qmr experiments` history. Keep one registry for related research: a new
-registry filename does not make previously seen outcomes independent. Preflight
-feasibility does not guarantee successful fitting or a useful signal. Validation
-and hashing still read the full input; this is not a sealed data store.
+These commands require your panel and benchmark configuration. The
+[benchmark guide](docs/stage3-benchmark.md#run-and-outputs) explains configuration,
+outputs, and final evaluation. Preflight checks structural feasibility; model
+fitting and statistical evaluation happen during the benchmark.
 
-The benchmark atomically publishes a new, non-overwriting output directory with
-a reproducibility manifest and data gate, fold assignments,
-tuning and screening records, out-of-sample predictions, daily and fold
-metrics, summary comparisons, and the acceptance decision. See
-[the Stage 3 guide](docs/stage3-benchmark.md) for final-run commands, the schema 6
-artifact contract, and registry limitations. A registry status of `completed`
-means calculation completed; verify the artifact bundle was also published.
+## Research assumptions and limits
 
-For a deterministic offline smoke check, run the
-[synthetic example](examples/README.md):
+Features use observations available at the decision time. Targets begin after
+the configured entry lag and use benchmark trading sessions. Missing observations
+and immature labels remain visible in coverage reports. Screening, preprocessing,
+and model fitting use training partitions; purging removes training labels that
+overlap evaluation dates. Rankings use the full scoring universe before outcome
+availability is considered. See the [data contract](docs/data-contract.md) for
+the precise timing, missingness, and weighting rules.
 
-~~~text
-python examples/synthetic_workflow.py --output-dir artifacts/synthetic-demo-001
-~~~
+Keep one durable registry for related research. Final evaluation requires
+`--evaluate-lockbox`, a matching completed `--development-run-id`, and a reservation
+of the final outcome dates. Failed or interrupted reservations remain consumed.
+The registry tracks recorded exposure; prior inspection and unregistered research
+still affect the independence of a final test. Follow the
+[final-evaluation procedure](docs/stage3-benchmark.md#3-explicitly-evaluate-the-referenced-final-test)
+before opening it.
 
-It trains a tiny Ridge model on invented data and verifies final-test reuse is
-refused. It is a software check, not evidence of market alpha.
+The public demo uses a retrospective January 2017 constituent snapshot, which
+introduces survivorship bias, and a constructed `FF_MARKET_PROXY` return index.
+The publisher declares CC BY 4.0; underlying third-party rights and historical
+provenance still need independent review. Keep raw data and row-level artifacts
+local. The proposed ASX cohort also needs provider access and historical evidence;
+current constituents cannot establish historical membership.
 
-Scores use the full contemporaneous stock cross-section, before filtering
-future outcomes. Daily prediction coverage is separate from labeled-pair
-coverage. Quantile spreads share bucket weight equally across boundary ties;
-these descriptive spreads are not executable portfolio returns.
+Rank IC and quantile spreads describe ranking quality. Assessing tradability also
+requires costs, turnover, liquidity, risk exposures, and execution assumptions.
+Develop those checks alongside model experiments and freeze the complete procedure
+before final evaluation. Promotion beyond development requires verified
+point-in-time data and a passed, predeclared real-data final evaluation. See the
+[roadmap](docs/roadmap.md) for the plan and completion criteria.
 
-## Stage 3 status and the next gate
+## Further reading
 
-The Stage 3 engine is implemented. It compares every usable metric, a best
-train-only metric, and an equal-weight oriented-rank baseline with Ridge,
-histogram gradient boosting, and optional Ridge+PCA. Scores are evaluated as
-rankings; they are not calibrated expected-return forecasts.
-
-The repository still makes no empirical alpha claim. Promotion to Stage 4 is
-blocked until a research-grade point-in-time provider and its identifier,
-corporate-action, universe-membership, and delisting policies are independently
-verified, followed by a pre-declared real-data lockbox run. A passing model
-gate alone is not enough.
-
-See docs/roadmap.md for the proposed model, portfolio, and production gates.
+- [Data contract](docs/data-contract.md): input formats, timing, and provider evidence.
+- [Benchmark guide](docs/stage3-benchmark.md): models, inference, registry, and reports.
+- [Research decisions](docs/research-decisions.md): declarations, results, and sources.
+- [Roadmap](docs/roadmap.md): completed capabilities and next experiments.
+- [Examples](examples/README.md): runnable workflows and verification records.

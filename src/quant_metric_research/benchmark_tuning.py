@@ -121,21 +121,27 @@ def _candidate_validation_scores(
             hist_max_iter=config.hist_max_iter,
             hist_min_samples_leaf=config.hist_min_samples_leaf,
         )
-        scored = validation.loc[:, ["as_of_date", config.target_column]].copy(deep=True)
-        scored["model_score"] = fitted.predict(validation).to_numpy(dtype=float)
+        scored = pd.DataFrame(
+            {
+                "as_of_date": validation["as_of_date"],
+                "target": validation[config.target_column],
+                "realized_return": validation[config.realized_return_column],
+                "score": fitted.predict(validation).to_numpy(dtype=float),
+            }
+        )
         daily_frames.append(
             compute_daily_rank_ic(
                 scored,
-                feature_columns=("model_score",),
-                target_column=config.target_column,
+                feature_columns=("score",),
+                target_column="target",
                 min_cross_section=config.min_cross_section,
             )
         )
         spread_frames.append(
             compute_quantile_spreads(
                 scored,
-                feature_columns=("model_score",),
-                target_column=config.target_column,
+                feature_columns=("score",),
+                target_column="realized_return",
                 quantiles=config.quantiles,
                 min_cross_section=config.min_cross_section,
             )

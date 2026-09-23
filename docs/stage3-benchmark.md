@@ -11,7 +11,9 @@ empirical alpha result. Until the historical provider, point-in-time universe,
 stable identifiers, corporate actions, and delisting returns are independently
 verified, full runs have `claim_scope: benchmark_engine_only`, development
 runs have `claim_scope: development_only`, and both remain
-ineligible for Stage 4.
+ineligible for promotion beyond development. Portfolio and cost diagnostics can
+be developed on development periods; freeze them with the model before final
+evaluation. See the [roadmap](roadmap.md#6-evaluate-trading-assumptions-during-development).
 
 ## What the engine compares
 
@@ -33,6 +35,12 @@ The model target defaults to raw `forward_excess_return`. Predictions are
 ranking scores, not calibrated expected-return forecasts. The main metrics are
 per-date Spearman Rank IC and the raw realized-return spread between top and
 bottom score buckets.
+
+To compare return and rank training targets, use the
+[target-ablation example](../examples/README.md#target-ablation). It retains raw
+excess returns for economic evaluation. Inner-tuning spreads also use
+`realized_return_column`, independently of the learning target and its missing
+values; tuning still selects candidates by Rank IC.
 
 ## Validation design
 

@@ -6,6 +6,7 @@ from types import MappingProxyType
 import pandas as pd
 import pytest
 
+from quant_metric_research import __version__
 from quant_metric_research.benchmark import (
     BenchmarkConfig,
     NestedSplitConfig,
@@ -123,7 +124,7 @@ def test_stage3_runs_nested_development_and_one_locked_test() -> None:
         min(result.data_gate["locked_realized_return_coverage_by_date"].values()) == 0.9
     )
     assert result.manifest["artifact_schema_version"] == "6"
-    assert result.manifest["package_version"] == "0.14.0"
+    assert result.manifest["package_version"] == __version__
     persisted = result.manifest["evaluation_schedule"]["dates_by_phase"]
     assert set(persisted) == {"development", "locked_test"}
     for phase in persisted:
