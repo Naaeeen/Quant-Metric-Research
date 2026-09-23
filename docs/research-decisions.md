@@ -1816,3 +1816,98 @@ and its [distinction between adjusted prices and dividend cash credits](https://
 Verify delayed entry, cash-funded fees, drift, ties, missing valuations and
 dividend non-duplication on hand-worked fixtures before a separately declared
 market-data cost comparison. No portfolio results have been computed yet.
+
+## Development holdings ledger implementation plan
+
+Implement the next economic check in three small parts: a score-only adapter,
+a pure allocation/accounting kernel, and a chronological account. Reuse the
+declared calendar and benchmark evidence; do not build another experiment
+manager. This stage uses hand-worked and synthetic data only. A market-data
+comparison still needs its own declaration, arms and cost grid.
+
+The adapter must retain the native decision-time scoring universe, including
+rows whose future outcomes are unavailable. Validate saved development scope,
+fold timing and row assignments without reading targets or realized returns.
+Fingerprint only the consumed score/price projections. Metadata consistency is
+not authentication of the original fitting procedure or proof of omitted rows.
+
+Use fixed top-k slots, with each slot worth 1/k of post-cost NAV. Split a cutoff
+tie across all tied names; fewer than k finite scores leave unused slots as cash.
+This makes differing score coverage visible instead of silently concentrating
+the surviving names. Flat scores can produce equal allocations. Decisions are
+after-close events, execution follows explicit calendar-session offsets, and
+all entries must precede mandatory liquidation before the reserved final block.
+Carry cash and holdings across fold boundaries.
+
+Charge directional commission, one-way spread and slippage as additive cash
+debits on mark-price traded notional. A quoted full spread must be converted to
+the intended one-way cost by the caller. Do not also displace prices by the same
+cost. Solve self-financing post-cost NAV in normalized units; verify cash,
+holdings and cost reconciliation. A zero-cost counterfactual is a separate run.
+
+Require failing tests before implementation for entry lag, cash-funded entry,
+rotation and exit fees, drift, ties, missing scores/prices, and final boundaries.
+Then add multi-fold integration, label-deletion and future-data perturbation
+tests, independent review, full release checks and a runnable synthetic example.
+Keep any partial account explicitly incomplete, with retained holdings, cash,
+last valuation date and blocked date. No empirical net-return claim follows
+from passing these software tests.
+
+### Ledger implementation and review
+
+Version 0.17.0 implements the score adapter, self-financing kernel and continuous
+account, with a public `evaluate_long_only` API. The adapter supports learned
+models and the individual, best-metric and equal-rank baselines. It verifies
+configured fold lengths and single-metric feature counts as well as training
+timing. The ledger records all cost components, cash, positions, target weights,
+rejected purchases and score coverage; partial accounts retain unresolved state.
+
+Independent review produced regressions for extreme numeric inputs, aggregate
+return overflow, contradictory fold lengths/feature counts and missing saved
+blocked-account state. Each reproduced failure was corrected before release.
+The focused verification comprises 63 kernel cases, 39 adapter cases, 21 ledger
+cases and five trained-workflow integration tests. The public API test also
+checks the new exports and release version.
+
+Release verification passed 1,765 tests in 305.65 seconds with 91.26% aggregate
+coverage and branch tracking enabled. Ruff, dependency compatibility and the
+vulnerability audit passed. The standard isolated build produced the source
+archive and wheel; an import from the wheel confirmed the public ledger API.
+The first full run exposed only a stale 0.16.1 version assertion, which was
+updated for this release before repeating the complete suite.
+
+The standalone synthetic command completed one registered two-fold Ridge
+experiment and four continuous accounts in 4.51 seconds on this Windows host.
+It used 64 invented sessions, eight stocks, three inputs and one training thread.
+This wall time was measured while other verification work ran; it is not a
+controlled performance comparison or hosted Colab measurement. Its private
+outputs are under `artifacts/synthetic-portfolio-20260922-001/`.
+The real seven-record history still matches the feature-study after snapshot
+exactly, including exposures and the earlier interrupted record. No empirical
+portfolio result or final outcome was evaluated in this implementation stage.
+
+### Next falsification checks
+
+Start with a declared, zero-fit saved-score alignment diagnostic, then a small
+full-retraining control. Shuffling saved scores tests whether evaluation depends
+on their security alignment; it does not test how the original scores were
+learned. Use shared permutations across arms within matching score-availability
+strata, retain all scheduled dates/masks, and report each replicate descriptively.
+Fix arm identities, seeds and metrics before execution.
+
+Full-pipeline target permutations instead require refitting screening, feature
+orientation, preprocessing, tuning and models. This distinction follows the
+[Ojala-Garriga permutation framework](https://www.jmlr.org/papers/volume11/ojala10a/ojala10a.pdf)
+and [scikit-learn's implementation](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.permutation_test_score.html).
+Our adaptation would preserve date/maturity/missingness strata and paired
+target/return fields. Independent daily shuffles break the serial structure of
+overlapping financial outcomes, so treat them as destructive diagnostics, not a
+calibrated financial permutation test. Three two-family replicas of the fixed
+three-outer/two-inner schedule would require 54 fits; none have run yet.
+
+Do not infer that a signal is leakage-free because a shuffled control loses
+performance. Nor does another diagnostic make the repeatedly used development
+period unseen: [Cawley-Talbot](https://www.jmlr.org/papers/v11/cawley10a.html)
+documents overfitting to model-selection criteria. Known-null synthetic data,
+future-availability rejection tests and a qualified broader evaluation remain
+separate requirements. Freeze the actual control declaration before running it.

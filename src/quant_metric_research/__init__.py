@@ -19,6 +19,8 @@ from .input_audit import audit_inputs
 from .intake import import_yahoo_files
 from .panel import build_point_in_time_panel
 from .pipeline import ResearchRun, run_research
+from .portfolio import LongOnlyConfig, LongOnlyEvaluation, evaluate_long_only
+from .portfolio_accounting import SideCosts, TradingCosts
 from .preflight import preflight_benchmark
 from .price_factor_catalog import PRICE_FACTOR_CATALOG, PriceFactorSpec
 from .price_factors import PriceFactorResult, PriceFactorValue, compute_price_factors
@@ -45,6 +47,8 @@ __all__ = [
     "FeatureBundleComparison",
     "FeatureBundleSpec",
     "MetricScreenResult",
+    "LongOnlyConfig",
+    "LongOnlyEvaluation",
     "NestedSplitConfig",
     "PCABaseline",
     "PanelConfig",
@@ -54,6 +58,8 @@ __all__ = [
     "PriceFactorValue",
     "PurgedWalkForwardSplit",
     "ResearchRun",
+    "SideCosts",
+    "TradingCosts",
     "WalkForwardMetricConfig",
     "WalkForwardMetricResult",
     "audit_inputs",
@@ -66,6 +72,7 @@ __all__ = [
     "fit_metric_screen",
     "fit_pca_baseline",
     "evaluate_metrics_walk_forward",
+    "evaluate_long_only",
     "run_stage3_benchmark",
     "preflight_benchmark",
     "run_research",
