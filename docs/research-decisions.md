@@ -1911,3 +1911,42 @@ period unseen: [Cawley-Talbot](https://www.jmlr.org/papers/v11/cawley10a.html)
 documents overfitting to model-selection criteria. Known-null synthetic data,
 future-availability rejection tests and a qualified broader evaluation remain
 separate requirements. Freeze the actual control declaration before running it.
+
+## Full-lifecycle goal acceptance review
+
+The user requested a more detailed, all-round improvement goal. Keep the nine
+workstreams and six handoff requirements in the [roadmap](roadmap.md); make their
+acceptance evidence and remaining milestones concrete. This planning change
+does not change an existing experiment, read new outcomes or reserve final data.
+
+An independent review identified gaps in model-bundle lineage, measurable hosted
+reproduction, offline monitoring outcomes and the distinction between authorized
+data use and historical eligibility. The roadmap now specifies a seven-dimension
+improvement scorecard, explicit scoring/operations/handoff milestones, runtime
+and numerical reproduction checks, and expected behavior for five offline
+monitoring and rollback scenarios. Model selection can retain a simple method;
+adding another model family is not itself a completion requirement.
+
+The supporting references were checked on September 22, 2026:
+
+- [Qlib workflow documentation](https://qlib.readthedocs.io/en/latest/component/workflow.html)
+  separates dataset, model and experiment records and records signal and
+  portfolio analysis. Use that separation as a design reference, not its example
+  parameters as evidence for our market or cost assumptions.
+- [Scikit-learn model persistence](https://scikit-learn.org/stable/model_persistence.html)
+  describes runtime compatibility, training/source metadata and the trust
+  requirements of executable serialization. The scoring milestone must test
+  the chosen artifact format and supported runtime before handoff.
+- [The Colab FAQ](https://research.google.com/colaboratory/faq.html)
+  describes variable hardware and runtime availability and recommends limiting
+  small Drive operations. Measure the assigned environment and test local-work
+  checkpoint recovery rather than promising a fixed hosted runtime.
+- [Cawley and Talbot](https://www.jmlr.org/papers/v11/cawley10a.html)
+  show how selection on noisy evaluation criteria can overfit. Retain bounded
+  declared comparisons and outcome-exposure history as the project expands.
+
+Next empirical work remains the declared simple-signal/ML economic comparison
+and negative controls, with broader source qualification in parallel. No change
+to the trained candidates or their development/final boundaries follows from
+this plan revision. Source evidence, hosted execution, saved-model scoring and
+offline operations remain open until their separate checks are completed.

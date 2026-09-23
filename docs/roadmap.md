@@ -41,6 +41,30 @@ when code inspection, a measured experiment or a primary source contradicts a
 decision. Record the reason in [research decisions](research-decisions.md).
 Completed release details remain there and in Git history.
 
+### What improvement means
+
+Evaluate each proposed change against this scorecard. Before a study, choose
+its primary question, numerical acceptance thresholds, sensitivity cases and
+maximum trials, fits, time and memory. Record the other dimensions even when
+they are not the primary objective.
+
+| Dimension | Evidence to retain |
+| --- | --- |
+| Information quality | Point-in-time source evidence, feature freshness, missingness and eligible/scored/evaluated counts. |
+| Predictive contribution | Paired daily and foldwise effects against fixed simple signals and existing models, on native and common samples. |
+| Robustness | Period and cohort sensitivity, seed variation where relevant, dependence assumptions and executed negative controls. |
+| Economic usefulness | Reconciled holdings, cash, turnover, gross/net returns, drawdown and declared execution/cost sensitivities. |
+| Resource efficiency | Preparation, fitting, scoring and evaluation time; peak memory; data shape, hardware and search budget. |
+| Reproducibility | Source/data/configuration identities, retained trial history and independent rerun evidence. |
+| Usability and maintenance | A runnable example, readable outputs, tested scoring/recovery procedures and independent code review. |
+
+An improvement can be a stronger result, the same result at lower cost, better
+coverage, a corrected research assumption or a reliable operational workflow.
+State the tradeoff explicitly. A higher average IC does not erase worse coverage
+or costs, and a passing engineering check does not establish predictive value.
+Use the declared decision rule rather than combining these dimensions into an
+unexplained single score. Keep unsupported dimensions open.
+
 ### What completes the goal
 
 The final handoff must include all of the following:
@@ -215,6 +239,9 @@ universe, baseline, development/final periods and acceptance criteria.
 
 - Audit historical membership, security identifiers, listings/delistings,
   corporate actions, publication times, revisions and permitted use.
+- Record local research, cloud processing and redistribution permissions
+  separately from historical eligibility. An authorized local demonstration
+  need not qualify for cloud upload or an unbiased investment claim.
 - Compare expected exchange sessions with observed bars. A date missing from
   every series must not silently shorten feature windows or target horizons.
 - Measure missingness by date, stock and lifecycle; distinguish missing current
@@ -363,11 +390,20 @@ fixtures and a declared dataset.
   from a failed experiment.
 - Execute every notebook cell from a fresh runtime. Record local, Linux CI and
   hosted Colab verification separately.
+- Define equivalence before the rerun: input/source identities, folds, universe,
+  selected configuration, coverage and prior history must match the declaration.
+  Set numerical tolerances for scores and metrics, record seeds and runtime
+  versions, and investigate changes beyond those tolerances.
+- Check available runtime resources before starting. If they cannot support the
+  declared study, checkpoint and report it as incomplete; a smaller follow-up
+  needs its own declaration rather than silently replacing the planned run.
 
 **Complete when:** an independent operator executes every cell in a fresh
 hosted Colab runtime from documented authorized inputs, reproduces the declared
-report within predeclared resource limits, and demonstrates recovery without
-losing experiment history. Local and CI runs remain separate evidence.
+report within predeclared tolerances and resource limits, and demonstrates
+recovery without losing experiment history. Recovery must retain completed
+records and exposures, identify unfinished work and follow its documented
+resolution procedure. Local and CI runs remain separate evidence.
 
 ## 8. Keep the implementation maintainable
 
@@ -406,6 +442,11 @@ and an independent reviewer can follow the implementation and its evidence.
 - Add batch scoring from decision-time inputs without future labels. Version
   the fitted preprocessing and model together; test score parity after saving
   and reloading them, including missing-feature and changed-schema cases.
+- Bind the scoring bundle to feature order and formula versions, fitted
+  preprocessing, training and matured-label cutoffs, scoring-universe policy,
+  data/source/configuration identities and compatible runtime versions. Verify
+  its provenance before loading executable serialization; a checksum alone
+  does not establish trust in its publisher.
 - Compare training-time and batch-scoring feature values for the same historical
   decision inputs. Exercise newly eligible stocks, stale inputs and unavailable
   factors without consulting later prices or labels to decide eligibility.
@@ -413,11 +454,24 @@ and an independent reviewer can follow the implementation and its evidence.
   and interrupted runs. Define who reviews a warning or candidate replacement;
   alerts and new models must not silently change portfolio decisions.
 
+The offline handoff exercise must demonstrate these outcomes:
+
+| Scenario | Expected behavior |
+| --- | --- |
+| Schema-invalid or policy-stale inputs | Identify affected inputs and apply the declared reject/abstain policy; do not silently substitute values. |
+| Labels have not matured | Continue valid label-free scoring; defer outcome-based assessment and training on those labels. |
+| A declared monitoring trigger fires | Record the evidence and propose a bounded challenger study, preserving the current scoring bundle. |
+| A challenger finishes | Apply the declared comparison and record reviewer acceptance, rejection or an inconclusive result. |
+| The selected bundle must be rolled back | Restore its predecessor and reproduce that bundle's reference scores and metadata. |
+
+These are offline research exercises. They must preserve final-period exposure
+history and must not automatically promote a model to a trading system.
+
 **Complete when:** a second researcher can add a candidate, reproduce the
 baseline, interpret the comparison and resume the same research history. The
-handoff demonstrates saved/reloaded score parity from label-free inputs,
-schema and freshness failure handling, and an offline monitoring, retraining
-and rollback exercise with named review ownership.
+handoff demonstrates fresh-process saved/reloaded score parity from label-free
+inputs, explicit rejection of incompatible bundles, schema and freshness
+handling, and the offline scenarios above with recorded review ownership.
 
 ## Next milestones
 
@@ -428,7 +482,10 @@ and rollback exercise with named review ownership.
 | 3 | Executable target/model ablation | Complete for the declared small development study: both targets, Ridge/boosting, all six paired comparisons, independent review and measured resources. |
 | 4 | Data qualification and empirical ablations | Calendar/endpoint checks and both declared ablations complete. The feature study passed its continuation criteria and independent audits; qualified broader data remains open. |
 | 5 | Development economic diagnostics and negative controls | Holdings/cost accounting and a trained synthetic example implemented. Open: declared market-data accounting comparison, executed negative controls and a frozen final-evaluation procedure. |
-| 6 | Stronger challenger and larger Colab study | Open: fair tuning budget, measured resources, independent review and reproducible run. |
+| 6 | Model-selection decision and qualified larger Colab study | Open: qualified inputs, fair comparison budget, measured resources, declared rerun tolerances and hosted execution. Retain a simple signal or existing model if it wins the declared comparison. |
+| 7 | Versioned, label-free scoring bundle | Open: complete training/feature lineage, trusted loading, fresh-process score parity and incompatible-input tests. |
+| 8 | Offline monitoring, retraining and rollback | Open: execute the scenario table, preserve history and record review decisions without automatic portfolio promotion. |
+| 9 | Independent client handoff | Open: another researcher runs the documented workflow, adds one candidate and reviews evidence for all six completion requirements. |
 
 Calendar and feature-freshness corrections belong before market-data conclusions
 that depend on them. Their priority is not a reason to delay unrelated model
@@ -469,6 +526,10 @@ and evidence rather than silently replacing the previous study.
 - **Larger study:** require a passed source gate, tested transformations, a
   selected comparison protocol and measured resource estimates before scaling.
   Refresh Colab to the coherent release used by that study.
+- **Scoring and operations:** test bundle persistence and monitoring with
+  synthetic and authorized development inputs while broader data is qualified.
+  A scoring bundle must pass its fresh-process checks before the rollback
+  exercise. These tasks need not wait for a new model family or final results.
 - **Final evaluation:** freeze data, preprocessing, model choice, holdings,
   costs and acceptance rules before any authorized final evaluation. A changed
   source or target needs a declared exposure-aware plan, not a silently renewed
@@ -481,3 +542,10 @@ Report progress by evidence produced: a corrected assumption, tested behavior,
 completed experiment, qualified data decision or reproduced workflow. Track
 remaining work and the next dependency alongside it. More commits, model names,
 training hours or consumed tokens are not measures of research success.
+
+At each release, record the status of every workstream as open, in progress,
+awaiting a named prerequisite, or complete with evidence. Link to the existing
+study, test or execution record instead of creating a parallel reporting system.
+The coordinating agent maintains this plan, implementers verify their changes,
+and an independent reviewer checks the claimed milestone. The handoff names the
+research operator and model-review owner before any ongoing operation begins.
