@@ -121,7 +121,11 @@ boosting, -0.05001 for raw-return Ridge and -0.03701 for equal-weight ranks.
 Only raw-return boosting met the declared continuation criteria against the
 baseline. Neither rank-target transformation met its criteria. Boosting's
 second-fold IC was negative; this is a development lead, not a stable signal.
-The separate three-factor addition and qualified broader study remain open.
+The separate three-factor addition is complete: expanded HGB reached mean IC
+0.06714 and passed its declared continuation criteria. An individual
+moving-average-distance signal reached 0.17806, so beating simple signals remains
+an open requirement for the learned combination. The qualified broader study
+remains open. See the [feature-study results](research-decisions.md#feature-bundle-study-results).
 See the [full comparison](research-decisions.md#corrected-panel-target-study-results).
 
 Keep the panel, temporal validation, baseline and experiment-history design.
@@ -133,9 +137,9 @@ Track implementation and research evidence separately:
 
 | Evidence level | Current position | Next evidence needed |
 | --- | --- | --- |
-| Implemented and tested | Target/return separation, target ablation, calendar/endpoint corrections and exact-preserving array screening; corrected target experiment completed. | Separate factor comparison and end-to-end resource measurements at larger scale. |
+| Implemented and tested | Target/return separation, both ablation workflows, calendar/endpoint corrections and exact-preserving array screening. | Development holdings/cost accounting, negative controls and larger-scale profiling. |
 | Data checked | Archive session dates match pinned XNYS; normalized date keys were checked. | Per-security completeness and qualified historical membership, provenance and rights. |
-| Market-data evaluated | Corrected raw-return boosting met continuation criteria; Ridge and rank transformations did not. All five arms covered the 189 development dates. | Factor comparison, independent negative controls, economics and a qualified broader study. |
+| Market-data evaluated | Target and factor studies completed; expanded raw-return HGB passed its declared factor-study criteria, but a simple factor scored higher. All feature-study contrasts covered 189 dates. | Declared simple-factor/ML comparison, independent negative controls, economics and a qualified broader study. |
 | Environment reproduced | The walkthrough pins 0.13; current package capabilities are 0.16.1. Local and Linux checks have their own records. | A coherent updated notebook and fresh hosted Colab execution. |
 
 For each milestone, retain its hypothesis, prerequisite, deliverable,
@@ -420,7 +424,7 @@ and rollback exercise with named review ownership.
 | 1 | Direction audit and revised working plan | Complete: independent findings reconciled; sources and priorities recorded. |
 | 2 | Correct target/return separation in inner tuning | Complete: failing regressions reproduced and fixed; rank-target training reports return-unit spreads. |
 | 3 | Executable target/model ablation | Complete for the declared small development study: both targets, Ridge/boosting, all six paired comparisons, independent review and measured resources. |
-| 4 | Data qualification and empirical ablations | Calendar/endpoint checks and target study complete. The 10/13-feature runner is tested and its enriched inputs prepared; training awaits the verified resource observer and decision analysis. Qualified broader data remains open. |
+| 4 | Data qualification and empirical ablations | Calendar/endpoint checks and both declared ablations complete. The feature study passed its continuation criteria and independent audits; qualified broader data remains open. |
 | 5 | Development economic diagnostics and negative controls | Open: tested holdings/cost accounting and a frozen final-evaluation procedure. |
 | 6 | Stronger challenger and larger Colab study | Open: fair tuning budget, measured resources, independent review and reproducible run. |
 
@@ -428,23 +432,25 @@ Calendar and feature-freshness corrections belong before market-data conclusions
 that depend on them. Their priority is not a reason to delay unrelated model
 unit tests or the synthetic experiment workflow.
 
-The target-only study is complete and the canonical history now contains five
+Both ablation studies are complete and the canonical history now contains seven
 development records, including the original interrupted run. Preserve this
-lineage; the three-record pre-study backup and older two-record registry are
-historical evidence, not restart points.
+lineage; the earlier five-, three- and two-record snapshots are historical
+evidence, not restart points.
 
 The array-screening implementation preserves exact synthetic outputs and
 selection boundaries. Three fresh-process component comparisons measured a
 5.49x median speed ratio on 120 dates, 30 stocks and ten features. This does not
 measure a whole-study speedup or establish hosted Colab performance.
 The separate [10/13-feature study](research-decisions.md#september-22-2026-feature-bundle-study-declaration)
-is declared before fitting, with HGB primary, Ridge secondary and fixed paired
-continuation criteria. Its tested example and prepared inputs preserve the
-five-record history. Verify the resource observer and decision analysis, then
-run both bundles with the same enriched inputs and source/runtime. Keep raw-return
-boosting as a candidate for further tests, not an approved portfolio model.
-Qualify broader data and develop economic checks in parallel. Historical
-membership and source rights remain unresolved for the current archive.
+was completed under its frozen HGB-primary criteria. It took 12.42 minutes and
+585.92 MiB peak working set on Windows; hosted Colab remains unverified. All five
+prior records are unchanged, and the new ten-input predictions exactly reproduce
+the prior raw-target results. The expanded HGB is a candidate for further tests,
+not an approved portfolio model. Because an individual moving-average-distance
+signal scored higher, prioritize a declared simple-signal comparison, negative
+controls and development economic checks before a larger model search. Qualify
+broader data in parallel; historical membership and source rights remain
+unresolved for the current archive.
 
 The longer-term stages remain open until their completion checks are met.
 New sources or measured results can change this order; preserve the decision
@@ -452,11 +458,11 @@ and evidence rather than silently replacing the previous study.
 
 ## Dependencies and progress checks
 
-- **Corrected demonstration:** the target study passed its input, schedule,
-  history and resource checks. Continue the resulting five-record history,
+- **Corrected demonstration:** both ablations passed their input, schedule,
+  history and resource checks. Continue the resulting seven-record history,
   unchanged final-period boundaries and explicit declarations for later studies.
-- **Parallel development:** run the separate factor study while qualifying
-  larger data and building economic accounting and negative controls. Shared
+- **Parallel development:** qualify larger data while building economic
+  accounting, negative controls and the simple-signal/ML comparison. Shared
   datasets, schedules and registries must remain consistent across the work.
 - **Larger study:** require a passed source gate, tested transformations, a
   selected comparison protocol and measured resource estimates before scaling.
