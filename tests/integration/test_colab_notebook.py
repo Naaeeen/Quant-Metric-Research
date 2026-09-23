@@ -11,6 +11,7 @@ import nbformat
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
+APPROVED_SOURCE_REVISION = "dadcb6c699f8d3ab2cf512669b74abff64c98f75"
 
 
 def builder():
@@ -20,6 +21,27 @@ def builder():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def formatted_notebook(notebook):
+    formatted = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "ruff",
+            "format",
+            "--config",
+            str(ROOT / "pyproject.toml"),
+            "--stdin-filename",
+            "colab.ipynb",
+        ],
+        input=nbformat.writes(notebook),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert formatted.returncode == 0, formatted.stderr
+    return nbformat.reads(formatted.stdout, as_version=4)
 
 
 @pytest.mark.parametrize("revision", ["main", "", "a" * 39, "../source", "G" * 40])
@@ -62,6 +84,23 @@ def test_notebook_is_valid_clean_deterministic_and_compiles():
         assert required in sources
     assert "--evaluate-lockbox" not in sources
     assert "seed-notebook" not in "\n".join(cell.source for cell in code)
+
+
+def test_checked_in_notebook_matches_approved_source_and_complete_builder():
+    notebook = nbformat.read(ROOT / "examples/colab_public_demo.ipynb", as_version=4)
+    nbformat.validate(notebook)
+    expected = builder().build_notebook(APPROVED_SOURCE_REVISION)
+    assert notebook == formatted_notebook(notebook)
+    assert notebook == formatted_notebook(expected)
+    assert [cell.id for cell in notebook.cells] == [
+        f"qmr-colab-{index:02d}" for index in range(len(notebook.cells))
+    ]
+    code = [cell for cell in notebook.cells if cell.cell_type == "code"]
+    assert len(code) == 5
+    for cell in code:
+        assert cell.execution_count is None
+        assert cell.outputs == []
+        compile(cell.source, f"<checked-in-{cell.id}>", "exec")
 
 
 def test_writer_refuses_overwrite_and_invalid_extension(tmp_path):
