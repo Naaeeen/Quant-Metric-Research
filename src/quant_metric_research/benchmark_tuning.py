@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from .benchmark_config import BenchmarkConfig
+from .benchmark_data import expand_training_cross_sections
 from .benchmark_models import ModelCandidate, candidate_specs, fit_candidate
 from .screening import MetricScreenResult, fit_metric_screen
 from .signals import compute_daily_rank_ic, compute_quantile_spreads
@@ -84,7 +85,11 @@ def _inner_folds(
     )
     prepared: list[tuple[pd.DataFrame, pd.DataFrame, MetricScreenResult]] = []
     for fold in folds:
-        inner_training = normalized.loc[list(fold.train_indices)].copy(deep=True)
+        inner_training = expand_training_cross_sections(
+            normalized,
+            training_indices=fold.train_indices,
+            outcome_columns=(config.target_column, config.realized_return_column),
+        )
         validation = normalized.loc[list(fold.test_indices)].copy(deep=True)
         screen = fit_fold_screen(inner_training, config=config)
         if not screen.selected_features:

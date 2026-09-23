@@ -4,7 +4,12 @@ import numpy as np
 import pandas as pd
 
 from .config import PanelConfig
-from .contracts import DataContractError, validate_memberships, validate_prices
+from .contracts import (
+    DataContractError,
+    validate_as_of_dates,
+    validate_memberships,
+    validate_prices,
+)
 from .features import compute_price_metrics
 
 
@@ -59,11 +64,7 @@ def build_point_in_time_panel(
 ) -> pd.DataFrame:
     validated_prices = validate_prices(prices)
     validated_memberships = validate_memberships(memberships)
-    normalized_dates = tuple(pd.Timestamp(value) for value in as_of_dates)
-    if not normalized_dates:
-        raise ValueError("as_of_dates must not be empty.")
-    if len(set(normalized_dates)) != len(normalized_dates):
-        raise ValueError("as_of_dates must be unique.")
+    normalized_dates = validate_as_of_dates(as_of_dates)
 
     benchmark_prices = validated_prices.loc[
         validated_prices["symbol"] == config.benchmark_symbol

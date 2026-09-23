@@ -10,8 +10,12 @@ from .benchmark import (
 from .benchmark_io import BenchmarkArtifacts, write_benchmark_run
 from .config import PanelConfig
 from .contracts import DataContractError, validate_memberships, validate_prices
+from .experiment_registry import ExperimentRegistry
+from .input_audit import audit_inputs
+from .intake import import_yahoo_files
 from .panel import build_point_in_time_panel
 from .pipeline import ResearchRun, run_research
+from .preflight import preflight_benchmark
 from .reduction import PCABaseline, fit_pca_baseline
 from .screening import MetricScreenResult, fit_metric_screen
 from .splits import PurgedWalkForwardSplit, build_purged_walk_forward_splits
@@ -27,6 +31,7 @@ __all__ = [
     "BenchmarkConfig",
     "BenchmarkRun",
     "DataContractError",
+    "ExperimentRegistry",
     "MetricScreenResult",
     "NestedSplitConfig",
     "PCABaseline",
@@ -35,12 +40,15 @@ __all__ = [
     "ResearchRun",
     "WalkForwardMetricConfig",
     "WalkForwardMetricResult",
+    "audit_inputs",
+    "import_yahoo_files",
     "build_point_in_time_panel",
     "build_purged_walk_forward_splits",
     "fit_metric_screen",
     "fit_pca_baseline",
     "evaluate_metrics_walk_forward",
     "run_stage3_benchmark",
+    "preflight_benchmark",
     "run_research",
     "validate_memberships",
     "validate_prices",

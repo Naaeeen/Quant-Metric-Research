@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
+from datetime import date, timedelta
+
 import numpy as np
 import pandas as pd
 
@@ -14,6 +17,8 @@ def _require_columns(
     *,
     dataset_name: str,
 ) -> None:
+    if not frame.columns.is_unique:
+        raise DataContractError(f"Duplicate {dataset_name} columns are not allowed.")
     missing = [column for column in required if column not in frame.columns]
     if missing:
         joined = ", ".join(missing)
@@ -24,6 +29,94 @@ def _normalized_text(series: pd.Series) -> pd.Series:
     return series.astype("string").str.strip()
 
 
+def _daily_date(value: object, *, field: str, nullable: bool) -> pd.Timestamp | None:
+    message = (
+        f"{field} contains invalid dates; expected normalized, "
+        "timezone-naive calendar dates."
+    )
+    if not pd.api.types.is_scalar(value):
+        raise DataContractError(message)
+    if pd.isna(value):
+        if nullable:
+            return None
+        raise DataContractError(message)
+    # pandas interprets numbers as epoch offsets; that is not our daily contract.
+    if not isinstance(value, (str, date, np.datetime64)):
+        raise DataContractError(message)
+    try:
+        parsed = pd.Timestamp(value)
+        if pd.isna(parsed) or parsed.tzinfo is not None or parsed != parsed.normalize():
+            raise DataContractError(message)
+    except (TypeError, ValueError, OverflowError) as error:
+        raise DataContractError(message) from error
+    return parsed
+
+
+def _daily_dates(series: pd.Series, *, field: str, nullable: bool = False) -> pd.Series:
+    parsed = [_daily_date(value, field=field, nullable=nullable) for value in series]
+    try:
+        return pd.Series(
+            parsed, index=series.index, name=series.name, dtype="datetime64[ns]"
+        )
+    except (TypeError, ValueError, OverflowError) as error:
+        raise DataContractError(
+            f"{field} contains invalid or out-of-range dates."
+        ) from error
+
+
+def validate_as_of_dates(values: Iterable[object]) -> tuple[pd.Timestamp, ...]:
+    """Return ordered daily decision dates without repairing or mutating inputs."""
+    if isinstance(values, (str, bytes, Mapping, pd.DataFrame)):
+        raise DataContractError(
+            "as_of_dates must be a nonempty sequence of daily dates."
+        )
+    try:
+        supplied = tuple(values)
+    except TypeError as error:
+        raise DataContractError(
+            "as_of_dates must be a nonempty sequence of daily dates."
+        ) from error
+    if not supplied:
+        raise DataContractError("as_of_dates must not be empty.")
+    parsed = _daily_dates(pd.Series(supplied, dtype=object), field="as_of_dates")
+    dates = tuple(parsed)
+    if len(set(dates)) != len(dates):
+        raise DataContractError("as_of_dates must be unique.")
+    return dates
+
+
+def _positive_price_values(series: pd.Series) -> pd.Series:
+    message = (
+        "prices must contain finite, strictly positive real adjusted_close values."
+    )
+    forbidden = (
+        bool,
+        np.bool_,
+        date,
+        timedelta,
+        np.datetime64,
+        np.timedelta64,
+        complex,
+        np.complexfloating,
+    )
+    # Numeric conversion can turn temporal dtypes into epoch/duration integers
+    # and casting complex arrays to float silently discards their imaginary part.
+    if series.dtype.kind in "bcmM" or any(
+        isinstance(value, forbidden) for value in series
+    ):
+        raise DataContractError(message)
+    try:
+        parsed = pd.to_numeric(series, errors="coerce")
+        if pd.api.types.is_complex_dtype(parsed.dtype):
+            raise DataContractError(message)
+        values = parsed.to_numpy(dtype=float)
+    except (TypeError, ValueError, OverflowError) as error:
+        raise DataContractError(message) from error
+    if not np.isfinite(values).all() or (values <= 0).any():
+        raise DataContractError(message)
+    return parsed
+
+
 def validate_prices(prices: pd.DataFrame) -> pd.DataFrame:
     if not isinstance(prices, pd.DataFrame):
         raise DataContractError("prices must be a pandas DataFrame.")
@@ -31,21 +124,13 @@ def validate_prices(prices: pd.DataFrame) -> pd.DataFrame:
     required = ("date", "symbol", "adjusted_close")
     _require_columns(prices, required, dataset_name="price")
     validated = prices.copy(deep=True)
-    validated["date"] = pd.to_datetime(validated["date"], errors="coerce")
+    validated["date"] = _daily_dates(validated["date"], field="date")
     validated["symbol"] = _normalized_text(validated["symbol"]).str.upper()
-    validated["adjusted_close"] = pd.to_numeric(
-        validated["adjusted_close"],
-        errors="coerce",
-    )
+    validated["adjusted_close"] = _positive_price_values(validated["adjusted_close"])
 
     required_values = validated.loc[:, list(required)]
     if required_values.isna().any().any() or (validated["symbol"] == "").any():
         raise DataContractError("prices contains invalid required values.")
-    values = validated["adjusted_close"].to_numpy(dtype=float)
-    if not np.isfinite(values).all() or (values <= 0).any():
-        raise DataContractError(
-            "prices must contain finite, strictly positive adjusted_close values."
-        )
     if validated.duplicated(["date", "symbol"], keep=False).any():
         raise DataContractError("Duplicate symbol-date rows found in prices.")
 
@@ -71,13 +156,14 @@ def validate_memberships(memberships: pd.DataFrame) -> pd.DataFrame:
     validated["universe_id"] = _normalized_text(validated["universe_id"])
     validated["symbol"] = _normalized_text(validated["symbol"]).str.upper()
     validated["source"] = _normalized_text(validated["source"])
-    validated["effective_from"] = pd.to_datetime(
+    validated["effective_from"] = _daily_dates(
         validated["effective_from"],
-        errors="coerce",
+        field="effective_from",
     )
-    validated["effective_to"] = pd.to_datetime(
+    validated["effective_to"] = _daily_dates(
         validated["effective_to"],
-        errors="coerce",
+        field="effective_to",
+        nullable=True,
     )
 
     required_non_null = ["universe_id", "symbol", "effective_from", "source"]

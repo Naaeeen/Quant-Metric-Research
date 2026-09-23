@@ -1,6 +1,6 @@
 # Research decisions
 
-Last reviewed: 2026-08-27
+Last reviewed: 2026-09-07
 
 ## Entry-gate evidence
 
@@ -80,14 +80,15 @@ Last reviewed: 2026-08-27
 13. The final dates are locked before tuning. Outer purged folds estimate
     development performance; inner purged folds select parameters. The frozen
     model family is chosen from development common-sample Rank IC, then the
-    lockbox is evaluated once within that engine run.
+    lockbox is evaluated only after an explicit opt-in in that engine run.
 14. Both native and common-sample metrics are retained. Native results expose
     practical coverage; common results make the primary model-versus-baseline
     comparison on identical security-date rows.
 15. A benchmark result is an immutable artifact bundle. The destination must
     not already exist, publication is atomic, feature lists and hyperparameters
     use canonical JSON, and the manifest fingerprints the actual package source
-    plus the full validated panel contract—not only a manually bumped version.
+    plus the full validated panel contract and execution mode—not only a
+    manually bumped version.
 16. Rank IC and economic spread use separate complete-case samples. Their
     counts and coverage are reported separately because a distinct realized
     return column may be missing when the learning target is still valid.
@@ -97,9 +98,160 @@ Last reviewed: 2026-08-27
     lockbox date counts, a strict improvement over the baseline, and a
     predeclared HAC p-value bound on the paired daily Rank-IC improvement.
 18. `lockbox_evaluated_once_in_this_run` is deliberately narrow. Preventing a
-    team from rerunning the same lockbox requires an external experiment ID and
-    reuse registry; the engine does not claim to enforce that organizational
-    control.
+    team from rerunning the same lockbox needs cross-run evidence. Version 0.4
+    adds a local experiment registry and reports its enforcement separately;
+    this is not a claim to enforce an organization-wide access-control policy.
+
+## September 2026 audit: keep the engine, repair the evidence path
+
+The audit reproduced defects before implementation and added regression tests.
+No result justified a wholesale rebuild or a more complex model.
+
+- Future target missingness previously removed stocks before feature ranking,
+  changing other stocks' scores. Score full contemporaneous date cross-sections
+  first; mask unauthorized outcomes separately. Apply this distinction in
+  training transforms, inner validation and final scoring.
+- Keep daily decision timestamps within their as-of day and reject malformed
+  membership ends. A later timestamp must not authorize future features under
+  an earlier decision-date split.
+- Replace arbitrary stable-sort tie slicing with equal fractional weight across
+  boundary ties. Keep the old bucket mass and undefined flat-score behavior.
+  This is our explicitly tested descriptive-statistic convention, not a claim
+  that every quant platform uses it.
+- Default Stage 3 to development only, require explicit final-test opt-in, and
+  distinguish unperformed acceptance from empirical failure. Schema 3 records
+  the execution mode and separates prediction coverage from outcome coverage.
+
+The methodological basis remains training-only model choices and preprocessing,
+as described by [scikit-learn](https://scikit-learn.org/stable/common_pitfalls.html).
+[Qlib Recorder](https://qlib.readthedocs.io/en/stable/component/recorder.html)
+records experiment/run identity, parameters, metrics and artifacts; that informs
+the version 0.4 registry described below. [Bailey et al., The Probability of Backtest Overfitting](https://www.davidhbailey.com/dhbpapers/backtest-prob.pdf)
+explains why holdouts alone do not account for repeated strategy searches.
+Accordingly, an opt-in flag and one-run p-value are insufficient evidence of
+unbiased discovery after an unrecorded research search.
+
+## Version 0.4: preflight and durable experiment evidence
+
+Keep the existing numerical benchmark and add evidence controls before adding
+models. The no-training preflight shares the benchmark's temporal split builders,
+checks all outer/inner/final-training schedules after purging, and reports
+development coverage and sample-size limitations. It deliberately does not
+screen features, calculate IC, or promise that a model can pass acceptance.
+
+Qlib Recorder supplies the experiment/run separation. [MLflow's backend-store
+documentation](https://mlflow.org/docs/latest/self-hosting/architecture/backend-store/)
+separates run metadata from artifacts and supports a local SQLite backend.
+We use standard-library SQLite instead of adding an experiment server dependency;
+this is a scope/cost decision, not a claim of feature parity with either system.
+
+[SQLite's transaction documentation](https://www.sqlite.org/lang_transaction.html)
+explains how `BEGIN IMMEDIATE` obtains the write transaction and serializes
+competing writers. The registry checks overlap and inserts the reservation in
+one transaction, then commits before final model fitting or evaluation. Keeping
+that transaction open through training would let a crash roll back the protection.
+Failed/interrupted runs retain their exposure; no reset/unreserve API is provided.
+
+Research and independent review changed the initial implementation in three ways:
+
+1. Protect against previously exposed development periods, not only earlier final
+   runs. Otherwise a shortened panel could rename development dates as a fresh
+   final test. Overlap checks span all studies/configurations in the same registry.
+2. Extend final exposure through maximum locked `label_end_date` so a shifted
+   decision block cannot silently reuse the forward-return tail. Development
+   exposure conservatively ends the calendar day before the lockbox.
+3. Validate the referenced plan before repeating any development fitting, then
+   repeat validation atomically when reserving the final test. This prevents a
+   stale configuration from evaluating unregistered development dates before
+   being rejected. Match panel/source/config/boundaries and recorded runtime
+   versions, then require the same development-selected model family.
+
+These envelope rules are our conservative safeguards, not a universal industry
+standard. They may reject unrelated markets sharing dates in the same registry.
+Registry `completed` means computation finished; subsequent artifact publication
+can still fail without releasing the consumed interval. Unknown schemas and
+invalid/corrupt files fail closed. Metadata uses parameterized SQL, validated
+finite JSON and exception class names instead of potentially sensitive error text.
+
+The runnable offline synthetic example verifies the CLI lifecycle and refusal
+behavior. It proves no empirical signal. Neither the registry nor a one-run
+p-value corrects for an entire history of strategy searches: multiple-testing,
+independent review and a genuinely unobserved period remain research obligations.
+Full-panel validation and hashing still read the underlying data, and local files
+cannot prevent manual edits, alternative registries or prior human inspection.
+
+Provider acquisition, a new market choice, net-cost portfolio testing and
+production promotion remain outside this software-correctness milestone.
+
+## Real-data entry preparation: diagnostics before an adapter
+
+The next useful increment is an offline input audit plus a human provider-evidence
+checklist, not another model or a general certification system. A market, vendor,
+access agreement and independent sample have not yet been established. This is
+our bounded engineering choice, not a claim that one vendor or workflow is best.
+
+Research exposed distinctions that the input contract alone cannot verify:
+
+- [Qlib's PIT database](https://qlib.readthedocs.io/en/stable/advanced/PIT.html)
+  separates a financial statement's period from publication date and retains
+  amendments. Downloading today's corrected history and hashing it does not
+  reconstruct what was available at an earlier decision time.
+- [Norgate's FAQ](https://norgatedata.com/data-package-faq.php) distinguishes
+  effective-date membership and stable asset IDs from ticker strings. It also
+  documents continuously applied corrections without versioning, and no
+  delisting-return/reason or post-delisting-event data. Its suggested final-bar
+  liquidation is a vendor approximation, not proof of a fixed-horizon terminal
+  return. These are documented product limitations, not findings from our samples.
+- [Norgate's content tables](https://norgatedata.com/data-content-tables.php)
+  identify synthetic pre-March-2000 ASX membership histories and certain
+  Canadian histories using current methodology. Record coverage by period and
+  distinguish reconstructed history from observed eligibility.
+- [QuantConnect's security identifiers](https://www.quantconnect.com/docs/v2/writing-algorithms/key-concepts/security-identifiers)
+  distinguish permanent security identity from mutable tickers. Its
+  [security master](https://www.quantconnect.com/docs/v2/writing-algorithms/datasets/quantconnect/us-equity-security-master)
+  represents corporate-action events separately from underlying equity prices.
+  Provider documentation informs the checks; it does not verify a QMR dataset.
+- [Datasheets for Datasets](https://arxiv.org/html/1803.09010v8) motivates
+  documenting composition, collection, preprocessing, uses, distribution and
+  maintenance, including explicit unknowns. We adopt a small factual checklist
+  rather than treating filled fields as a certificate. Usage rights require
+  separate evidence; for example, [Norgate's EULA](https://norgatedata.com/subscribe/eula.php)
+  restricts redistribution and commercial use.
+
+The resulting `audit_inputs` API and `qmr audit-inputs` command validate existing
+raw-input contracts and report coverage by date/security, members with enough
+adjacent historical price pairs and future label-endpoint presence. They calculate no returns,
+signals or models. Normalized-required-column/request fingerprints identify the
+audited inputs but exclude extra fields and original file bytes. All external
+checks stay unverified and Stage 4 remains blocked. Exit code zero confirms
+report generation only; the checklist in `data-contract.md` still needs a human
+record of provider claims, independent sample checks and unresolved gaps.
+
+This audit cannot establish session completeness from benchmark bars alone:
+compare against an independent exchange calendar. It also reads future price
+presence and hashes supplied values, so it is not a sealed holdout. Acquisition
+timestamps and reproducible snapshots help trace later changes, not establish
+missing historical vintages. No provider was selected or empirically audited.
+
+The same boundary review corrected these earlier-path issues:
+
+1. Daily Stage 1 dates and the Stage 2 cutoff now reject intraday, timezone-aware
+   and numeric epoch inputs instead of silently normalizing them. Duplicate or
+   empty decision-date requests fail explicitly.
+2. The `run_research` screening copy masks outcomes with unknown label ends or
+   label ends after its end-of-day cutoff. Same-day matured labels are allowed.
+   The original panel and contemporaneous feature rows remain available for
+   coverage, redundancy and PCA. This correction is local to that workflow:
+   Stage 3 and walk-forward folds retain their stricter label-end-before-test
+   purging, and the generic screening helper is unchanged.
+3. Reject boolean, temporal and complex prices before pandas can reinterpret
+   them as numbers, and reject raw duplicate CSV headers before pandas can
+   rename them. Independently reviewed real-file and mixed-type regressions
+   cover these input boundaries.
+
+After agreeing the research specification and access rights, inspect a permitted
+sample across dated membership, identifier changes, actions, delisting and
+revision cases. Only then implement the necessary adapter and lifecycle tests.
 
 ## Exit-gate conclusion
 
@@ -132,3 +284,172 @@ Repeat the research gate before changing any of these items:
 - model family, tuning grid, acceptance threshold, or lockbox boundary;
 - experiment identifier or lockbox-reuse policy;
 - transition to portfolio backtesting or live use.
+
+## September 2026 provider decision: prepare an offline ASX demonstration
+
+The next release prepares a Yahoo-format file import for a fixed, presently
+selected ASX cohort: `BHP.AX`, `CBA.AX`, `CSL.AX`, `NAB.AX`, `RIO.AX`, `TLS.AX`,
+`WES.AX` and `WOW.AX`. These selections precede inspection of price outcomes.
+They define a demonstration cohort, with selection and survivorship bias; they
+do not assert historical ASX200 membership. The
+[offline intake example](../examples/README.md#declared-intake-only-demonstration-scope)
+declares a 2015-01-01 through 2026-02-28 inclusive export window and weekly
+decision dates during 2016-2025, before data review. Actual coverage,
+an independent exchange calendar, historical identifiers and terminal returns
+remain unverified. This increment imports and audits inputs; it opens no training
+or final-test evaluation and establishes no empirical alpha.
+
+`VAS.AX` supplies the proposed adjusted ETF return proxy. Vanguard states that
+VAS seeks to track the S&P/ASX 300 before fees, expenses and tax. An adjusted ETF
+price series is not the official ASX200 total-return index, and provider adjustment
+quality remains a separate check.
+[Vanguard's product description](https://www.vanguard.com.au/adviser/invest/etf?portId=8205&productType=etf)
+
+The existing Financial-Investment-Tool source was inspected on 2026-09-07:
+`server/requirements.txt` pins `yfinance==0.2.65`; `server/src/metrics.py` adds one
+calendar day to the inclusive UI end date and calls `yf.download` with
+`group_by='ticker'`, `auto_adjust=False`, `threads=False` and `progress=False`.
+Its short-lived in-memory cache is not an archival data source. Its separate
+price-field helper can select `Close` when `Adj Close` is absent. The undated
+`data/asx200.csv` has 198 rows; the universe-sync script excludes `IFL.AX` and
+`NSR.AX`. This seed and its filtered output do not establish dated membership.
+No market-data download or original price snapshot was produced by this inspection.
+
+The QMR importer requires flat, per-symbol `Date` and `Adj Close` exports and
+never substitutes `Close`. It preserves original file bytes with a manifest and
+an audit so later transformations can be traced. This verifies file identity and
+schema, not the adjustment method: upstream yfinance 0.2.65 itself can substitute
+Close when the source omits adjusted-close values. Yahoo describes adjusted close
+as reflecting splits and distributions, but a column heading is not independent
+evidence that those events were correctly applied.
+[Pinned yfinance parser](https://raw.githubusercontent.com/ranaroussi/yfinance/0.2.65/yfinance/utils.py),
+[Yahoo adjustment explanation](https://help.yahoo.com/kb/SLN28256.html)
+
+The chosen file format does not select or authorize an acquisition method.
+Yahoo's Australian terms restrict automated collection without prior permission;
+its download help documents subscription-dependent historical CSV access.
+yfinance's software license does not grant rights to Yahoo data. These sources
+leave access, local reuse and any sharing for this project to be established;
+they do not support a blanket claim that every Yahoo use is prohibited. No
+automatic downloader, new data-provider dependency, purchase or redistribution
+is included, and no authorized real dataset is available in this release.
+[Yahoo AU terms](https://legal.yahoo.com/au/en/yahoo/terms/otos/index.html),
+[Yahoo export help](https://help.yahoo.com/kb/sln2311.html),
+[yfinance's upstream notice](https://github.com/ranaroussi/yfinance)
+
+Nasdaq WIKI was investigated but not selected. Its legacy documentation describes
+public-domain data and the `WIKI/<ticker>` time-series route; this is distinct from
+the `WIKI/PRICES` Tables route. The legacy getting-started page requires a key for
+each request, while current Tables documentation both requires a key and publishes
+anonymous-call limits. The WIKI product documentation and retirement FAQ returned
+404 during this review. Current endpoint availability and applicable access terms
+remain unresolved; Tables requirements alone do not settle the time-series route.
+No price endpoint was probed. A separately verified frozen archive could support
+a historical engineering example, but would not resolve this ASX cohort's needs.
+[Legacy WIKI route and metadata](https://docs.data.nasdaq.com/v1.0/docs/in-depth-usage),
+[Legacy authentication](https://docs.data.nasdaq.com/v1.0/docs/getting-started),
+[Tables authentication](https://docs.data.nasdaq.com/docs/api-and-analysis-tools-for-tables-data),
+[Tables anonymous limits](https://docs.data.nasdaq.com/docs/rate-limits-1)
+
+The next evidence gate is an authorized export plus its source/access record,
+followed by observed date, action, missingness and identity checks. Original-byte
+snapshots cannot recover historical provider vintages or certify delisting returns.
+Stage 4 remains blocked pending the existing data and research review requirements.
+
+## September 2026 public-archive development declaration
+
+The user delegated source and implementation choices and requested autonomous
+progress beyond the unavailable local ASX exports. The ASX intake remains
+supported; this is a separate **US engineering/development demonstration**, not
+fulfilment of historical ASX membership or permission to trade.
+
+Before calculating features or inspecting model outcomes, the declared source is
+Chi Seng Pun's 2018 Mendeley Data V3 archive, DOI `10.17632/ndxfrshm74.3`:
+`sp500-1216.csv` (2012-2016 daily adjusted prices) and `FF3-0317.csv`.
+The public metadata identifies a January 2017 constituent snapshot and labels
+the dataset CC BY 4.0, while noting that third-party content may require further
+permission. This supports the publisher-declared research archive use here, not
+independent verification of Yahoo/French redistribution rights. Raw exports and
+row-level derived artifacts stay local and ignored by Git.
+[Dataset](https://data.mendeley.com/datasets/ndxfrshm74/3),
+[versioned metadata](https://data.mendeley.com/public-api/datasets/ndxfrshm74/snapshot/3).
+
+Fixed choices for the first run:
+
+- Select the first 30 normalized stock-column labels alphabetically from the
+  frozen file, before screening values; retain sparse histories, with no
+  replacement based on coverage or performance. This arbitrary bounded cohort
+  and the archive's survivor selection prevent an unbiased-universe claim.
+- Use daily observations from 2012-01-03 through 2016-12-30, with decision dates
+  from 2013-01-02 through 2016-12-30. The immature price-history tail stays visible.
+- Construct `FF_MARKET_PROXY` from archived daily `(Mkt-RF + RF) / 100`, starting
+  at 100 on the first included session. It is a derived broad-market return
+  index, not an ETF or the official S&P 500 total-return index. Do not use future
+  returns to define features. The benchmark calendar is supplied, not certified.
+- Keep the ten existing trailing metrics, a 252-session lookback, minimum 126
+  observations, 20-session forward excess return, one-session entry lag,
+  252-session annualization and zero assumed risk-free rate for trailing ratios.
+- Train only Ridge (`alpha=1`), against all individual-metric, best train-only
+  metric and equal-weight oriented-rank baselines. Use fold-local screening,
+  imputation, scaling and ranks; no model-family or parameter search after results.
+- Reserve 63 final decision dates without evaluating their outcomes. Development
+  uses three outer 63-date windows (minimum 252 training dates), each with two
+  inner 42-date windows (minimum 126 training dates), and purges label overlap.
+  Require a minimum 20-stock cross-section, three quantiles, coverage 0.8,
+  redundancy threshold 0.9, HAC lag 19 and random seed 42.
+- Audit raw coverage and build the panel without the separate `qmr run` screening
+  path. Persist no-training preflight before registered development, and retain
+  one durable local registry outside individual run directories.
+
+The benchmark construction follows
+[French's market-factor definition](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/f-f_factors.html);
+fold-local transforms follow
+[scikit-learn's leakage guidance](https://scikit-learn.org/stable/common_pitfalls.html).
+This run can demonstrate data handling and actual model training. Its acceptance
+remains `not_evaluated` and Stage 4 remains false; retrospective revisions,
+survivorship, corporate actions, stable identifiers and delistings are not
+certified. Never present the reserved block as physically sealed or historically
+unseen merely because the workflow does not evaluate it.
+
+### Observed development result, 2026-09-08
+
+The declared experiment completed without changing its cohort, model, features
+or split settings. An earlier usage-interrupted attempt remains in the same
+registry as run `a9dc0e7b-4240-4205-b393-ba33a5bdab6d`; its partial output was
+not overwritten or treated as a completed result. The successful new-directory
+retry is `4fdd4eba-4c8f-459c-9e0f-981d2ebf47d0`.
+
+The source sample has 1,258 sessions and 722 explicit missing stock prices
+(ABBV: 250; ALLE: 472). No sparse member was replaced. The resulting panel has
+30,240 stock-date rows over 1,008 decision dates. Development evaluation covers
+189 dates; the primary baseline and Ridge have 100% prediction and evaluation
+coverage on both native and common scopes.
+
+| Development mean Rank IC | Equal-weight rank | Ridge |
+| --- | ---: | ---: |
+| Outer fold 1 | 0.03615 | 0.08545 |
+| Outer fold 2 | -0.13397 | -0.23891 |
+| Outer fold 3 | -0.01320 | 0.01044 |
+| Overall | -0.03701 | -0.04767 |
+
+Ridge is better in two folds but substantially worse in the second. It does
+not improve the predeclared aggregate ranking criterion. The mean raw
+top-minus-bottom 20-session spread is also negative for both methods
+(-0.005446 for equal ranks, -0.004336 for Ridge); these overlapping signal
+statistics are not annual returns, implemented portfolios, or net PnL.
+
+Conclusion: the real-data engineering path works, but this experiment provides
+no stable positive-signal or model-improvement result. Do not reverse directions,
+change the sample, tune parameters or open the final block to manufacture a win.
+This does not establish that all metrics or ML are universally ineffective.
+
+Independent review matched all 24 recorded artifact hashes, the registry link,
+and source fingerprint
+`7d91f3c65c811e1ecf1357159d6b594cce6ba04a496cfc19fb293493c022e5f0`.
+The final 63 eligible decision dates (2016-09-01 to 2016-11-30) were not evaluated;
+there is no final experiment record or exposure. Acceptance remains
+`not_evaluated`, with provenance and Stage 4 eligibility false. The raw files,
+row-level results, and canonical registry remain local. Version 0.7.0 code was
+released in commit `eff6bd14b753f4aad7640c5c022ccca9878534ca`, with 695 local
+tests passing, 89.76% aggregate branch-tracked coverage, and successful Linux
+Python 3.11/3.13 CI. The next engineering milestones are in the roadmap.

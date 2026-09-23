@@ -44,7 +44,8 @@ class FittedCandidate:
             rank_features=self.rank_features,
         )
         scores = self._pipeline.predict(features)
-        return pd.Series(scores, index=frame.index, name="score", dtype="float64")
+        result = pd.Series(scores, index=frame.index, name="score", dtype="float64")
+        return result.where(features.notna().any(axis=1))
 
 
 def _candidate(family: str, parameters: dict[str, Any]) -> ModelCandidate:
@@ -198,23 +199,27 @@ def fit_candidate(
     normalized[target_column] = pd.to_numeric(original_target, errors="coerce")
     if (original_target.notna() & normalized[target_column].isna()).any():
         raise ValueError("Training target contains non-numeric values.")
-    normalized = normalized.loc[
-        normalized[as_of_date_column].notna()
-        & normalized[label_end_date_column].notna()
-        & normalized[target_column].notna()
-    ].copy(deep=True)
-    if normalized.empty:
-        raise ValueError("No valid labeled training rows remain.")
-    target_values = normalized[target_column].to_numpy(dtype=float)
-    if not np.isfinite(target_values).all():
-        raise ValueError("Training target must contain finite values.")
-
+    # Rank the complete contemporaneous universe before selecting the labeled
+    # rows that contribute to the supervised loss.
     features = _feature_frame(
         normalized,
         feature_columns,
         rank_features=rank_features,
         as_of_date_column=as_of_date_column,
     )
+    labeled = (
+        normalized[as_of_date_column].notna()
+        & normalized[label_end_date_column].notna()
+        & normalized[target_column].notna()
+    )
+    features = features.loc[labeled]
+    normalized = normalized.loc[labeled].copy(deep=True)
+    if normalized.empty:
+        raise ValueError("No valid labeled training rows remain.")
+    target_values = normalized[target_column].to_numpy(dtype=float)
+    if not np.isfinite(target_values).all():
+        raise ValueError("Training target must contain finite values.")
+
     raw_weights = np.asarray(
         equal_date_training_weights(normalized, date_column=as_of_date_column),
         dtype=float,

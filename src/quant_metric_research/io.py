@@ -6,6 +6,7 @@ from typing import Any
 
 import pandas as pd
 
+from .contracts import DataContractError, validate_as_of_dates
 from .pipeline import ResearchRun
 
 
@@ -15,6 +16,13 @@ def read_table(path: str | Path) -> pd.DataFrame:
         raise FileNotFoundError(f"Input table does not exist: {source}")
     lowered_name = source.name.lower()
     if lowered_name.endswith((".csv", ".csv.gz")):
+        # Parse the header as string data first: inferred DataFrame headers
+        # silently rename duplicates and would conceal an invalid input schema.
+        raw_header = pd.read_csv(
+            source, header=None, nrows=1, dtype=str, keep_default_na=False
+        ).iloc[0]
+        if raw_header.duplicated().any():
+            raise DataContractError("Duplicate raw CSV columns are not allowed.")
         return pd.read_csv(source)
     if lowered_name.endswith((".parquet", ".pq")):
         return pd.read_parquet(source)
@@ -33,15 +41,11 @@ def read_json_object(path: str | Path) -> dict[str, Any]:
 
 def read_as_of_dates(path: str | Path) -> tuple[pd.Timestamp, ...]:
     frame = read_table(path)
+    if not frame.columns.is_unique:
+        raise DataContractError("Duplicate as-of-date columns are not allowed.")
     if "as_of_date" not in frame.columns:
         raise ValueError("as-of-date input must contain an as_of_date column.")
-    parsed = pd.to_datetime(frame["as_of_date"], errors="coerce")
-    if parsed.isna().any() or parsed.empty:
-        raise ValueError("as_of_date contains invalid or empty values.")
-    dates = tuple(pd.Timestamp(value) for value in parsed)
-    if len(set(dates)) != len(dates):
-        raise ValueError("as_of_date values must be unique.")
-    return dates
+    return validate_as_of_dates(frame["as_of_date"])
 
 
 def _write_frame(frame: pd.DataFrame, path: Path) -> None:

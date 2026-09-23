@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from ._spreads import fractional_quantile_spread
 from .statistics import benjamini_hochberg, newey_west_mean_tstat
 
 DAILY_IC_COLUMNS = (
@@ -143,19 +144,15 @@ def compute_quantile_spreads(
                 or paired[feature].nunique() <= 1
             ):
                 continue
-            ordered = paired.sort_values(
-                feature,
-                kind="stable",
-            ).reset_index(drop=True)
-            bucket_size = max(1, ordered.shape[0] // quantiles)
-            bottom = float(ordered.iloc[:bucket_size][target_column].mean())
-            top = float(ordered.iloc[-bucket_size:][target_column].mean())
+            spread = fractional_quantile_spread(
+                paired[feature], paired[target_column], quantiles=quantiles
+            )
             rows.append(
                 {
                     "as_of_date": pd.Timestamp(as_of_date),
                     "feature": feature,
-                    "spread": top - bottom,
-                    "cross_section_size": int(ordered.shape[0]),
+                    "spread": spread,
+                    "cross_section_size": int(paired.shape[0]),
                 }
             )
     return pd.DataFrame(rows, columns=SPREAD_COLUMNS)

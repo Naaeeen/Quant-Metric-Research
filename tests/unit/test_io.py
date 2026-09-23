@@ -57,12 +57,13 @@ def test_write_research_run_emits_optional_pca_artifacts(
     tmp_path, market_fixture
 ) -> None:
     prices, memberships, dates = market_fixture
+    # Allow BBB's first two-session forward label to mature before screening.
     result = run_research(
         prices,
         memberships,
-        as_of_dates=tuple(dates[4:11]),
+        as_of_dates=tuple(dates[4:12]),
         config=_config(),
-        train_end_date=dates[10],
+        train_end_date=dates[11],
         min_cross_section=2,
         minimum_coverage=0.8,
         redundancy_threshold=0.9,

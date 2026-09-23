@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from itertools import permutations
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -73,6 +75,43 @@ def test_quantile_spread_is_top_minus_bottom_within_each_date() -> None:
     )
 
     assert spreads["spread"].tolist() == pytest.approx([0.02, -0.02, 0.02])
+
+
+@pytest.mark.parametrize("tied_returns", list(permutations([0.0, 10.0, 20.0])))
+@pytest.mark.parametrize("quantiles, expected", [(2, -4.5), (4, -9.0)])
+def test_quantile_spread_shares_boundary_ties_independent_of_row_order(
+    tied_returns: tuple[float, ...], quantiles: int, expected: float
+) -> None:
+    panel = pd.DataFrame(
+        {
+            "as_of_date": pd.Timestamp("2025-01-03"),
+            "signal": [0.0, 0.0, 0.0, 1.0],
+            "target": [*tied_returns, 1.0],
+        }
+    )
+
+    spreads = compute_quantile_spreads(
+        panel,
+        feature_columns=("signal",),
+        target_column="target",
+        quantiles=quantiles,
+        min_cross_section=4,
+    )
+
+    assert spreads["spread"].tolist() == pytest.approx([expected])
+    assert spreads["cross_section_size"].tolist() == [4]
+
+
+def test_quantile_spread_does_not_invent_a_spread_for_constant_scores() -> None:
+    spreads = compute_quantile_spreads(
+        _signal_panel(),
+        feature_columns=("constant",),
+        target_column="target",
+        quantiles=2,
+        min_cross_section=4,
+    )
+
+    assert spreads.empty
 
 
 def test_benjamini_hochberg_returns_monotone_bounded_q_values() -> None:

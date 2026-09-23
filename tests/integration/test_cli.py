@@ -20,7 +20,8 @@ def test_cli_run_writes_panel_and_stage_two_reports(
 
     prices.to_csv(prices_path, index=False)
     memberships.to_csv(memberships_path, index=False)
-    pd.DataFrame({"as_of_date": dates[6:11]}).to_csv(
+    # BBB's first label matures at date 11, enabling a two-stock PCA screen.
+    pd.DataFrame({"as_of_date": dates[6:12]}).to_csv(
         dates_path,
         index=False,
     )
@@ -52,7 +53,7 @@ def test_cli_run_writes_panel_and_stage_two_reports(
             "--config",
             str(config_path),
             "--train-end",
-            str(dates[10].date()),
+            str(dates[11].date()),
             "--output-dir",
             str(output_path),
             "--min-cross-section",
@@ -83,4 +84,4 @@ def test_cli_run_writes_panel_and_stage_two_reports(
         (output_path / "feature_selection.json").read_text(encoding="utf-8")
     )
     assert selection["selected_features"]
-    assert selection["fitted_through"] == str(dates[10].date())
+    assert selection["fitted_through"] == str(dates[11].date())
