@@ -29,6 +29,57 @@ Boolean, temporal and complex prices are rejected before numeric conversion;
 valid real-number strings are supported. Duplicate DataFrame columns and
 duplicate raw CSV/CSV.GZ headers are rejected before parser renaming can hide them.
 
+## Opt-in fixed-window price factors
+
+The version 0.9 calculator is separate from the ten legacy metrics and does not
+automatically add features to a panel, train a model or change the fixed public
+experiment. It accepts one price Series, an explicit calendar, a decision date
+and a nonempty ordered tuple of factor names.
+
+The supplied calendar must be strictly increasing, unique, normalized daily
+dates. The decision date must be a calendar member; it is never snapped backward.
+Price observations may arrive unsorted, but their date index must be normalized
+and unique. A supplied calendar is not independent evidence of exchange sessions.
+Historical price dates within that calendar's span must occur in the calendar;
+older observations are validated but do not extend its available history.
+
+For calendar position `t`, with supplied adjusted close `P`:
+
+| Factor | Formula | Required price interval | Calendar positions needed |
+| --- | --- | --- | --- |
+| `return_21s` | `P[t] / P[t-21] - 1` | `t-21 ... t`: 22 prices | 22 |
+| `momentum_252s_skip_21s` | `P[t-21] / P[t-252] - 1` | `t-252 ... t-21`: 232 prices | 253 |
+| `ma_distance_63s` | `P[t] / mean(P[t-62 ... t]) - 1` | `t-62 ... t`: 63 prices | 63 |
+
+Each interval must be complete. Reindexing happens before window selection:
+missing dates are not filled, dropped or replaced by older observations.
+Status precedence is `insufficient_history`, then `missing_required_prices`,
+then `ok`. The configured required count never shrinks; the observed count is
+the available nonmissing subset of that factor's required interval. An
+unresolvable boundary is `None`, not a truncated substitute. Unavailable values
+are `None`, allowing strict JSON conversion after timestamp serialization.
+
+All nonmissing prices at or before the cutoff receive the positive-real input
+checks above, including observations outside a factor's selected interval.
+Actual missing cells are allowed; strings such as `"NaN"` or `""` are malformed
+present values, not missing-price tokens. Future price values are excluded before
+numeric validation. Date/index structural errors still fail regardless of date.
+Future-value invariance assumes the historical observations and their types are
+unchanged; constructing a Series can itself coerce earlier values.
+
+A missing or changed valid price in momentum's excluded recent interval cannot
+affect its factor value or missingness. A malformed historical price there still
+fails global input validation. These are distinct guarantees. The moving-average
+calculation must avoid overflowing its intermediate mean; unrepresentable ratios
+raise a clear contract error rather than returning an infinite signal.
+
+The catalog and results use immutable definitions and records. Each value carries
+its name, formula/version, decision cutoff, source-window endpoints, required and
+observed counts, status and value. Availability follows the daily-after-close
+calculation convention, not a verified provider publication timestamp. Adjusted
+closes must be internally consistent; scale invariance does not establish correct
+corporate actions, delistings or point-in-time adjustment history.
+
 ## Universe membership input
 
 Required columns:

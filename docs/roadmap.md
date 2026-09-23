@@ -150,7 +150,11 @@ release carries its evidence forward, while factor expansion remains future work
    see the [portability evidence](research-decisions.md#verified-portability-result-2026-09-08).
 4. Define a small factor catalog before computing additional features: formula,
    required inputs, lookback, availability, adjustment assumptions and missingness
-   rules. Start with price-only candidates supported by the archive; OHLCV,
+   rules. Version 0.9 implements the first three opt-in price-only definitions
+   and a pure calculator; it does not merge them into the legacy panel or start
+   a new empirical experiment. See the
+   [factor contract](data-contract.md#opt-in-fixed-window-price-factors).
+   Start with price-only candidates supported by the archive; OHLCV,
    publication-lagged fundamentals and sentiment require separate source evidence.
 5. Predeclare ablations and comparisons with the existing PCA and tree families;
    retain all attempts and exposure history. Additional horizons and later

@@ -1,5 +1,37 @@
 # Examples
 
+## Pure price factors on invented observations
+
+Version 0.9.0 adds an opt-in calculator for three fixed-window price features.
+To inspect the immutable result/coverage contract without any market data,
+network request, file write or training:
+
+~~~text
+python examples/synthetic_price_factors.py
+~~~
+
+Use this repository's virtual environment. The example creates 253 invented
+business-day observations (not an exchange-verified calendar) and prints strict
+JSON with each formula, source window, required/observed price counts and status.
+Missing required prices produce `None`/JSON `null` rather than a shorter window.
+For your own appropriately acquired price Series, the same library entry point is:
+
+~~~python
+from quant_metric_research import compute_price_factors
+
+result = compute_price_factors(
+    stock_prices,
+    calendar=calendar,
+    as_of_date=decision_date,
+    factor_names=("return_21s", "momentum_252s_skip_21s", "ma_distance_63s"),
+)
+~~~
+
+Read the [full input and missingness contract](../docs/data-contract.md#opt-in-fixed-window-price-factors).
+This function does not fit a model, orient features, add columns to the legacy
+panel or alter the fixed public experiment. The Colab notebook below deliberately
+keeps its earlier source pin; it does not silently adopt this new capability.
+
 ## Colab development walkthrough
 
 Version 0.8.0 provides [colab_public_demo.ipynb](colab_public_demo.ipynb), generated

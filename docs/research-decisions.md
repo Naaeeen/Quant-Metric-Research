@@ -535,3 +535,60 @@ Run identifiers, local handoff state and the executed notebook remain private.
 Final outcomes were not evaluated, acceptance is `not_evaluated` and Stage 4
 eligibility remains false. Hosted Colab, Drive authorization and remote-storage
 durability were not tested by this local execution.
+
+## September 2026 fixed-window factor capability decision
+
+The next milestone adds an opt-in catalog and pure calculator, not another model
+search on the observed public archive. Historical source availability, membership,
+identifiers, adjustments and delistings remain the larger obstacles to an alpha
+claim. A small software capability is still useful for exercising explicit,
+testable factor definitions without pretending those data gaps are solved.
+
+The three declared formulas are `return_21s`,
+`momentum_252s_skip_21s` and `ma_distance_63s`, as specified in the
+[fixed-window contract](data-contract.md#opt-in-fixed-window-price-factors).
+They use only adjusted close; no OHLCV, fundamentals, sentiment, new source
+acquisition or paid resource is introduced. Their signs stay raw; any later
+orientation must be learned inside the appropriate training fold.
+
+French's daily momentum construction separates prior 2–12-month performance,
+while its short-term reversal construction uses recent performance. Those are
+size/return-sorted portfolios requiring inputs this calculator does not have.
+They motivate distinguishing horizons, not calling these stock-level formulas
+French factors or reproducing their missingness conventions.
+[Daily momentum definition](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/det_mom_factor_daily.html),
+[daily short-term reversal definition](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/det_st_rev_factor_daily.html).
+
+Microsoft Qlib includes lagged-close and moving-average/close ratios with explicit
+rolling windows. Our names/formulas are explicit and are not exact Alpha158
+replicas; OHLCV-dependent features are excluded.
+[Qlib feature implementation](https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/loader.py).
+The 21/63/252-session choices and complete-interval rule are this project's
+declared engineering conventions, not claims about universal best settings.
+
+Historical input validation is global, but numerical conversion for arithmetic
+is local to each required factor window. pandas can choose an integer or floating
+conversion dtype based on the supplied values. Converting the entire history
+first could therefore let an excluded decimal string change rounding inside an
+otherwise unchanged window. A regression test covers this exact dependency.
+[pandas numeric conversion](https://pandas.pydata.org/docs/reference/api/pandas.to_numeric.html).
+
+These factors are additional representations of the same prices. With complete
+matching endpoints, `1 + return_252s` equals
+`(1 + momentum_252s_skip_21s) * (1 + return_21s)`. Splitting horizons does not
+create independent information. The existing legacy `trailing_return` uses its
+first/last nonmissing prices, so this identity is not promised for sparse legacy
+windows. Its existing behavior is preserved, not silently redefined.
+
+Keep `DEFAULT_FEATURE_COLUMNS`, `PanelConfig`, the ten legacy metric formulas,
+the declared public experiment and the existing Colab source pin unchanged.
+Adding package files legitimately changes source identity; old experiments stay
+reproducible through their pinned revision and original manifests, not by hiding
+new source files from fingerprinting.
+
+The release gate is synthetic arithmetic, boundary, missingness, future-perturbation,
+extreme-value and immutability tests plus independent review and normal software
+checks. Automatic panel merging and empirical comparisons are deferred. A later
+comparison needs an explicit adapter and predeclared feature bundle, unchanged
+cohort/target/folds, native/common coverage reporting and retained exposure history.
+It must not treat reused development dates as fresh evidence or open final outcomes.
