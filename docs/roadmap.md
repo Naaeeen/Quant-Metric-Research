@@ -2,19 +2,99 @@
 
 ## Goal
 
-Build a stock-ranking research system that can answer three questions:
-which inputs help, which model combines them best, and whether the resulting
-ranking remains useful after realistic trading constraints.
+Build and critically evaluate a complete, reusable stock-ranking research
+system in this standalone repository. Start with authorized historical data,
+train models ourselves, compare their rankings on unseen periods, and measure
+what those rankings would mean under explicit trading assumptions. Deliver a
+workflow that the team can run in Colab, inspect, extend and reproduce.
 
-The work covers data, targets, features, models, evaluation, compute, software
-quality and delivery. Success means a reproducible comparison with enough
-evidence to accept or reject a candidate. A larger model or a longer feature
-list is useful only if it improves that comparison.
+The system should answer three questions: which inputs add useful information,
+which training approach combines them best, and whether the improvement survives
+changes in market conditions, missing data, trading costs and resource limits.
+The goal covers all nine workstreams below: the research decision, data,
+features, models, statistical validation, trading economics, compute,
+engineering and handoff. Every workstream needs a verified deliverable.
+
+Judge performance by out-of-sample ranking quality, stability, coverage and
+economic value together. Declare numerical thresholds and a finite experiment
+budget for each study before observing its results. Compare stronger models
+under matched evaluation rules and measured compute budgets. Select complexity
+when it earns a useful improvement; retain a simpler method when it performs
+equally well.
+
+Reconsider the market, data source, target, horizon, feature set, model and
+training procedure when evidence supports a better choice. Record the changed
+hypothesis and its dependencies before implementation or training, and preserve
+earlier results and outcome exposure. Changes to the plan must keep the full
+research objective in view.
 
 This is the working plan following the September 22, 2026 review. Change it
 when code inspection, a measured experiment or a primary source contradicts a
 decision. Record the reason in [research decisions](research-decisions.md).
 Completed release details remain there and in Git history.
+
+### What completes the goal
+
+The final handoff must include all of the following:
+
+1. **A defined decision and qualified data.** A versioned specification fixes
+   the stock universe, information available at decision time, execution delay,
+   target, baseline and evaluation periods. Source evidence covers historical
+   membership, identifiers, corporate actions, missing observations, revisions
+   and permitted use. A qualified broader-data study must test more than the
+   current retrospective demonstration cohort. If no candidate source passes,
+   record the unmet requirement and next action; a source comparison alone does
+   not complete this deliverable.
+2. **Completed, attributable experiments.** Run the corrected-input raw/rank
+   target comparison and the separate original-ten/expanded-factor comparison.
+   Test feature screening and representations, and make an evidence-backed
+   decision about the next model challenger. Save baselines, all declared
+   trials, parameters, folds, coverage, paired effects and measured resources.
+   Each new comparison changes one question at a time.
+3. **An independently checked conclusion.** Review leakage, target maturity,
+   sample selection, dependence, negative controls and concentration of gains.
+   Use the declared criteria to accept, reject or call each result inconclusive.
+   Preserve final outcomes for the frozen evaluation procedure; state any
+   outstanding final-evaluation requirement explicitly. If no candidate meets
+   the development and data criteria, record that conclusion and retain the
+   unopened final period. An eligible candidate still needs the frozen final
+   evaluation before a promotion decision.
+4. **Tested economic accounting.** Reconcile positions, cash, execution delays,
+   turnover and costs on hand-worked fixtures and development market data.
+   Compare the candidate with a baseline portfolio under identical assumptions.
+   Explain whether ranking improvements survive the stated cost and risk cases.
+5. **A reproducible Colab and scoring workflow.** Pin a coherent source/runtime,
+   execute a fresh hosted notebook, measure time and peak memory, and verify
+   interruption recovery with the same durable research history. Reproduce
+   saved-model scores from decision-time inputs without requiring future labels.
+   Record any unsupported environment separately.
+6. **A maintainable client handoff.** Deliver reviewed code, passing release
+   checks, concise English instructions, comparable experiment reports and a
+   worked example of adding a candidate. Include tested offline monitoring and
+   retraining procedures, ownership of operational decisions, and the remaining
+   requirements for any later paper-trading or production system.
+
+A sound negative finding can complete a research study. It does not complete
+unfinished data, economic, portability or handoff work. Finish the overall goal
+only when the required deliverables have evidence and an independent review.
+Model promotion is a separate decision that requires the documented data and
+final-evaluation gates; profitable alpha is a hypothesis to test.
+
+### Required work and conditional extensions
+
+The nine workstreams and the handoff above are required. LightGBM, ranking
+losses, neural models, pretrained models, new horizons, fundamentals, sentiment
+and ensembles are candidates, not a requirement to implement every method.
+For each candidate, record the question it tests, prerequisites, comparison
+budget and decision to run or defer it. A deferred candidate needs a reason and
+a condition for reconsideration. Required deliverables stay open when their
+prerequisites are missing.
+
+Use existing authorization for local research, implementation, review and
+English commits/pushes to the public ML repository. Keep private data private
+and FIT unchanged. New spending, provider commitments, restricted-data uploads,
+final evaluation and trading follow their respective approval and research
+gates. This plan does not authorize those actions by itself.
 
 ## Current position
 
@@ -36,6 +116,20 @@ Shift effort from additional report wrappers to data qualification and
 completed experiments. The full audit and source comparison are recorded in
 [the September 22 review](research-decisions.md#september-22-2026-direction-review).
 
+Track implementation and research evidence separately:
+
+| Evidence level | Current position | Next evidence needed |
+| --- | --- | --- |
+| Implemented and tested | Target/return separation, target-ablation workflow, declared-calendar checks and corrected trailing-return endpoints. | Completed experiments using those corrections. |
+| Data checked | Archive session dates match pinned XNYS; normalized date keys were checked. | Per-security completeness and qualified historical membership, provenance and rights. |
+| Market-data evaluated | The earlier small Ridge study did not beat equal-weight ranks. | Corrected target comparison, separate factor comparison and a qualified broader study. |
+| Environment reproduced | The walkthrough pins 0.13; current package capabilities are 0.16. Local and Linux checks have their own records. | A coherent updated notebook and fresh hosted Colab execution. |
+
+For each milestone, retain its hypothesis, prerequisite, deliverable,
+verification method, acceptance rule, evidence path and current status in the
+existing plan and research records. A passing software test, a completed market
+experiment and a successful hosted run establish different things.
+
 ## How each stage runs
 
 1. Review the relevant code, requirements, evidence and current upstream sources.
@@ -49,6 +143,21 @@ completed experiments. The full audit and source comparison are recorded in
    results. Compare accuracy, stability, coverage and resource use together.
 5. Commit and push a coherent, reviewed milestone in English. Check remote
    revision and CI. Update this plan before choosing the next milestone.
+
+At the start of a stage and after any contradictory result, ask:
+
+- Is this still the right decision, target and dataset for the client?
+- Which assumption can invalidate the conclusion, and how will it be checked?
+- What does the current primary research or upstream implementation support?
+- Is there a simpler or better alternative that answers the same question?
+- What evidence is missing, and will the next action produce it?
+- What will make the experiment useful, inconclusive or worth stopping?
+
+When changing direction, record the old choice, new evidence, revised choice,
+affected results and next verification. Fix a demonstrated correctness problem
+before dependent experiments. Continue independent work where possible. A
+failed predictive comparison prompts diagnosis of data, labels and economics
+as well as models; it does not automatically justify a larger search.
 
 Review gates apply to individual milestones, not just releases. Stop expanding
 a method when its benefit disappears, its data assumptions fail, or a simpler
@@ -257,6 +366,12 @@ and an independent reviewer can follow the implementation and its evidence.
   and exposures; distinguish data failure from model deterioration.
 - Make the handoff usable by the client: one reproducible run, readable results
   and a clear list of remaining data or operational requirements.
+- Add batch scoring from decision-time inputs without future labels. Version
+  the fitted preprocessing and model together; test score parity after saving
+  and reloading them, including missing-feature and changed-schema cases.
+- Exercise monitoring and retraining offline with delayed labels, stale inputs
+  and interrupted runs. Define who reviews a warning or candidate replacement;
+  alerts and new models must not silently change portfolio decisions.
 
 **Complete when:** a second researcher can add a candidate, reproduce the
 baseline, interpret the comparison and resume the same research history.
@@ -288,3 +403,28 @@ historically qualified dataset remains a separate deliverable.
 The longer-term stages remain open until their completion checks are met.
 New sources or measured results can change this order; preserve the decision
 and evidence rather than silently replacing the previous study.
+
+## Dependencies and progress checks
+
+- **Corrected demonstration:** require the checked calendar, rebuilt endpoints,
+  complete three-record history and unchanged declared final-period boundaries before
+  the fixed target comparison. Declare exact settings, paired-date contrasts,
+  coverage requirements, useful-effect thresholds and a stopping budget first.
+- **Parallel development:** run the separate factor study while qualifying
+  larger data and building economic accounting and negative controls. Shared
+  datasets, schedules and registries must remain consistent across the work.
+- **Larger study:** require a passed source gate, tested transformations, a
+  selected comparison protocol and measured resource estimates before scaling.
+  Refresh Colab to the coherent release used by that study.
+- **Final evaluation:** freeze data, preprocessing, model choice, holdings,
+  costs and acceptance rules before any authorized final evaluation. A changed
+  source or target needs a declared exposure-aware plan, not a silently renewed
+  holdout. Do not open the final block merely to finish a milestone.
+- **Handoff:** reproduce the chosen workflow, scoring and recovery from its
+  documented inputs. Review all nine workstreams against the completion contract
+  and name any open requirement before reporting the goal complete.
+
+Report progress by evidence produced: a corrected assumption, tested behavior,
+completed experiment, qualified data decision or reproduced workflow. Track
+remaining work and the next dependency alongside it. More commits, model names,
+training hours or consumed tokens are not measures of research success.
