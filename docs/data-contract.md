@@ -527,6 +527,28 @@ completeness, and full-input fingerprints still inspect the panel. This is not
 a physically sealed data store; changing label completeness can change whether
 a declared split is feasible.
 
+## Development-only cross-bundle reports
+
+Version 0.13 compares two caller-owned schema 6 development results from the same
+enriched panel and producer, with configurations differing only in the two fixed
+feature bundles. It retains the original-bundle equal-rank baseline plus an
+explicitly chosen same-family model from each bundle. There is no automatic model
+choice, artifact loader, new fitting, final evaluation or registry operation.
+
+Scope metadata, exact saved schedules, folds, prediction keys, row IDs, outcomes
+and selected-arm feature evidence must be internally consistent before metrics
+are recomputed from saved scores. One three-arm finite-score intersection is
+reported alongside native coverage. Paired daily IC/spread differences have
+separate date denominators and no inferential or acceptance claims.
+
+Matching metadata is not authenticated provenance or complete history. In
+particular, assignments cannot recover excluded scoring rows omitted from every
+arm without the original panel. This remains a conditional consistency audit of
+supplied objects. See the
+[comparison contract](stage3-benchmark.md#development-only-feature-bundle-comparison)
+for supported inputs, output fields and limitations. Existing benchmark artifact
+schema, frozen experiments and Colab source pin are unchanged.
+
 ## Preflight and experiment records
 
 `qmr preflight` validates the panel and reconstructs outer, inner, and final

@@ -3,7 +3,14 @@
 A standalone, leakage-aware research pipeline for testing whether historical
 equity metrics contain stable cross-sectional signal.
 
-Version 0.12.0 saves the exact planned evaluation dates in each benchmark manifest.
+Version 0.13.0 adds a development-only comparison of the original metric bundle
+and its three-factor extension. It checks saved experiment consistency and
+compares the same model family with a retained original-bundle equal-rank
+baseline, using native and three-arm common coverage. Results are descriptive,
+not a new significance test or a model-promotion decision. See the
+[feature-bundle comparison](docs/stage3-benchmark.md#development-only-feature-bundle-comparison).
+
+Version 0.12.0 saved the exact planned evaluation dates in each benchmark manifest.
 Saved results can retain missing-date inference semantics on replay instead of
 guessing a calendar from surviving rows. See the
 [schedule evidence contract](docs/stage3-benchmark.md#stored-evaluation-schedules).

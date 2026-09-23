@@ -172,7 +172,13 @@ release carries its evidence forward, while factor expansion remains future work
    metadata. Replay must use that sequence, not reconstruct it from surviving
    predictions. No artifact loader or authentication claim is added. This closes
    the schedule-evidence gap before development-only cross-bundle reporting.
-8. Predeclare ablations and comparisons with the existing PCA and tree families;
+8. Version 0.13 adds a development-only, same-family feature-bundle comparison
+   over caller-owned results. It retains the original-bundle equal-rank arm,
+   checks exact schedules, folds, prediction keys and outcomes, and reports one
+   three-way common population alongside native coverage. Paired daily contrasts
+   are descriptive; they do not select a winner or open a final test. This is
+   conditional consistency checking, not authenticated research history.
+9. Predeclare ablations and comparisons with the existing PCA and tree families;
    retain all attempts and exposure history. Additional horizons and later
    portfolio work remain gated by the data and evaluation requirements below.
 

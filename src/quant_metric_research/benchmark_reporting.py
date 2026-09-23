@@ -21,6 +21,18 @@ IMPLEMENTATION_VERSION = __version__
 ARTIFACT_SCHEMA_VERSION = "6"
 
 
+def _source_fingerprint() -> str:
+    """Hash the same top-level package filenames and bytes as benchmark runs."""
+    source_hasher = sha256()
+    package_directory = Path(__file__).resolve().parent
+    for source_path in sorted(package_directory.glob("*.py")):
+        source_hasher.update(source_path.name.encode("utf-8"))
+        source_hasher.update(b"\0")
+        source_hasher.update(source_path.read_bytes())
+        source_hasher.update(b"\0")
+    return source_hasher.hexdigest()
+
+
 def _fingerprints(
     plan: Stage3DataPlan,
     *,
@@ -52,14 +64,7 @@ def _fingerprints(
     contract_hashes = pd.util.hash_pandas_object(contract_frame, index=False)
     panel_hasher.update(contract_hashes.to_numpy().tobytes())
     panel_fingerprint = panel_hasher.hexdigest()
-    source_hasher = sha256()
-    package_directory = Path(__file__).resolve().parent
-    for source_path in sorted(package_directory.glob("*.py")):
-        source_hasher.update(source_path.name.encode("utf-8"))
-        source_hasher.update(b"\0")
-        source_hasher.update(source_path.read_bytes())
-        source_hasher.update(b"\0")
-    source_fingerprint = source_hasher.hexdigest()
+    source_fingerprint = _source_fingerprint()
     config_json = json.dumps(
         config.to_mapping(), sort_keys=True, separators=(",", ":"), default=str
     )

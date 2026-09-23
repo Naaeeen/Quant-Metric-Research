@@ -717,3 +717,78 @@ repository lint/format, dependency consistency, dependency vulnerability audit
 and source/wheel builds passed. These are software checks, not a new empirical
 result, provenance certification or hosted Colab run. Linux CI is recorded
 separately on the release pull request.
+
+## September 2026 controlled development comparison
+
+The next question is whether additional features help the same model family,
+not simply whether a different model wins on a different sample. Version 0.13
+therefore separates three saved-score arms: the original-bundle equal-rank
+baseline, the original-bundle model and the extended-bundle same-family model.
+The family is an explicit caller choice; no new fitting or automatic selection
+occurs inside the comparison. The equal-rank arm uses features surviving the
+original bundle's fold-local screening and orientation, not necessarily all ten.
+
+Reusing saved predictions for signal analysis follows the separation seen in
+[Qlib's signal evaluation source](https://raw.githubusercontent.com/microsoft/qlib/main/qlib/contrib/eva/alpha.py)
+and [Recorder design](https://qlib.readthedocs.io/en/latest/component/recorder.html).
+The project retains its own spread convention and scheduled-date contract; it
+does not adopt Qlib's optional missing-date removal, half-gross spread scaling
+or adjacent-date autocorrelation behavior. No Qlib dependency or pickle loader
+is needed.
+
+Producer inspection and independent review sharpened two safeguards. A
+development-labeled manifest cannot override explicit final-evaluation markers
+elsewhere in the object; those scope checks precede prediction access. Prediction
+dates must exactly equal the saved schedule inside each fold's evaluation window:
+identical extra rows in between-fold gaps would otherwise pass cross-arm key
+equality. Scoring rows excluded from supervised evaluation because of unavailable
+outcomes must still remain visible. Without the original panel, jointly omitted
+excluded rows cannot be reconstructed from the assignment table alone.
+
+Matching complete keys and outcomes precedes the three-arm finite-score
+intersection. This avoids silently dropping unequal rows; pandas also explicitly
+warns that [null join keys match](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html).
+Native metrics remain visible because the common population also depends on
+the candidate model's score availability. IC and spread retain independent
+outcome masks. Comparative means use paired daily differences, with separate
+paired-date counts and coverage, not differences between independently averaged
+arm summaries.
+
+The comparison exports descriptive statistics only. Choosing a bundle from
+development results is still model selection, not fresh validation, consistent
+with [scikit-learn's nested-CV explanation](https://scikit-learn.org/stable/auto_examples/model_selection/plot_nested_cross_validation_iris.html).
+Its shuffled classification example is not adopted for time-ordered equity data.
+Matching producer identities support a conditional check of supplied objects;
+the current comparison source/runtime identity is recorded separately. Neither
+provenance, authenticity nor complete prior research history is certified. No
+new empirical experiment, final evaluation, historical rewrite or Colab repin
+is part of this release.
+
+Implementation review also found that default tolerant table equality and
+float64 conversion could hide distinct supplied outcomes. The comparator checks
+their original supported numeric values exactly, separately from evaluation
+arithmetic; decimal construction/comparison does not round through an ambient
+arithmetic context. See [Python's decimal contract](https://docs.python.org/3.11/library/decimal.html).
+This can conservatively reject a decimal string versus a nearby binary float.
+For finite paired daily means, the standard-library
+[arithmetic mean](https://docs.python.org/3.11/library/statistics.html#statistics.mean)
+replaces custom scaled summation, with cancellation and overflow regressions.
+These are numerical consistency checks, not new estimators or market evidence.
+
+Final independent review also checked the comparator against the producer's
+`evaluation_cross_section` and `_fold_assignment`, not only matching-arm fixtures.
+An explicit missing-label or locked-test-overlap exclusion requires both saved
+outcomes to remain masked; a missing-target exclusion masks the target, while an
+evaluation-role row retains its target. Contradictory masks now fail rather than
+being silently repaired. Scores and independently missing realized returns remain
+visible. This prevents matching but internally impossible evidence from bypassing
+the producer's label-time boundary; it still does not authenticate caller objects.
+
+Final local verification after this correction: **1,409 tests passed** in about
+217 seconds with **90.44% aggregate coverage including branch tracking**. The
+genuine synthetic two-run comparison passed independently, with no fitting,
+artifact loading or registry access inside the comparator. Independent review,
+127-file lint/format checks, dependency consistency and vulnerability audit,
+installed API/command checks and source/wheel builds passed. These software
+checks add no empirical result, final outcome exposure or hosted Colab claim.
+Linux verification is recorded separately on the release pull request.
