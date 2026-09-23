@@ -11,6 +11,8 @@ from .benchmark_io import BenchmarkArtifacts, write_benchmark_run
 from .config import PanelConfig
 from .contracts import DataContractError, validate_memberships, validate_prices
 from .experiment_registry import ExperimentRegistry
+from .factor_panel import build_factor_panel
+from .feature_bundles import FEATURE_BUNDLES, FeatureBundleSpec
 from .input_audit import audit_inputs
 from .intake import import_yahoo_files
 from .panel import build_point_in_time_panel
@@ -34,6 +36,8 @@ __all__ = [
     "BenchmarkRun",
     "DataContractError",
     "ExperimentRegistry",
+    "FEATURE_BUNDLES",
+    "FeatureBundleSpec",
     "MetricScreenResult",
     "NestedSplitConfig",
     "PCABaseline",
@@ -49,6 +53,7 @@ __all__ = [
     "audit_inputs",
     "import_yahoo_files",
     "build_point_in_time_panel",
+    "build_factor_panel",
     "build_purged_walk_forward_splits",
     "compute_price_factors",
     "fit_metric_screen",

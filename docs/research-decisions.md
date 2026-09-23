@@ -592,3 +592,63 @@ checks. Automatic panel merging and empirical comparisons are deferred. A later
 comparison needs an explicit adapter and predeclared feature bundle, unchanged
 cohort/target/folds, native/common coverage reporting and retained exposure history.
 It must not treat reused development dates as fresh evidence or open final outcomes.
+
+## September 2026 panel enrichment decision
+
+The next capability is an opt-in wrapper around the existing panel builder, not
+a second membership/label engine or an additional model runner. This keeps the
+new factor metadata aligned with the exact legacy rows and targets. Rebuilding
+both from the same input avoids accepting an unrelated panel and price history.
+The [adapter contract](data-contract.md#opt-in-factor-panel-enrichment) documents
+the strict whole-table intake inherited from Stage 1 and the original-scalar
+window arithmetic used by the new factors.
+
+Qlib distinguishes inference processing from learning-only operations that may
+depend on labels. That boundary supports retaining missing-target rows here,
+without adopting its whole processing stack.
+[Qlib data-handler documentation](https://qlib.readthedocs.io/en/latest/component/data.html#data-handler).
+Learned selection, scaling, imputation and PCA remain inside the relevant training
+fold, consistent with [scikit-learn's leakage guidance](https://scikit-learn.org/stable/common_pitfalls.html).
+
+Append results in the existing builder's row order with explicit collision checks.
+An implicit join could remove unmatched rows or multiply keys; pandas also matches
+null join keys, so any future keyed implementation needs explicit nonnull keys and
+one-to-one cardinality checks.
+[pandas merge contract](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.merge.html).
+
+The two immutable feature bundles are candidate schemas, not full experiment
+preregistrations. Stage 3 accepts their feature tuples without changing PanelConfig
+or the fixed public experiment. A panel built with a smaller legacy subset is not
+silently expanded to satisfy a full-ten schema.
+
+A fair future cross-bundle comparison is a separate gate. Existing `common`
+metrics align models within one run, not feature bundles from different runs;
+each run also fits its own equal-rank baseline. Comparing summary rows alone is
+therefore insufficient. Later comparisons must use the same enriched panel,
+source/runtime, targets and split settings; verify matching prediction keys,
+outcomes and scoring universes; retain native coverage and identify the original-
+ten baseline explicitly. Never regenerate model scores or input cross-sectional
+transforms after filtering on outcome availability. Spearman still ranks its
+evaluated pairs by definition; the existing descriptive spread uses available
+outcome pairs and is not a realized portfolio backtest. Preserve every attempt
+and prior exposure.
+
+This milestone tests software on invented observations only. It performs no new
+empirical model search, final scoring, source acquisition or data certification.
+The previous Colab source pin and private history remain unchanged. Adding code
+and columns changes current fingerprints normally; it does not rewrite old
+manifests or exempt new files from identity checks. Data provenance remains a
+larger prerequisite for an alpha claim than the number of candidate factors.
+
+The follow-up code audit prioritizes inference handling before cross-bundle
+significance tests: existing HAC paths remove unavailable daily metrics and apply
+lags to the remaining sequence. This does not establish a fixed-session lag
+interpretation when dates are missing. Stage 2 can also omit unavailable dates
+entirely, so a correction must preserve or explicitly supply the expected schedule,
+not merely remove one missing-value filter. Consecutive, equally spaced periods
+are an explicit assumption in the
+[statsmodels HAC documentation](https://www.statsmodels.org/stable/generated/statsmodels.stats.sandwich_covariance.cov_hac.html).
+Do not infer exchange sessions from generic business-day dates. A conservative
+unavailable-inference status is preferable to silently presenting unsupported
+gap-aware significance; this is the next methodology-hardening task, not a new
+empirical search in this release.

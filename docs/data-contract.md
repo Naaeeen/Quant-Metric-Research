@@ -80,6 +80,60 @@ calculation convention, not a verified provider publication timestamp. Adjusted
 closes must be internally consistent; scale invariance does not establish correct
 corporate actions, delistings or point-in-time adjustment history.
 
+## Opt-in factor-panel enrichment
+
+Version 0.10 adds `build_factor_panel` with the same prices, memberships, decision
+dates and `PanelConfig` as `build_point_in_time_panel`, plus an explicit nonempty
+tuple of factor names. It calls the existing builder for membership, legacy
+metrics and labels, then appends factor columns. It does not accept an unrelated
+prebuilt panel whose calendar or source could differ from the supplied prices.
+
+Every original column, dtype, row and ordering is preserved. This includes a
+config's chosen subset of legacy metrics, target ranks, warm-up rows, missing
+targets and active symbols without price history. Neither `feature_eligible` nor
+`target_available` gates new factors. Shared legacy availability/window metadata
+is not overwritten. Requested-column collisions fail rather than adding suffixes.
+
+For each explicitly requested factor `f`, the following columns are appended in
+this order:
+
+| Column | Meaning and dtype |
+| --- | --- |
+| `f` | Raw value, float64; NaN when unavailable |
+| `f_available_at` | Decision date when observed, otherwise NaT; datetime64[ns] |
+| `f_status` | Calculation status; string |
+| `f_window_start`, `f_window_end` | Required endpoints, NaT if unresolved; datetime64[ns] |
+| `f_required_price_count`, `f_observed_price_count` | Fixed requirement and observed interval count; int64 |
+| `f_formula_version` | Version from the immutable catalog; string |
+
+This tabular NaN/NaT representation differs from the pure calculator's nullable
+records. Formula text and assumptions stay in the catalog; no nested records or
+`DataFrame.attrs` are needed to interpret or fingerprint the additional columns.
+Availability remains an after-close calculation convention, not certification of
+provider publication timestamps.
+
+The wrapper inherits the legacy builder's strict whole-table input validation:
+malformed future prices fail intake too. This differs from the standalone
+calculator, which excludes future numerical values before validating prices.
+New factor arithmetic still uses original price scalars on a date/symbol-
+normalized copy, avoiding global numeric conversion before window selection.
+Missing sessions are not filled or compressed, and no factors are ranked,
+oriented, imputed, normalized or selected here. The supplied benchmark observation
+dates define the calendar; they are not independently verified exchange sessions.
+
+`FEATURE_BUNDLES` declares two frozen candidate schemas:
+
+- `legacy10_v1`: the ten existing metric names in their original order.
+- `legacy10_plus_price3_v1`: those ten followed by `return_21s`,
+  `momentum_252s_skip_21s` and `ma_distance_63s`, each at formula version 1.
+
+These explicit tuples do not expand automatically when the catalog grows.
+A legacy-subset panel remains a subset: it cannot satisfy either full-ten schema
+unless all required columns are present. Bundle declarations do not modify a
+configuration, register an experiment or run a model. They also do not freeze
+cohort, target, folds or exposure history; a complete experiment declaration is
+still required. Train-fold screening can later remove candidate columns.
+
 ## Universe membership input
 
 Required columns:
