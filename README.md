@@ -15,17 +15,20 @@ The pipeline has three stages:
 
 ## Current status
 
-The Stage 3 engine is implemented. The recorded public-archive development run
-found that Ridge did not improve aggregate ranking performance over equal-weight
-ranks. See the [observed result](docs/research-decisions.md#observed-development-result-2026-09-08)
-for the evidence and experiment settings.
+The corrected-panel development comparison is complete. Raw-return histogram
+boosting met the declared continuation criteria against screened equal-weight
+ranks; Ridge did not. Rank-target training did not improve either model family under
+the study's criteria. Results vary across periods and come from a retrospective
+30-stock sample. See the [complete results](docs/research-decisions.md#corrected-panel-target-study-results)
+for all comparisons, coverage and measured resources.
 
 Version 0.16.0 adds a [declared session calendar](docs/data-contract.md#declared-session-calendar)
 that checks for missing market dates before feature calculation or training.
 Trailing return now requires the original window endpoints; missing prices no
 longer move those endpoints. The [target-ablation example](examples/README.md#target-ablation)
 compares raw-return and rank-target training with Ridge and histogram boosting.
-Market-data comparisons using the corrected inputs are next.
+The separate factor comparison, qualified broader dataset and trading-cost
+evaluation remain open. Final evaluation has not run.
 The Colab walkthrough remains pinned
 to the separately verified 0.13 source; its fixed ten-metric Ridge experiment is
 unchanged. Local notebook checks and hosted Colab execution have separate

@@ -22,7 +22,7 @@ For each outer development fold, the engine learns metric directions and fits:
 - every usable individual metric;
 - `best_metric`, chosen only from that fold's training data;
 - `equal_weight_rank`, an equal-weight average of training-oriented
-  cross-sectional metric ranks;
+  cross-sectional ranks of the fold-selected metrics;
 - Ridge as the regularized linear model;
 - a small histogram gradient boosting model as the nonlinear comparison;
 - optional Ridge+PCA as a compression comparator.
