@@ -20,11 +20,12 @@ found that Ridge did not improve aggregate ranking performance over equal-weight
 ranks. See the [observed result](docs/research-decisions.md#observed-development-result-2026-09-08)
 for the evidence and experiment settings.
 
-Version 0.15.0 adds a [target-ablation example](examples/README.md#target-ablation)
-that compares raw-return and rank-target training with Ridge and histogram
-boosting. Inner tuning now reports spreads in realized-return units for either
-target. Existing feature-bundle reports can also be
-[saved as CSV tables](docs/stage3-benchmark.md#saving-a-comparison).
+Version 0.16.0 adds a [declared session calendar](docs/data-contract.md#declared-session-calendar)
+that checks for missing market dates before feature calculation or training.
+Trailing return now requires the original window endpoints; missing prices no
+longer move those endpoints. The [target-ablation example](examples/README.md#target-ablation)
+compares raw-return and rank-target training with Ridge and histogram boosting.
+Market-data comparisons using the corrected inputs are next.
 The Colab walkthrough remains pinned
 to the separately verified 0.13 source; its fixed ten-metric Ridge experiment is
 unchanged. Local notebook checks and hosted Colab execution have separate
@@ -107,7 +108,9 @@ fitting and statistical evaluation happen during the benchmark.
 ## Research assumptions and limits
 
 Features use observations available at the decision time. Targets begin after
-the configured entry lag and use benchmark trading sessions. Missing observations
+the configured entry lag and use the declared sessions when supplied, otherwise
+the observed benchmark dates. New empirical studies should supply a calendar
+from an independent source covering the full input period. Missing observations
 and immature labels remain visible in coverage reports. Screening, preprocessing,
 and model fitting use training partitions; purging removes training labels that
 overlap evaluation dates. Rankings use the full scoring universe before outcome

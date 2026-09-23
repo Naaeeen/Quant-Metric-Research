@@ -19,6 +19,7 @@ from .contracts import (
     validate_prices,
 )
 from .panel import _active_symbols, _label_dates
+from .session_calendar import ExpectedSessionCalendar, compare_session_calendar
 
 _COUNTS = (
     "active_members",
@@ -161,6 +162,18 @@ def _coverage(
 ) -> tuple[list[dict], list[dict]]:
     presence = _presence_by_symbol(prices, calendar)
     absent = _Presence(frozenset(), np.array([], dtype=np.int64))
+    benchmark = presence.get(config.benchmark_symbol, absent)
+    presence = {
+        symbol: _Presence(
+            sessions=value.sessions,
+            adjacent_return_ends=np.intersect1d(
+                value.adjacent_return_ends,
+                benchmark.adjacent_return_ends,
+                assume_unique=True,
+            ),
+        )
+        for symbol, value in presence.items()
+    }
     by_date, by_security = [], {}
     for date in dates:
         current = int(calendar.get_loc(date))
@@ -253,6 +266,7 @@ def audit_inputs(
     *,
     as_of_dates: Iterable[object],
     config: PanelConfig,
+    expected_calendar: ExpectedSessionCalendar | None = None,
 ) -> dict:
     """Inspect required inputs without computing returns, fitting, or approving data.
 
@@ -267,19 +281,60 @@ def audit_inputs(
     calendar = pd.DatetimeIndex(
         checked_prices.loc[checked_prices["symbol"] == config.benchmark_symbol, "date"]
     )
-    if calendar.empty:
-        raise DataContractError("Benchmark price history is required.")
-    if any(date not in calendar for date in dates):
-        raise DataContractError(
-            "All as_of_dates must be present in the benchmark calendar."
+    calendar_check = None
+    if expected_calendar is not None:
+        if not isinstance(expected_calendar, ExpectedSessionCalendar):
+            raise DataContractError(
+                "expected_calendar must be an ExpectedSessionCalendar."
+            )
+        calendar_check = compare_session_calendar(
+            checked_prices,
+            as_of_dates=dates,
+            config=config,
+            expected_calendar=expected_calendar,
         )
+        calendar = pd.DatetimeIndex(expected_calendar.sessions)
+    else:
+        if calendar.empty:
+            raise DataContractError("Benchmark price history is required.")
+        if any(date not in calendar for date in dates):
+            raise DataContractError(
+                "All as_of_dates must be present in the benchmark calendar."
+            )
+    covered_dates = tuple(date for date in dates if date in calendar)
     by_date, by_security = _coverage(
-        checked_prices, checked_memberships, calendar, dates, config
+        checked_prices, checked_memberships, calendar, covered_dates, config
     )
     off_calendar = int((~checked_prices["date"].isin(calendar)).sum())
     available_symbols = set(checked_prices["symbol"])
+    fingerprints = _fingerprints(checked_prices, checked_memberships, dates, config)
+    warnings = _warnings(by_date, off_calendar)
+    extras = {}
+    if calendar_check is not None:
+        fingerprints = {
+            **fingerprints,
+            "expected_calendar": calendar_check["fingerprint"],
+        }
+        extras = {
+            "calendar_check": calendar_check,
+            "coverage_status": "complete"
+            if len(covered_dates) == len(dates)
+            else "decision_dates_outside_calendar",
+        }
+        if calendar_check["status"] != "matched":
+            warnings = [
+                *warnings,
+                {
+                    "code": "session_calendar_mismatch",
+                    "message": (
+                        "The supplied benchmark or decision dates differ "
+                        "from the declared calendar."
+                    ),
+                },
+            ]
     return {
-        "schema_version": 1,
+        "schema_version": 2 if calendar_check is not None else 1,
+        **extras,
         "package_version": __version__,
         "config": {**asdict(config), "feature_columns": list(config.feature_columns)},
         "claim_scope": "raw_input_diagnostics_only",
@@ -287,11 +342,11 @@ def audit_inputs(
         "empirical_data_provenance_verified": False,
         "stage4_eligible": False,
         "pandas_version": pd.__version__,
-        "input_fingerprints": _fingerprints(
-            checked_prices, checked_memberships, dates, config
-        ),
+        "input_fingerprints": fingerprints,
         "calendar": {
-            "source": "supplied_benchmark_prices",
+            "source": "declared_expected_sessions"
+            if calendar_check is not None
+            else "supplied_benchmark_prices",
             "independently_verified": False,
             "first_session": calendar[0].date().isoformat(),
             "last_session": calendar[-1].date().isoformat(),
@@ -309,7 +364,7 @@ def audit_inputs(
         },
         "coverage_by_date": by_date,
         "coverage_by_security": by_security,
-        "warnings": _warnings(by_date, off_calendar),
+        "warnings": warnings,
         "external_evidence": [
             {"check": check, "status": "unverified"} for check in _EVIDENCE
         ],

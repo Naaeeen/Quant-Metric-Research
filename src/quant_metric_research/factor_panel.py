@@ -8,6 +8,7 @@ from .config import PanelConfig
 from .contracts import DataContractError, _daily_dates, _normalized_text
 from .panel import build_point_in_time_panel
 from .price_factors import PriceFactorValue, _requested_specs, compute_price_factors
+from .session_calendar import ExpectedSessionCalendar
 
 
 def _column_schema(factor_names: tuple[str, ...]) -> tuple[tuple[str, str], ...]:
@@ -28,7 +29,9 @@ def _column_schema(factor_names: tuple[str, ...]) -> tuple[tuple[str, str], ...]
 
 
 def _raw_price_history(
-    prices: pd.DataFrame, benchmark_symbol: str
+    prices: pd.DataFrame,
+    benchmark_symbol: str,
+    expected_calendar: ExpectedSessionCalendar | None = None,
 ) -> tuple[dict[str, pd.Series], pd.DatetimeIndex]:
     # The legacy builder already validated the entire table. Normalize keys on a
     # separate copy, retaining original scalars so unrelated prices cannot change
@@ -39,7 +42,11 @@ def _raw_price_history(
         symbol=_normalized_text(raw["symbol"]).str.upper(),
     )
     benchmark_dates = normalized.loc[normalized["symbol"] == benchmark_symbol, "date"]
-    calendar = pd.DatetimeIndex(benchmark_dates.sort_values().unique())
+    calendar = pd.DatetimeIndex(
+        expected_calendar.sessions
+        if expected_calendar is not None
+        else benchmark_dates.sort_values().unique()
+    )
     histories = {
         str(symbol): group.set_index("date")["adjusted_close"]
         for symbol, group in normalized.groupby("symbol", sort=False)
@@ -92,6 +99,7 @@ def build_factor_panel(
     as_of_dates: list[pd.Timestamp] | tuple[pd.Timestamp, ...],
     config: PanelConfig,
     factor_names: tuple[str, ...],
+    expected_calendar: ExpectedSessionCalendar | None = None,
 ) -> pd.DataFrame:
     """Append requested factors without changing legacy rows, labels or columns.
 
@@ -107,7 +115,11 @@ def build_factor_panel(
     if not isinstance(config, PanelConfig):
         raise DataContractError("config must be a PanelConfig.")
     legacy = build_point_in_time_panel(
-        prices, memberships, as_of_dates=as_of_dates, config=config
+        prices,
+        memberships,
+        as_of_dates=as_of_dates,
+        config=config,
+        expected_calendar=expected_calendar,
     )
     schema = _column_schema(factor_names)
     collisions = sorted(set(legacy.columns) & {column for column, _ in schema})
@@ -116,7 +128,9 @@ def build_factor_panel(
             "Factor output columns collide with existing columns: "
             f"{', '.join(collisions)}"
         )
-    histories, calendar = _raw_price_history(prices, config.benchmark_symbol)
+    histories, calendar = _raw_price_history(
+        prices, config.benchmark_symbol, expected_calendar
+    )
     rows = _factor_rows(legacy, histories, calendar, factor_names)
     additional = pd.DataFrame(
         {

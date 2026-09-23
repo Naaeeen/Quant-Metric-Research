@@ -34,6 +34,9 @@
 
 - Use point-in-time membership, stable security identifiers, and availability
   timestamps. Retain missing observations with visible coverage diagnostics.
+- For new empirical studies, declare expected sessions independently of observed
+  prices and require a matching calendar before building the panel. Keep endpoint
+  availability separate from minimum-history eligibility.
 - Split by decision date, never randomly across stock-date rows. Training labels
   must mature strictly before each evaluation window starts. Apply the same
   purging rules to inner tuning and outer development folds.

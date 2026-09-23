@@ -1050,3 +1050,95 @@ dependency consistency and vulnerability audit, command checks, independent
 review, and source/wheel builds passed. Linux CI is recorded on the pull request.
 The existing Colab notebook stays pinned to 0.13; hosted execution of the new
 example and predictive improvement have not been demonstrated.
+
+## Version 0.16: session completeness and price endpoints
+
+The direction review found two data issues worth fixing before the next market
+comparison: a date absent from every series was invisible to a benchmark-derived
+calendar, and trailing return could replace a missing endpoint with an older
+observation. This release fixes those assumptions without changing the model
+families, declared public demo or pinned Colab notebook.
+
+`ExpectedSessionCalendar` records sessions, inclusive coverage bounds, source
+and version. Its full declaration is fingerprinted. The input audit reports
+calendar differences; panel, factor and research builders reject mismatches
+before calculation. Registered development snapshots the declaration and checks
+its bytes before registration and after training. The old optional behavior
+remains available for reproducing existing demonstrations.
+
+Trailing return now uses the original window endpoints or remains missing.
+Two endpoint flags distinguish missing current prices from the minimum paired
+history requirement. Complete-data values, the other nine formulas, active
+members and forward labels are preserved. This changes sparse-input behavior;
+new studies must rebuild both comparison arms from the same corrected inputs.
+
+An independent review also found that reusing a Stage 1 output directory could
+leave an old calendar beside new results. The writer now requires a fresh
+destination, and the CLI checks it before starting work. Regression tests retain
+every prior artifact byte when a rerun is refused.
+
+The implementation follows explicit exchange sessions rather than generic
+weekdays. [exchange_calendars](https://github.com/gerrymanoim/exchange_calendars)
+provides an upstream session interface; the [NYSE calendar](https://www.nyse.com/trade/hours-calendars)
+distinguishes full closures from early closes. Neither a holiday list nor the
+mere presence of benchmark bars proves the completeness of a supplied dataset.
+[pandas percentage changes](https://pandas.pydata.org/docs/reference/api/pandas.Series.pct_change.html)
+operate on supplied positions, so an absent row must be detected before return
+calculation. No calendar dependency or automatic download was added.
+
+Verification includes missing first/middle/last market dates, malformed daily
+declarations, missing benchmark history, endpoint arithmetic, unchanged complete
+data, CLI persistence and genuine synthetic Ridge/SQLite development. Registered
+runs preserve earlier history. Tamper tests block registration or refuse
+completion while retaining any completed development record. Independent source
+review found no remaining actionable issue. The local full suite passed
+**1,606 tests** with **90.87% aggregate coverage
+including branch tracking**; release tooling and Linux results are recorded with
+the pull request.
+
+Next, qualify the calendar for the existing archive and run the declared
+target-only development comparison. A date-only check found 1,258 matching dates
+in its stock and factor files, including the absence of both 2012 Sandy closure
+dates; full equality against an independent calendar still needs verification.
+The latest checkpoint and live registry contain three matching development
+records, whereas the older original registry has two. Continue the latest
+lineage. No additional market-data training or final evaluation was performed
+for this release; historical universe and source-rights gaps remain unchanged.
+
+### Archive calendar qualification, September 22, 2026
+
+The complete in-scope date sets in both pinned archive files match XNYS from
+`exchange_calendars==4.13.2`: **1,258 sessions** over 2012-01-03 through
+2016-12-30, with no missing, extra or duplicate dates. There are 250 sessions in
+2012 and 252 in each subsequent year. Both Sandy closure dates are absent.
+An independent second calculation reproduced the ordered declaration and both
+date-set comparisons. The four archived file hashes still match their manifest.
+
+The calendar was generated in an isolated environment with explicit bounds:
+
+~~~python
+import exchange_calendars
+
+exchange = exchange_calendars.get_calendar(
+    "XNYS", start="2012-01-03", end="2016-12-30"
+)
+sessions = exchange.sessions_in_range("2012-01-03", "2016-12-30")
+~~~
+
+Its declaration uses source `https://github.com/gerrymanoim/exchange_calendars`
+and version `4.13.2:XNYS`. The canonical calendar fingerprint is
+`45de2bd427aaa02ce5cbbe1b388564d80eaa7b143b67300c7935e4ca31ec83ba`.
+The [pinned XNYS implementation](https://github.com/gerrymanoim/exchange_calendars/blob/4.13.2/exchange_calendars/exchange_calendar_xnys.py)
+includes irregular closures as well as regular holidays and early closes.
+
+Projected reads of the latest checkpoint's normalized inputs also passed:
+38,276 price keys contain no duplicates or null keys, the benchmark retains all
+1,258 sessions, and all 1,008 unique decision dates belong to the declaration.
+These checks read date/symbol columns and hash file bytes; they do not calculate
+returns, fit models or write experiment records. Scripts, runtime versions,
+the declaration and the two reports are retained locally under
+`artifacts/calendar-qualification-20260922-001/`.
+
+This establishes agreement with the pinned community calendar, not per-security
+price completeness or independently certified historical provenance. The next
+step is the corrected-panel target comparison using the latest registry lineage.
