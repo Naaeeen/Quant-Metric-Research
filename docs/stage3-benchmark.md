@@ -616,9 +616,10 @@ counts, and paired daily Rank-IC-improvement inference checks pass. Equality
 with the baseline does not count as improvement.
 
 Passing that gate means the model earned a data/research review; it does not
-mean the signal is tradable. Stage 4 requires verified provenance plus a real,
-pre-declared lockbox run. Only then should portfolio construction test turnover,
-liquidity, costs, constraints, exposures, capacity, and negative controls.
+mean the signal is tradable. Develop holdings, turnover, costs, trading constraints
+and negative controls on development data, then freeze these choices before final
+evaluation. Promotion requires verified provenance and a passed, predeclared final
+evaluation; the development simulator does not authorize trading.
 
 For context, [Qlib evaluates signals with IC and Rank IC](https://github.com/microsoft/qlib/blob/main/examples/benchmarks/README.md),
 while the broad comparison of regularized linear and nonlinear methods in

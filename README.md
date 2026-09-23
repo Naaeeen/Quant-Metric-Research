@@ -31,6 +31,9 @@ longer move those endpoints. The [target-ablation example](examples/README.md#ta
 compares raw-return and rank-target training with Ridge and histogram boosting.
 The separate factor comparison, qualified broader dataset and trading-cost
 evaluation remain open. Final evaluation has not run.
+The [feature-ablation example](examples/README.md#feature-ablation) now runs the
+fixed ten/thirteen-input comparison; its market-data study is declared and the
+enriched inputs are prepared, but the study has not trained yet.
 The Colab walkthrough remains pinned
 to the separately verified 0.13 source; its fixed ten-metric Ridge experiment is
 unchanged. Local notebook checks and hosted Colab execution have separate
@@ -77,6 +80,7 @@ is refused. Use a fresh output directory for each run.
 | Supply normalized prices and dated memberships | [Data contract](docs/data-contract.md) |
 | Compare models or feature bundles | [Stage 3 benchmark](docs/stage3-benchmark.md) |
 | Compare raw-return and rank training targets | [Target ablation](examples/README.md#target-ablation) |
+| Run the fixed ten/thirteen-feature comparison | [Feature ablation](examples/README.md#feature-ablation) |
 
 The Colab workflow requires a private seed containing the existing canonical
 registry, archive, and prior-run evidence. Keep the live SQLite database on local

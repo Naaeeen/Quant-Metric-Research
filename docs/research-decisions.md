@@ -271,6 +271,8 @@ run against the non-ML baselines.
 Even a passing Stage 3 model gate only makes the result eligible for data and
 research review. Portfolio construction must still test turnover, costs,
 liquidity, exposure drift, capacity, and negative controls.
+As revised in the September 22 roadmap, these development diagnostics precede
+final evaluation.
 
 ## Recheck triggers
 
@@ -1475,3 +1477,201 @@ The editable project is excluded from the dependency audit. The built wheel
 contains the measured redundancy source. The first full run caught a stale
 version assertion; it was updated to 0.16.1 before the successful full rerun.
 Independent review approved the code, regression cases and measurement claims.
+
+## September 22, 2026 feature-bundle study declaration
+
+Study `mendeley30-features-20260922-001` asks whether the three fixed price
+factors improve raw-return histogram boosting under the existing training and
+screening procedure. The completed target study motivates HGB as the primary
+family; Ridge remains a fixed linear control. This is further development on
+already-used periods, not independent confirmation of the earlier finding.
+
+### Inputs and fixed training procedure
+
+Build one enriched panel from the same normalized archive prices, memberships,
+decision dates and `PanelConfig` as the corrected target study. Supply the pinned
+XNYS calendar with fingerprint
+`45de2bd427aaa02ce5cbbe1b388564d80eaa7b143b67300c7935e4ca31ec83ba`.
+Verify every original column, dtype, row and order against the saved corrected
+panel. Retain missing observations, warm-up rows and immature outcomes. Both
+new runs must use the same enriched panel; the older ten-feature result cannot
+substitute for a new arm with matching source, runtime and full-panel identity.
+
+The expected shape is 30,240 stock-date rows, 30 stocks and 1,008 decision dates.
+This is still the retrospective 2017 cohort with 2012-2016 prices. It does not
+resolve historical membership, identifiers, delisting outcomes or source rights.
+
+| Setting | Declaration |
+| --- | --- |
+| Candidate inputs | `legacy10_v1` versus `legacy10_plus_price3_v1` |
+| Added factors | `return_21s`, `momentum_252s_skip_21s`, `ma_distance_63s`, formula version 1 |
+| Target and realized outcome | `forward_excess_return`; next-session close entry, 20-session holding label |
+| Ridge | Alpha 1 |
+| Histogram boosting | Learning rate 0.05, seven leaves, L2 1, 200 iterations, minimum leaf size 20, seed 42; early stopping disabled |
+| Preprocessing | Cross-sectional feature ranks; train-fold screening, imputation and scaling; date-balanced model loss |
+| Screening/evaluation | Coverage 0.8, redundancy 0.9, minimum cross-section 20, three spread buckets, HAC lag 19 |
+| Outer development | Three 63-date folds; minimum 252 training dates |
+| Inner validation | Two 42-date folds; minimum 126 training dates; labels mature before each evaluation window |
+| Budget | Two registered development runs, 36 supervised fits; one training thread; two hours and 4 GiB peak working set |
+
+The two-hour clock starts when the ablation process launches and includes loading,
+preflight, training, comparison and output writes. Raw-panel preparation is measured
+separately. The private execution observer enforces these limits; the reusable
+example itself only fixes the training thread count and records per-arm elapsed time.
+
+The [factor contract](data-contract.md#opt-in-fixed-window-price-factors) fixes
+complete required windows: 22 prices for return, 232 prices in the older momentum
+interval requiring 253 calendar positions, and 63 prices for moving-average
+distance. These are not the legacy 126-observation eligibility rule. Screening
+may remove any candidate inside a training fold; the study tests bundle value
+through that complete procedure, not an unconditional contribution by each factor.
+
+Both configurations differ only in `feature_columns`. Keep all other exported
+settings unchanged, including inactive final-test settings. Both no-training
+preflights must agree on temporal boundaries and nested fold evidence; their
+feature-coverage diagnostics may differ. Development evaluation remains:
+
+1. November 2, 2015 through February 2, 2016: 63 dates.
+2. February 3 through May 3, 2016: 63 dates.
+3. May 4 through August 2, 2016: 63 dates.
+
+Final decisions remain September 1 through November 30, 2016, with maximum label
+date December 30, 2016. `evaluate_lockbox` stays false. Preserve all five existing
+development records/exposures, including the interrupted attempt. A successful
+study appends exactly two development records to that same history. No automatic
+retry, parameter expansion or final evaluation follows a failure.
+
+### Comparisons and continuation decision
+
+Produce the existing feature-bundle report separately for HGB and Ridge. Each
+uses its own three-arm finite-score intersection: extended model, legacy model
+and the legacy run's screened, training-oriented equal-rank baseline. The
+baseline is not necessarily an average of all ten candidate metrics. Do not use
+the extended run's equal-rank baseline or manually freeze the prior six selected
+features. Retain native results alongside each common-sample comparison.
+
+There are four declared contrasts: extended minus legacy model and extended
+minus legacy equal-rank, separately for HGB and Ridge. For each of the two HGB
+contrasts, require all of the following:
+
+- At least 180 of 189 paired dates for IC and independently for spread, with at
+  least 60 of 63 pairs for each measure in every fold.
+- Mean paired IC improvement at least 0.01, with positive mean paired IC
+  improvement in at least two of three folds.
+- Mean paired raw-return spread improvement at least zero.
+- Positive candidate mean IC on that contrast's IC-paired dates and positive
+  candidate mean spread on its independently paired spread dates.
+
+An unfinished run or evidence bundle is `incomplete`. Insufficient paired
+coverage in either HGB contrast makes the study `inconclusive`. With adequate
+coverage, both contrasts passing gives `promising`; otherwise the result is
+`not_supported`. Apply the same calculations to Ridge as secondary diagnostics;
+they cannot rescue an HGB failure. Keep this study decision in a separate sidecar,
+outside the generic descriptive comparison writer.
+
+These are project-specific continuation thresholds, not significance tests.
+Overlapping 20-session spreads are fractional signal outcomes, not daily
+portfolio returns. A promising result justifies further development on qualified
+broader data and economic checks. Otherwise retain the legacy HGB candidate and
+diagnose the fixed bundle's coverage and selections without expanding this study.
+
+### Implementation and verification plan
+
+Add a small prepared-panel example around the existing benchmark and comparison
+APIs. Test the two registered synthetic runs, configuration and schedule equality,
+input preservation, new-output rule and failure retention before market training.
+Keep acquisition, raw-price preparation and private history backup in the study
+procedure. Do not add a new model, report schema or general experiment framework.
+
+Before fitting, publish this declaration, verify the software, freeze the tested
+revision/runtime and retain source/input hashes. Measure the actual training
+interpreter rather than the Windows virtualenv launcher. Save before/after
+registry snapshots, all native/common comparisons, fold selections and resources.
+Independently check the decisions and history before publishing aggregate results.
+
+The source review supports the representations and experiment discipline:
+
+- [Qlib Alpha158](https://github.com/microsoft/qlib/blob/main/qlib/contrib/data/loader.py)
+  includes lagged-price and moving-average ratios. Our windows and ratio direction
+  differ; these factors are not an Alpha158 replication.
+- [French's daily momentum construction](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/Data_Library/det_mom_factor_daily.html)
+  excludes recent returns from longer momentum. Our fixed-session stock
+  characteristic is not its size-sorted portfolio factor.
+- [Cawley and Talbot](https://www.jmlr.org/papers/v11/cawley10a.html) analyze selection
+  bias in model comparison. [Scikit-learn's leakage guide](https://scikit-learn.org/stable/common_pitfalls.html#data-leakage)
+  places learned feature selection and preprocessing inside training. Neither
+  source validates the project's numerical continuation thresholds.
+
+An accompanying consistency review corrected the benchmark guide's old sequence:
+holdings, costs and negative controls belong in development, before freezing final
+evaluation. The nine-workstream goal remains open after this bounded factor study.
+
+### Feature-study implementation and input preparation
+
+The prepared-panel example is implemented without changing the package's model,
+factor or comparison APIs. The package remains 0.16.1; the new example requires
+the source checkout. It normalizes all thirteen candidate columns once, checks
+matching temporal preflight evidence, and runs both bundles through the existing
+development registry and comparison writer. Study-specific continuation decisions
+remain a separate analysis.
+
+The initial test failed because the example did not exist. The completed 21-case
+suite exercises real small synthetic fits, input/configuration identity, preflight
+drift, history retention, failures and direct CLI execution. A comparison-output
+failure after the first report preserves that report and both completed runs.
+Standalone coverage is 87.60% of statements and 86.75% aggregate with branch
+tracking. Subprocess CLI checks run separately from the parent coverage measure.
+The full suite passed 1,636 tests in 304.64 seconds with 90.90% aggregate package
+coverage and branch tracking. Lint/format, dependency consistency, vulnerability
+audit and source/wheel builds passed; the editable project is excluded from the
+dependency audit. Independent review approved the software and declaration.
+
+Private no-training preparation took 721.73 seconds while synthetic verification
+also ran. The 30,240-row enriched panel preserves every original column, dtype and
+row exactly. Both preflights pass with identical temporal evidence and unchanged
+final boundaries. Input and calendar hashes match the prior study; the base
+benchmark configuration is byte-identical. The new panel SHA-256 is
+`35a580f8fce7a191e9eed2a59e2989f5edd821a6988cf4e751fee8e81ef0787e`.
+
+Across 27,720 pre-final rows, new-factor availability is 99.048% for `return_21s`,
+97.179% for skipped-month momentum, and 98.752% for moving-average distance.
+Zero-observed-input rows decrease from 474 under the legacy bundle to 264 under
+the extended bundle. All rows remain present. This is input-coverage evidence,
+not predictive performance; the study's native/common comparisons must retain
+the distinction. Preparation leaves all five existing records/exposures unchanged.
+
+Preparation evidence stays under `artifacts/feature-ablation-20260922-001/`.
+No market-data feature comparison has trained yet. Before fitting, verify the
+actual-interpreter resource observer and the declared-decision analysis, then
+freeze the execution revision. Preserve these prepared inputs rather than
+rebuilding them merely to repeat the preparation timing.
+Independent read-only checks reproduced the data hashes, preflight boundaries and
+five-record history equality without decoding final outcomes. The preparation
+report records input hashes, not its start-time package/script identity. Bind the
+reviewed package and preparation-script hashes in the execution declaration; keep
+that post-preparation verification distinct from a contemporaneous capture.
+
+### Full-lifecycle goal and completion checks
+
+The user requested improvement across the entire project, including choices
+of data, target, scale and model. The roadmap retains nine required workstreams
+and six handoff deliverables. An independent scope review found that several
+workstream completion rules were weaker than that overall contract. They now
+require a qualified broader-data source, executed negative controls and period
+sensitivity checks, fresh hosted Colab execution, and tested label-free scoring,
+monitoring, retraining and rollback. These are requirements, not completed work.
+
+The review also adds training/scoring feature parity and measured learning
+curves to the plan. Cross-workstream reviews occur after input qualification,
+after the first pilot, after each study and before environment/client handoff.
+They can change the next hypothesis or priority; they do not change the declared
+10/13-feature experiment, its thresholds or its finite training budget.
+
+Google's [ML Test Score paper](https://research.google.com/pubs/archive/45742.pdf)
+motivates checks of feature costs, training/scoring consistency, reproducibility,
+staleness and recovery beyond a model-quality score. Qlib's
+[workflow documentation](https://qlib.readthedocs.io/en/stable/component/workflow.html)
+and [online-serving design](https://qlib.readthedocs.io/en/latest/component/online.html)
+provide references for separating recorded experiments from later model updates
+and prediction routines. We use these ideas for an offline research handoff;
+they neither validate this project's signal nor require a live-trading service.

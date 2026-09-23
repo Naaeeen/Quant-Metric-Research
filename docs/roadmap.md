@@ -15,6 +15,14 @@ The goal covers all nine workstreams below: the research decision, data,
 features, models, statistical validation, trading economics, compute,
 engineering and handoff. Every workstream needs a verified deliverable.
 
+Improve the whole path from an investment question to a reproducible ranking:
+qualify the data, choose the target, build and test factors, compare training
+methods, challenge the evaluation, reconcile portfolio economics, measure
+compute, and make the resulting workflow usable by another researcher. Review
+interfaces as well as components: the same timestamp, universe, feature formula
+and missingness rule must carry through preparation, fitting, scoring and
+evaluation. A stronger model cannot compensate for a broken link in that chain.
+
 Judge performance by out-of-sample ranking quality, stability, coverage and
 economic value together. Declare numerical thresholds and a finite experiment
 budget for each study before observing its results. Compare stronger models
@@ -102,7 +110,7 @@ The repository builds price-derived stock-date panels, screens metrics and
 trains Ridge, histogram gradient boosting and optional Ridge+PCA on nested,
 purged time splits. It records experiments, scores, coverage, uncertainty and
 development feature-bundle comparisons. The CPU Colab walkthrough pins 0.13;
-the current package is 0.16.1, with a separate executable target-ablation example,
+the current package is 0.16.1, with executable target- and feature-ablation examples,
 declared-calendar checks, corrected trailing-return endpoints and faster pairwise
 screening with exact-equivalence tests.
 
@@ -168,6 +176,14 @@ Review gates apply to individual milestones, not just releases. Stop expanding
 a method when its benefit disappears, its data assumptions fail, or a simpler
 alternative gives equivalent results.
 
+Revisit all nine workstreams after input qualification, after a first pilot
+before a larger search, after each completed study, and before Colab or client
+handoff. For each checkpoint, record what changed, the strongest remaining
+assumption, the evidence needed next, and whether the next experiment should
+proceed, change or be deferred. Separate confirmed findings from hypotheses.
+Use these reviews to reprioritize the existing plan, not to restart completed
+work or quietly change a study already in progress.
+
 ## 1. Define the decision and research target
 
 **Question:** What should the ranking help someone decide?
@@ -214,7 +230,9 @@ universe, baseline, development/final periods and acceptance criteria.
 
 **Complete when:** a versioned source report identifies covered periods,
 verified assumptions, unresolved gaps, row/feature counts, missingness and
-estimated memory. A small sample reproduces the full transformation.
+estimated memory. A small sample reproduces the full transformation. The source
+passes the provider gate and supports the required broader-data experiment;
+unresolved eligibility or rights keep this workstream open.
 
 ## 3. Test features and representations
 
@@ -287,7 +305,11 @@ Promote a more expensive model only for a useful, repeatable improvement.
   evaluation. Keep final outcomes out of ongoing model selection.
 
 **Complete when:** independent review reproduces the split, target maturity,
-comparison population and selection decision from saved evidence.
+comparison population and selection decision from saved evidence. The review
+includes executed negative controls, dependence-aware uncertainty or an explicit
+reason it cannot support inference, and measured sensitivity to periods,
+coverage and concentrated gains. An unresolved inference limitation keeps a
+claim of reliable improvement open even when the software checks pass.
 
 ## 6. Evaluate trading assumptions during development
 
@@ -322,6 +344,9 @@ fixtures and a declared dataset.
   Increase rows, history and features in measured steps.
 - Record preprocessing, training and evaluation time separately, plus memory,
   hardware, thread count, data shape and model/search settings.
+- Measure learning curves over declared history lengths and universe sizes.
+  Separate gains from more observations, broader coverage and a larger model;
+  choose the next scale from the measured benefit and resource cost.
 - Use projected Parquet reads and reuse deterministic preprocessing where
   equivalence tests show that reuse does not cross fold boundaries.
 - Pin the tested source and constraints. Check a clean CPU environment first;
@@ -333,9 +358,10 @@ fixtures and a declared dataset.
 - Execute every notebook cell from a fresh runtime. Record local, Linux CI and
   hosted Colab verification separately.
 
-**Complete when:** the walkthrough completes from its documented inputs,
-reproduces the declared report and survives a tested interruption without
-losing experiment history.
+**Complete when:** an independent operator executes every cell in a fresh
+hosted Colab runtime from documented authorized inputs, reproduces the declared
+report within predeclared resource limits, and demonstrates recovery without
+losing experiment history. Local and CI runs remain separate evidence.
 
 ## 8. Keep the implementation maintainable
 
@@ -374,12 +400,18 @@ and an independent reviewer can follow the implementation and its evidence.
 - Add batch scoring from decision-time inputs without future labels. Version
   the fitted preprocessing and model together; test score parity after saving
   and reloading them, including missing-feature and changed-schema cases.
+- Compare training-time and batch-scoring feature values for the same historical
+  decision inputs. Exercise newly eligible stocks, stale inputs and unavailable
+  factors without consulting later prices or labels to decide eligibility.
 - Exercise monitoring and retraining offline with delayed labels, stale inputs
   and interrupted runs. Define who reviews a warning or candidate replacement;
   alerts and new models must not silently change portfolio decisions.
 
 **Complete when:** a second researcher can add a candidate, reproduce the
-baseline, interpret the comparison and resume the same research history.
+baseline, interpret the comparison and resume the same research history. The
+handoff demonstrates saved/reloaded score parity from label-free inputs,
+schema and freshness failure handling, and an offline monitoring, retraining
+and rollback exercise with named review ownership.
 
 ## Next milestones
 
@@ -388,7 +420,7 @@ baseline, interpret the comparison and resume the same research history.
 | 1 | Direction audit and revised working plan | Complete: independent findings reconciled; sources and priorities recorded. |
 | 2 | Correct target/return separation in inner tuning | Complete: failing regressions reproduced and fixed; rank-target training reports return-unit spreads. |
 | 3 | Executable target/model ablation | Complete for the declared small development study: both targets, Ridge/boosting, all six paired comparisons, independent review and measured resources. |
-| 4 | Data qualification and empirical ablations | Calendar/endpoint checks, input rebuild and target study complete. Next: separate 10/13-feature study and a qualified larger-data choice. |
+| 4 | Data qualification and empirical ablations | Calendar/endpoint checks and target study complete. The 10/13-feature runner is tested and its enriched inputs prepared; training awaits the verified resource observer and decision analysis. Qualified broader data remains open. |
 | 5 | Development economic diagnostics and negative controls | Open: tested holdings/cost accounting and a frozen final-evaluation procedure. |
 | 6 | Stronger challenger and larger Colab study | Open: fair tuning budget, measured resources, independent review and reproducible run. |
 
@@ -405,8 +437,11 @@ The array-screening implementation preserves exact synthetic outputs and
 selection boundaries. Three fresh-process component comparisons measured a
 5.49x median speed ratio on 120 dates, 30 stocks and ten features. This does not
 measure a whole-study speedup or establish hosted Colab performance.
-Next, declare the separate 10/13-feature comparison before fitting,
-retaining fixed baselines and the original feature bundle. Keep raw-return
+The separate [10/13-feature study](research-decisions.md#september-22-2026-feature-bundle-study-declaration)
+is declared before fitting, with HGB primary, Ridge secondary and fixed paired
+continuation criteria. Its tested example and prepared inputs preserve the
+five-record history. Verify the resource observer and decision analysis, then
+run both bundles with the same enriched inputs and source/runtime. Keep raw-return
 boosting as a candidate for further tests, not an approved portfolio model.
 Qualify broader data and develop economic checks in parallel. Historical
 membership and source rights remain unresolved for the current archive.

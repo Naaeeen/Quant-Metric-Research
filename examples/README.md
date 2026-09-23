@@ -505,3 +505,60 @@ files, completed arms and recorded failed training attempts; retry with a fresh
 output directory and the same registry. This experiment changes the target only.
 Feature-bundle comparisons should be separately declared so their effects remain
 distinguishable.
+
+## Feature ablation
+
+`feature_ablation.py` compares the fixed `legacy10_v1` and
+`legacy10_plus_price3_v1` bundles on one prepared enriched panel. It trains Ridge
+and histogram boosting in both runs, using raw `forward_excess_return` for the
+target and realized outcome. Only the candidate feature list changes.
+
+Build the input with `build_factor_panel` and the expanded bundle's
+`price_factor_names`. For empirical work, supply an independently declared
+session calendar and retain the raw-source evidence. The [factor contract](../docs/data-contract.md#opt-in-factor-panel-enrichment)
+defines formulas, availability columns and missing-window behavior. Keep all rows;
+do not construct separate ten- and thirteen-column panels or drop stocks whose
+new factors are missing.
+
+Supply an explicit `BenchmarkConfig` with the same settings required by the
+target-ablation example above: the original ten feature names, Ridge then
+histogram boosting, no PCA, the equal-rank baseline and raw excess return in both
+return fields. Declare the feature-comparison hypothesis, periods and budget
+before fitting. The [small market-study declaration](../docs/research-decisions.md#september-22-2026-feature-bundle-study-declaration)
+is one concrete protocol, not a universal configuration.
+
+~~~text
+python examples/feature_ablation.py --panel artifacts/prepared/enriched_panel.parquet --config artifacts/plans/feature-ablation.json --registry artifacts/research-registry.sqlite3 --output-dir artifacts/feature-ablation-001 --study-id feature-ablation-v1 --hypothesis "Compare the original ten metrics with three additional price factors under fixed models and temporal folds."
+~~~
+
+Run from the checkout containing this example and its installed environment.
+The pinned 0.13 Colab notebook does not include it. The script requires an
+existing nonempty local registry and a new output directory. Preserve the
+canonical history; an older backup must not replace newer recorded experiments.
+
+Both preflights must agree on temporal boundaries, nested folds and label
+maturity before fitting. Feature-coverage diagnostics may differ. The example
+normalizes all thirteen inputs once, then passes that same panel to both runs.
+It saves source-byte snapshots, the normalized panel, a declaration, both
+preflights, per-bundle timing and the two standard benchmark bundles:
+
+- `legacy10_v1/` and `legacy10_plus_price3_v1/`.
+- `comparison_ridge/` and `comparison_hist_gradient_boosting/`, each containing
+  native/common metrics and paired daily deltas through the existing writer.
+
+Each family report compares the expanded model, original model and original
+run's screened equal-rank baseline on its own three-arm common population.
+Screening can retain fewer than ten or thirteen inputs; this tests the bundle
+under that selection procedure. The [comparison contract](../docs/stage3-benchmark.md#development-only-feature-bundle-comparison)
+describes separate IC/spread masks and the descriptive output fields.
+
+Training uses one CPU thread. Timings include both model families and nested
+tuning for each bundle; memory and a whole-study time limit need a separate
+execution observer. No final evaluation or automatic winner selection runs.
+Apply predeclared study criteria in a separate analysis, not inside the generic
+comparison report.
+
+`completion.json` marks successful execution and report publication, not a
+successful predictive hypothesis. Failures retain partial files and recorded
+attempts. Inspect them, preserve the same registry, and use a new output directory
+for an explicitly declared retry.
