@@ -102,8 +102,9 @@ The repository builds price-derived stock-date panels, screens metrics and
 trains Ridge, histogram gradient boosting and optional Ridge+PCA on nested,
 purged time splits. It records experiments, scores, coverage, uncertainty and
 development feature-bundle comparisons. The CPU Colab walkthrough pins 0.13;
-the current package is 0.16, with a separate executable target-ablation example,
-declared-calendar checks and corrected trailing-return endpoints.
+the current package is 0.16.1, with a separate executable target-ablation example,
+declared-calendar checks, corrected trailing-return endpoints and faster pairwise
+screening with exact-equivalence tests.
 
 Completed market-data studies use 30 alphabetically selected stocks from a
 retrospective 2017 constituent snapshot, with 2012-2016 prices. The corrected
@@ -124,10 +125,10 @@ Track implementation and research evidence separately:
 
 | Evidence level | Current position | Next evidence needed |
 | --- | --- | --- |
-| Implemented and tested | Target/return separation, target ablation, declared-calendar checks and corrected trailing-return endpoints; corrected target experiment completed. | Separate factor comparison and equivalent screening-speed improvements. |
+| Implemented and tested | Target/return separation, target ablation, calendar/endpoint corrections and exact-preserving array screening; corrected target experiment completed. | Separate factor comparison and end-to-end resource measurements at larger scale. |
 | Data checked | Archive session dates match pinned XNYS; normalized date keys were checked. | Per-security completeness and qualified historical membership, provenance and rights. |
 | Market-data evaluated | Corrected raw-return boosting met continuation criteria; Ridge and rank transformations did not. All five arms covered the 189 development dates. | Factor comparison, independent negative controls, economics and a qualified broader study. |
-| Environment reproduced | The walkthrough pins 0.13; current package capabilities are 0.16. Local and Linux checks have their own records. | A coherent updated notebook and fresh hosted Colab execution. |
+| Environment reproduced | The walkthrough pins 0.13; current package capabilities are 0.16.1. Local and Linux checks have their own records. | A coherent updated notebook and fresh hosted Colab execution. |
 
 For each milestone, retain its hypothesis, prerequisite, deliverable,
 verification method, acceptance rule, evidence path and current status in the
@@ -400,11 +401,11 @@ development records, including the original interrupted run. Preserve this
 lineage; the three-record pre-study backup and older two-record registry are
 historical evidence, not restart points.
 
-Next, measure and test a screening-speed improvement before repeating expensive
-screening in the separate 10/13-feature study. Preserve pairwise missingness,
-Spearman arithmetic and feature-selection decisions. An invented-data profile
-identified repeated small-table operations as a concrete cost; it does not
-establish a production speedup. Declare the factor comparison before fitting,
+The array-screening implementation preserves exact synthetic outputs and
+selection boundaries. Three fresh-process component comparisons measured a
+5.49x median speed ratio on 120 dates, 30 stocks and ten features. This does not
+measure a whole-study speedup or establish hosted Colab performance.
+Next, declare the separate 10/13-feature comparison before fitting,
 retaining fixed baselines and the original feature bundle. Keep raw-return
 boosting as a candidate for further tests, not an approved portfolio model.
 Qualify broader data and develop economic checks in parallel. Historical
