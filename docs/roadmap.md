@@ -184,9 +184,14 @@ new empirical factor comparisons remain separately declared future work:
    parity, declared-old-identity preservation and real synthetic workflow summary
    compatibility. Retain version-specific execution evidence: the previous full
    five-cell run does not validate a refreshed notebook or hosted Drive session.
-10. Predeclare ablations and comparisons with the existing PCA and tree families;
-   retain all attempts and exposure history. Additional horizons and later
-   portfolio work remain gated by the data and evaluation requirements below.
+10. Version 0.14 saves an already computed development comparison as five CSVs
+    plus a last-published completion manifest. Strict descriptive schemas and
+    fresh destinations prevent accidental extra conclusions and overwrite;
+    failures retain evidence. Saving does not re-evaluate, register an experiment,
+    authenticate history or advance the empirical gate. The Colab pin stays 0.13.
+11. Predeclare ablations and comparisons with the existing PCA and tree families;
+    retain all attempts and exposure history. Additional horizons and later
+    portfolio work remain gated by the data and evaluation requirements below.
 
 Colab can discard VM files and changes preinstalled libraries over time; its
 [FAQ](https://research.google.com/colaboratory/faq.html) and

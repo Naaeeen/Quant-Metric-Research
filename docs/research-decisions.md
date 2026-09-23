@@ -833,3 +833,53 @@ Independent ten-file review, 128-file lint/format, dependency consistency/audit
 and source/wheel builds passed. Production source, package version, experiment
 defaults and dependency constraints were not changed by this refresh. Its Linux
 CI result is recorded separately on the refresh pull request.
+
+## September 2026 descriptive comparison persistence
+
+Version 0.14 adds a narrow persistence boundary around `FeatureBundleComparison`,
+not another training runner. Registered development can already return the two
+comparison-ready runs; the existing comparison checks their conditional
+consistency. Saving that result should not repeat model selection or evaluation.
+[Qlib's record templates](https://raw.githubusercontent.com/microsoft/qlib/main/qlib/workflow/record_temp.py)
+also separate prediction records from saved signal-analysis outputs. We adopt
+that separation, not pickle loading, optional skipping, a new experiment manager,
+or annualized claims from overlapping returns.
+
+The writer saves five descriptive tables and strict JSON metadata. It validates
+exact definition-1 table schemas and fixed textual labels before any write, so
+direct construction cannot smuggle an inference column into a descriptive
+export. [OWASP's CSV injection guidance](https://owasp.org/www-community/attacks/CSV_Injection)
+explains why CSV quoting alone is insufficient. The narrow schema rejects
+formula-like text instead of modifying legitimate numeric values; it is not a
+universal spreadsheet sanitization facility. Original metadata strings remain
+JSON data, and genuine missing paired means are not replaced with zero.
+
+[pandas' CSV interface](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_csv.html)
+supports in-memory serialization before creation, explicit missing-value
+representation and stable newline choice. Files use exclusive creation in a
+fresh local destination. The completion manifest is published last and any
+existing marker is refused. [Python's rename documentation](https://docs.python.org/3.11/library/pathlib.html#pathlib.Path.rename)
+distinguishes Unix replacement behavior from Windows refusal, so a last-moment
+path check is not advertised as race-proof publication. This is a single-writer,
+non-hostile-local-filesystem contract, not distributed storage or durability.
+
+Failure handling retains partial evidence and the original exception, including
+the ambiguous case where publication succeeds and then reports an error. No
+automatic cleanup or retry occurs. Output digests are byte-consistency metadata,
+not signatures or proof of authenticated history. The artifact-format version
+is independent of benchmark schema 6 and comparison definition 1; both stay
+unchanged. The separately verified Colab pin remains at 0.13. No new empirical
+study, final evaluation, data acquisition, history rewrite, model/default change
+or dependency is introduced. Provider provenance still gates the next empirical
+study; persistence is not evidence that any added factor improves a ranking.
+
+Final frozen local verification: **1,508 tests passed** in about 246 seconds,
+with **90.48% aggregate coverage including branch tracking**. The 97 focused
+writer checks include physically preserved partial bytes, short writes,
+write-plus-close errors, pre-existing entries and publication-then-error cases.
+The existing genuine synthetic two-run comparison is reused for export parity;
+no additional model pair or empirical study is introduced. Independent review,
+130-file lint/format, dependency consistency and vulnerability audit, installed
+0.14 API/command checks and source/wheel builds passed. Linux results are recorded
+separately on the release pull request. No hosted Colab or remote-durability claim
+is added by these software checks.
