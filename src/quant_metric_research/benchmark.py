@@ -25,9 +25,9 @@ from .benchmark_reporting import (
 )
 from .benchmark_reporting import _fingerprints
 from .benchmark_tuning import (
+    _tune_model_families,
     fit_fold_screen,
     screen_records,
-    tune_model_family,
 )
 from .screening import MetricScreenResult
 from .statistics import newey_west_mean_tstat
@@ -207,14 +207,13 @@ def _fit_evaluation_block(
             inner_fold="final_fit",
         ).assign(family="all", fit_kind="final_fit")
     ]
-    for family in families:
-        tuned = tune_model_family(
-            training,
-            config=config,
-            family=family,
-            phase=phase,
-            outer_fold=fold,
-        )
+    for family, tuned in _tune_model_families(
+        training,
+        config=config,
+        families=families,
+        phase=phase,
+        outer_fold=fold,
+    ):
         predictions.append(
             _model_predictions(
                 training,

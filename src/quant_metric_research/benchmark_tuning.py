@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 import numpy as np
@@ -11,6 +12,8 @@ from .benchmark_models import ModelCandidate, candidate_specs, fit_candidate
 from .screening import MetricScreenResult, fit_metric_screen
 from .signals import compute_daily_rank_ic, compute_quantile_spreads
 from .splits import build_purged_walk_forward_splits
+
+_PreparedInnerFolds = tuple[tuple[pd.DataFrame, pd.DataFrame, MetricScreenResult], ...]
 
 
 @dataclass(frozen=True)
@@ -37,6 +40,7 @@ def fit_fold_screen(
         redundancy_threshold=config.redundancy_threshold,
         hac_lags=config.hac_lags,
         quantiles=config.quantiles,
+        include_quantile_spreads=False,
     )
 
 
@@ -74,7 +78,7 @@ def _inner_folds(
     training: pd.DataFrame,
     *,
     config: BenchmarkConfig,
-) -> list[tuple[pd.DataFrame, pd.DataFrame, MetricScreenResult]]:
+) -> _PreparedInnerFolds:
     normalized = training.reset_index(drop=True).copy(deep=True)
     split = config.split
     folds = build_purged_walk_forward_splits(
@@ -95,12 +99,12 @@ def _inner_folds(
         if not screen.selected_features:
             raise ValueError("No features survive screening in an inner fold.")
         prepared.append((inner_training, validation, screen))
-    return prepared
+    return tuple(prepared)
 
 
 def _candidate_validation_scores(
     candidate: ModelCandidate,
-    prepared_folds: list[tuple[pd.DataFrame, pd.DataFrame, MetricScreenResult]],
+    prepared_folds: _PreparedInnerFolds,
     *,
     config: BenchmarkConfig,
 ) -> tuple[float, float, int]:
@@ -156,6 +160,42 @@ def tune_model_family(
     outer_fold: int | str,
 ) -> TuningResult:
     prepared = _inner_folds(training, config=config)
+    return _tune_prepared_family(
+        prepared, config=config, family=family, phase=phase, outer_fold=outer_fold
+    )
+
+
+def _tune_model_families(
+    training: pd.DataFrame,
+    *,
+    config: BenchmarkConfig,
+    families: tuple[str, ...],
+    phase: str,
+    outer_fold: int | str,
+) -> Iterator[tuple[str, TuningResult]]:
+    # Reuse only within this evaluation block, with the same training and config.
+    prepared = _inner_folds(training, config=config)
+    for family in families:
+        yield (
+            family,
+            _tune_prepared_family(
+                prepared,
+                config=config,
+                family=family,
+                phase=phase,
+                outer_fold=outer_fold,
+            ),
+        )
+
+
+def _tune_prepared_family(
+    prepared: _PreparedInnerFolds,
+    *,
+    config: BenchmarkConfig,
+    family: str,
+    phase: str,
+    outer_fold: int | str,
+) -> TuningResult:
     screening = pd.concat(
         [
             screen_records(

@@ -307,6 +307,59 @@ and preserve the same registry outside individual run directories.
 See [the runnable example](../examples/README.md#public-archive-development-demo)
 and [the frozen declaration](research-decisions.md#september-2026-public-archive-development-declaration).
 
+## Notebook history checkpoints
+
+Version 0.8.0 wraps the fixed public demo with `seed-notebook` and
+`notebook-demo`. The first requires an existing canonical local registry and a
+new history directory; it never starts a replacement history implicitly. For
+the documented private handoff, evidence aliases `archive`, `run001` and `run002`
+retain the archive, interrupted attempt and completed retry respectively.
+Those aliases are the notebook handoff convention, not proof of data provenance.
+
+The seed preserves every prior registry row and exposure, including `running`
+and `failed` records. An old interrupted research record is allowed to remain
+running; this is distinct from an unresolved checkpoint generation. Source
+evidence is copied without changing its original files.
+
+History is a contiguous sequence of new numbered directories. Each contains
+`start.json`, `registry.sqlite3`, `evidence/` and `checkpoint.json`. The start
+marker binds the parent checkpoint and operation; development starts also record
+declared runtime/source/config identity. The terminal manifest records status,
+registry counts and an inventory of file sizes and SHA-256 digests. Publication
+and read-back happen after copying
+the closed registry snapshot and evidence. A checkpoint failure may leave
+`checkpoint_failed.json`; it is not a successful completion marker.
+
+Before development, the helper verifies the whole chain and copies the latest
+registry into a new local work directory. The restored history must match, and
+each subsequent snapshot must retain previous records and exposures unchanged.
+Only new development records are permitted. The helper writes and rereads a
+start marker before calling the existing offline public demo; it does not
+accept a final-evaluation option.
+
+Catchable failures attempt to checkpoint current registry state and partial
+evidence, then preserve the original exception. Abrupt interruption or failed
+checkpointing leaves an unresolved generation, which blocks automatic reuse.
+Corrupt, missing, unexpected or changed files also fail validation; the helper
+does not fall back to an older complete generation. Existing destinations are
+never overwritten. Keep partial local work for review rather than clearing
+exposure or deleting a generation.
+
+Live SQLite and temporary work must be genuinely local; mounted storage is only
+for ordinary checkpoint files. The notebook rejects known `/content/drive` work
+paths, but detecting every arbitrary mount is the caller's responsibility.
+This is a single-user, sequential workflow, not distributed locking, remote
+durability certification,
+or protection against deliberate history truncation. Keep checkpoint folders
+private under the same data-sharing restrictions as their contents.
+
+The notebook retains the existing model/data limitations and development-only
+scope. A new Python/library/source identity records another development run;
+it does not make previously inspected outcomes unseen or authorize final
+evaluation using mismatched development identity. See
+[the Colab walkthrough](../examples/README.md#colab-development-walkthrough)
+for the private handoff and failure procedure.
+
 ## Stage 3 evaluation and artifacts
 
 The engine fits three types of non-ML comparison: every usable individual

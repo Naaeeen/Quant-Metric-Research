@@ -9,6 +9,7 @@ import pandas as pd
 from .quality import compute_feature_quality
 from .redundancy import compute_feature_redundancy
 from .signals import (
+    SPREAD_COLUMNS,
     compute_daily_rank_ic,
     compute_quantile_spreads,
     summarize_rank_ic,
@@ -40,7 +41,11 @@ def fit_metric_screen(
     hac_lags: int,
     quantiles: int = 5,
     as_of_date_column: str = "as_of_date",
+    include_quantile_spreads: bool = True,
 ) -> MetricScreenResult:
+    """Fit selection and diagnostics; omitted spreads retain their empty schema."""
+    if not isinstance(include_quantile_spreads, bool):
+        raise ValueError("include_quantile_spreads must be a boolean.")
     if not 0.0 <= minimum_coverage <= 1.0:
         raise ValueError("minimum_coverage must be between zero and one.")
     if not 0.0 <= redundancy_threshold <= 1.0:
@@ -75,13 +80,19 @@ def fit_metric_screen(
         as_of_date_column=as_of_date_column,
     )
     ic_summary = summarize_rank_ic(daily_rank_ic, hac_lags=hac_lags)
-    quantile_spreads = compute_quantile_spreads(
-        training,
-        feature_columns=feature_columns,
-        target_column=target_column,
-        quantiles=quantiles,
-        min_cross_section=min_cross_section,
-        as_of_date_column=as_of_date_column,
+    if isinstance(quantiles, bool) or not isinstance(quantiles, int) or quantiles < 2:
+        raise ValueError("quantiles must be an integer of at least 2.")
+    quantile_spreads = (
+        compute_quantile_spreads(
+            training,
+            feature_columns=feature_columns,
+            target_column=target_column,
+            quantiles=quantiles,
+            min_cross_section=min_cross_section,
+            as_of_date_column=as_of_date_column,
+        )
+        if include_quantile_spreads
+        else pd.DataFrame(columns=SPREAD_COLUMNS)
     )
     redundancy = compute_feature_redundancy(
         training,

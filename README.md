@@ -3,11 +3,17 @@
 A standalone, leakage-aware research pipeline for testing whether historical
 equity metrics contain stable cross-sectional signal.
 
-Version 0.7.0 adds a reproducible public-archive development workflow: acquire
-two pinned historical US data files, audit coverage, calculate trailing metrics,
-and train a fixed Ridge model against transparent ranking baselines. Acquisition
-uses the archive's declared license; the subsequent development run is offline
-and does not evaluate the reserved final test. The offline Yahoo-format importer
+Version 0.8.0 adds a CPU-only Colab walkthrough with private, append-only
+checkpoints around the existing public-archive development workflow. It carries
+the original research registry and evidence into the notebook instead of
+starting a blank history. Training and live SQLite remain on local VM storage;
+the notebook does not evaluate the reserved final test.
+
+The version 0.7.0 real-data run completed, but Ridge did not improve the aggregate
+ranking result over equal-weight ranks. The
+[recorded result](docs/research-decisions.md#observed-development-result-2026-09-08)
+remains part of the evidence. Colab portability does not change that conclusion
+or the archive's provenance limitations. The offline Yahoo-format importer
 remains available for separately authorized exports.
 
 The repository now covers three research stages:
@@ -109,6 +115,13 @@ Stage 3 accepts a versioned panel containing `as_of_date`, `symbol`,
 columns. See `docs/data-contract.md` before treating any panel as research-grade.
 
 ## Run
+
+For the notebook, start with the
+[Colab walkthrough](examples/README.md#colab-development-walkthrough).
+It requires a privately uploaded seed containing the existing canonical registry,
+archive and prior run evidence. Repository approval does not authorize publishing
+those files. The guide distinguishes local verification from execution on hosted
+Colab; it does not claim a hosted Colab run.
 
 For the declared public US archive demo, use a repository virtual environment
 and new destinations under the ignored data/artifact directories:
