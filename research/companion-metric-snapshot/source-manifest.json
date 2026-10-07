@@ -1,0 +1,65 @@
+{
+  "source_archive": "user-supplied ipynb.zip",
+  "source_archive_sha256": "86648d645552473e0f0bd91476dd69867fa31a3204c9d68a140be9197b24243c",
+  "notebook": {
+    "path": "stock_alpha_research_pipeline copy.ipynb",
+    "sha256": "28df5d570bd103513a50124a313c46053993ae97605b848b1c6228bf97410c6d",
+    "original_bytes_preserved": true,
+    "nbformat": 4,
+    "nbformat_minor": 5,
+    "cell_count": 28
+  },
+  "figures": [
+    {
+      "path": "figures/correlation-matrix.png",
+      "source_cell_index": 7,
+      "source_output_index": 0,
+      "sha256": "1a0023d1e77153a1b9bf45298c340d2e7ebba012dc7c306d2728f1df751cac00"
+    },
+    {
+      "path": "figures/metric-dendrogram.png",
+      "source_cell_index": 8,
+      "source_output_index": 0,
+      "sha256": "9aea3ece21c26cb7ea4875624a85ea080fccbf65ea1719d51aa96493757ea21b"
+    },
+    {
+      "path": "figures/pca-variance.png",
+      "source_cell_index": 11,
+      "source_output_index": 0,
+      "sha256": "bcea961ea34960b3245eae15fc9c9b31fe6ae527df0b7e260da2a28186c8f02a"
+    },
+    {
+      "path": "figures/kmeans-elbow.png",
+      "source_cell_index": 16,
+      "source_output_index": 0,
+      "sha256": "bb166d0b42e1876f3b714b574b8e02d7ab937e09173f68951ac6065cdbb3dccf"
+    },
+    {
+      "path": "figures/kmeans-silhouette.png",
+      "source_cell_index": 16,
+      "source_output_index": 1,
+      "sha256": "b927e6ef55d44a216539c7bf068739a93f4b6d6f364730cdfce3224d8ab8eb97"
+    },
+    {
+      "path": "figures/stock-clusters.png",
+      "source_cell_index": 18,
+      "source_output_index": 0,
+      "sha256": "74d453c523f4461b9091a3f0b6b976621da3ee0435682631d7f1e456bb1bfccc"
+    },
+    {
+      "path": "figures/logistic-coefficients.png",
+      "source_cell_index": 25,
+      "source_output_index": 0,
+      "sha256": "7ecdb516a2f6957174242b593b18ed980d823e448a0333956fb5fd2920dc5836"
+    }
+  ],
+  "required_input": "data.csv",
+  "required_input_in_archive": false,
+  "models_reexecuted": false,
+  "validation": [
+    "nbformat schema",
+    "all code cells parsed without execution",
+    "original notebook and PNG byte hashes"
+  ],
+  "role": "Separate companion snapshot analysis; not the canonical Quant forward-ranking experiment"
+}
