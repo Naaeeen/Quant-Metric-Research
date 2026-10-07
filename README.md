@@ -76,6 +76,7 @@ is refused. Use a fresh output directory for each run.
 | Compare raw-return and rank training targets | [Target ablation](examples/README.md#target-ablation) |
 | Run the fixed ten/thirteen-feature comparison | [Feature ablation](examples/README.md#feature-ablation) |
 | Train and check a synthetic holdings/cost workflow | [Portfolio example](examples/README.md#synthetic-holdings-and-cost-workflow) |
+| Inspect the separate seven-metric snapshot notebook | [Companion study archive](research/companion-metric-snapshot/README.md) |
 
 The Colab workflow requires a private seed containing the existing canonical
 registry, archive, and prior-run evidence. Keep the live SQLite database on local

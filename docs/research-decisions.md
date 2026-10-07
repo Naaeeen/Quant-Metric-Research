@@ -1950,3 +1950,23 @@ and negative controls, with broader source qualification in parallel. No change
 to the trained candidates or their development/final boundaries follows from
 this plan revision. Source evidence, hosted execution, saved-model scoring and
 offline operations remain open until their separate checks are completed.
+
+## Companion snapshot notebook archive
+
+The supplied [seven-metric notebook](../research/companion-metric-snapshot/README.md)
+is retained as a separate companion-study source. Its saved outputs describe a
+Top Picks snapshot, exploratory PCA/clustering, `ret1y` regression and return-sign
+classification. Its forward-target configuration is not used by those models.
+The original notebook and extracted figures are preserved byte-for-byte with a
+source manifest and [slide-to-cell evidence map](../research/companion-metric-snapshot/slide-evidence.md).
+
+The archive documents random 80/20 supervised splits, training-only scaling and
+classifier PCA, and full-snapshot exploratory PCA. Those different partitions
+must not be conflated. The missing `data.csv`, input provenance and unlocked
+execution environment prevent a complete rerun; inspected saved outputs are not
+new empirical results. No change is made to the canonical purged forward-ranking
+protocol, experiment registry or final-evaluation boundary.
+
+The archival file has pre-existing import-order and unused-import lint findings.
+Only I001 and F401 are ignored for its exact path to preserve the supplied record;
+other lint rules remain active. Core source and notebook inputs are not changed.
